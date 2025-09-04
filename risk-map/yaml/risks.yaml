@@ -834,6 +834,81 @@ risks:
       Mitigation involves model output handling and granting minimal permissions
       to agents and plugins. Involving humans in the scoping process may be necessary
       for added oversight and control.
+- id: MLD
+  title: Malicious Loader/Deserialization
+  shortDescription:
+  - >
+    Unsafe loaders for models and tokenizers that can cause remote code execution
+    or integrity compromise. Malicious Loader/Deserialization poses significant
+    security risks including system compromise and data breaches.
+  longDescription:
+  - >
+    Exploitation of unsafe deserialization processes or malicious model loading
+    mechanisms that can lead to remote code execution, system compromise, or
+    integrity violations when loading AI models, tokenizers, or related artifacts.
+  - >
+    Many AI frameworks use serialization formats like pickle, joblib, or custom
+    binary formats to store and load models, weights, tokenizers, and preprocessing
+    pipelines. These formats can contain executable code that runs during the
+    deserialization process. Attackers can craft malicious model files that
+    execute arbitrary code when loaded, potentially compromising the entire system.
+  - >
+    This risk extends beyond traditional pickle-based attacks to include malicious
+    model architectures, compromised tokenizer configurations, and poisoned
+    preprocessing pipelines. Even seemingly safe formats can be exploited through
+    buffer overflows, path traversal attacks, or by exploiting vulnerabilities
+    in parsing libraries.
+  - >
+    The attack surface is particularly large because model loading often occurs
+    with elevated privileges, and users frequently download models from untrusted
+    sources or model repositories without proper verification. Malicious loaders
+    can also be used to establish persistence, exfiltrate data, or serve as entry
+    points for further attacks on AI infrastructure.
+  - >
+    Modern attacks may also target container images, model serving frameworks,
+    or cloud-based model repositories, making the threat landscape even more
+    complex and requiring comprehensive security measures throughout the model
+    lifecycle.
+  personas:
+  - personaModelCreator
+  - personaModelConsumer
+  controls:
+  - controlModelAndDataIntegrityManagement
+  - controlModelAndDataAccessControls
+  - controlSecureByDefaultMLTooling
+  - controlInputValidationAndSanitization
+  - controlVulnerabilityManagement
+  examples:
+  - >
+    Research has demonstrated <a href="https://blog.trailofbits.com/2021/03/15/never-a-dill-moment-exploiting-machine-learning-pickle-files/"
+    target="_blank" rel="noopener">pickle deserialization attacks</a> where
+    malicious model files execute arbitrary code during loading.
+  - >
+    Security researchers have shown <a href="https://hiddenlayer.com/research/weaponizing-machine-learning-models-with-ransomware/"
+    target="_blank" rel="noopener">weaponized ML models</a> that can deploy
+    ransomware or establish backdoors when loaded by unsuspecting users.
+  - >
+    Studies reveal <a href="https://arxiv.org/abs/2204.06974" target="_blank"
+    rel="noopener">vulnerabilities in popular ML frameworks</a> where model
+    loading processes can be exploited for remote code execution.
+  tourContent:
+    introduced:
+    - >
+      Malicious Loader/Deserialization risks are introduced when model loading
+      processes use unsafe deserialization methods, lack proper input validation,
+      or fail to verify the integrity and authenticity of model files before
+      loading them into memory.
+    exposed:
+    - >
+      This risk is exposed during model loading and initialization phases when
+      malicious code embedded in model files, tokenizers, or related artifacts
+      is executed, potentially compromising the entire system or infrastructure.
+    mitigated:
+    - >
+      Mitigation involves using secure serialization formats, implementing strict
+      input validation and sanitization, verifying model integrity through
+      cryptographic signatures, sandboxing model loading processes, and using
+      secure-by-default ML tooling that prevents code execution during deserialization.
 - id: PCP
   title: Prompt/Response Cache Poisoning
   shortDescription:
