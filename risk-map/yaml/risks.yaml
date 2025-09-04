@@ -834,6 +834,83 @@ risks:
       Mitigation involves model output handling and granting minimal permissions
       to agents and plugins. Involving humans in the scoping process may be necessary
       for added oversight and control.
+- id: ASC
+  title: Accelerator Side-channels
+  shortDescription:
+  - >
+    Cross-tenant leakage via GPU/TPU timing, cache, and memory side-channels.
+    Accelerator Side-channels can compromise data confidentiality and enable
+    unauthorized access to sensitive information in shared computing environments.
+  longDescription:
+  - >
+    Exploitation of side-channel vulnerabilities in GPU, TPU, and other AI
+    accelerator hardware to extract sensitive information from co-located
+    tenants or processes in shared computing environments.
+  - >
+    Modern AI workloads heavily rely on specialized accelerator hardware like
+    GPUs and TPUs for efficient computation. In cloud and multi-tenant environments,
+    these expensive resources are often shared among multiple users or applications.
+    This sharing creates opportunities for side-channel attacks where malicious
+    actors can exploit timing variations, cache behavior, memory access patterns,
+    or electromagnetic emissions to infer sensitive information from other tenants.
+  - >
+    Side-channel attacks on accelerators can target various components including
+    shared GPU memory, cache hierarchies, execution units, memory controllers,
+    and interconnects. Attackers may extract model weights, training data,
+    intermediate computations, or even reconstruct private inputs and outputs
+    from other users' AI workloads running on the same hardware.
+  - >
+    These attacks are particularly concerning because they can bypass traditional
+    software-based security measures and exploit fundamental properties of the
+    underlying hardware. The high computational intensity and predictable access
+    patterns of AI workloads can make them especially vulnerable to timing-based
+    and cache-based side-channel attacks.
+  - >
+    Advanced attacks may also exploit power analysis, electromagnetic emanations,
+    or acoustic side-channels from accelerator hardware. The threat is amplified
+    in scenarios where attackers can co-locate their workloads with target victims
+    or gain physical access to shared infrastructure.
+  personas:
+  - personaModelCreator
+  - personaModelConsumer
+  controls:
+  - controlSecureByDefaultMLTooling
+  - controlModelAndDataAccessControls
+  - controlThreatDetection
+  - controlVulnerabilityManagement
+  examples:
+  - >
+    Research has demonstrated <a href="https://arxiv.org/abs/2006.12784" target="_blank"
+    rel="noopener">GPU side-channel attacks</a> that can extract neural network
+    weights and training data from co-located processes on shared GPU hardware.
+  - >
+    Studies show <a href="https://arxiv.org/abs/2010.02717" target="_blank"
+    rel="noopener">timing-based attacks on GPU memory systems</a> that can
+    infer sensitive information about concurrent AI workloads.
+  - >
+    Security researchers have shown <a href="https://arxiv.org/abs/2108.11021"
+    target="_blank" rel="noopener">cache-based side-channel attacks</a> on
+    machine learning accelerators that can leak model parameters and intermediate
+    computations.
+  tourContent:
+    introduced:
+    - >
+      Accelerator Side-channels are introduced when AI workloads share hardware
+      resources without adequate isolation mechanisms, allowing malicious processes
+      to exploit timing, cache, memory, or other physical characteristics to
+      extract information from co-located tenants.
+    exposed:
+    - >
+      This risk is exposed during model training, inference, or serving when
+      multiple tenants share accelerator hardware, creating opportunities for
+      side-channel attacks to extract sensitive model or data information from
+      concurrent workloads.
+    mitigated:
+    - >
+      Mitigation involves implementing hardware-level isolation mechanisms,
+      using secure scheduling algorithms, applying noise injection or randomization
+      techniques, monitoring for anomalous access patterns, and deploying
+      dedicated or properly partitioned accelerator resources for sensitive workloads.
 - id: EDW
   title: Economic Denial of Wallet
   shortDescription:

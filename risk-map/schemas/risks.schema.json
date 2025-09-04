@@ -17,7 +17,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "enum": ["ADI", "COV", "DMS", "DP", "EBM", "EDH", "EDW", "FLP", "IIC", "IMO", "ISD", "MDT", "MEV", "MLD", "MRE", "MST", "MXF", "ORH", "PCP", "PIJ", "RA", "RVP", "SDD", "UTD"]
+          "enum": ["ASC", "ADI", "COV", "DMS", "DP", "EBM", "EDH", "EDW", "FLP", "IIC", "IMO", "ISD", "MDT", "MEV", "MLD", "MRE", "MST", "MXF", "ORH", "PCP", "PIJ", "RA", "RVP", "SDD", "UTD"]
         },
         "title": {"type": "string"},
         "shortDescription": {"$ref": "riskmap.schema.json#/definitions/utils/text"},
