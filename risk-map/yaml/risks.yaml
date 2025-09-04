@@ -834,6 +834,72 @@ risks:
       Mitigation involves model output handling and granting minimal permissions
       to agents and plugins. Involving humans in the scoping process may be necessary
       for added oversight and control.
+- id: PCP
+  title: Prompt/Response Cache Poisoning
+  shortDescription:
+  - >
+    Cross-user contamination via shared LLM caches lacking isolation and validation.
+    Prompt/Response Cache Poisoning can lead to information leakage, misinformation
+    propagation, and unauthorized access to cached content.
+  longDescription:
+  - >
+    Malicious manipulation of shared prompt and response caches used by language
+    model systems to optimize performance, resulting in cross-user contamination
+    and potential security breaches.
+  - >
+    Many LLM deployments use caching mechanisms to store frequently accessed prompts
+    and their corresponding responses to reduce computational costs and improve
+    response times. When these caches lack proper isolation, validation, or access
+    controls, attackers can exploit them to inject malicious content, extract
+    sensitive information from other users' sessions, or manipulate responses
+    served to subsequent users.
+  - >
+    Cache poisoning attacks can occur through several vectors: injecting crafted
+    prompts designed to pollute cache entries, exploiting weak cache key generation
+    that allows cache collisions, or compromising cache storage systems directly.
+    The attack becomes particularly dangerous when cached responses contain sensitive
+    information, personal data, or malicious instructions that get served to
+    unintended users.
+  - >
+    This risk is amplified in multi-tenant environments where multiple users or
+    applications share the same caching infrastructure without adequate isolation.
+    Attackers may also exploit cache timing attacks to infer information about
+    cached content or use cache behavior to fingerprint other users' activities.
+  personas:
+  - personaModelCreator
+  - personaModelConsumer
+  controls:
+  - controlModelAndDataAccessControls
+  - controlModelAndDataIntegrityManagement
+  - controlInputValidationAndSanitization
+  - controlOutputValidationAndSanitization
+  - controlUserDataManagement
+  examples:
+  - >
+    Research has shown <a href="https://arxiv.org/abs/2403.04783" target="_blank"
+    rel="noopener">cache-based attacks on language models</a> where malicious
+    prompts can influence responses served to other users through shared caching
+    mechanisms.
+  - >
+    Studies demonstrate <a href="https://arxiv.org/abs/2310.07809" target="_blank"
+    rel="noopener">privacy risks in LLM caching systems</a> where inadequate
+    cache isolation can lead to cross-user information leakage.
+  tourContent:
+    introduced:
+    - >
+      Prompt/Response Cache Poisoning is introduced when caching systems lack
+      proper isolation mechanisms, validation of cached content, or secure cache
+      key generation, allowing malicious actors to manipulate shared cache entries.
+    exposed:
+    - >
+      This risk is exposed during model serving when poisoned cache entries are
+      retrieved and served to users, potentially delivering malicious content,
+      sensitive information, or manipulated responses from previous interactions.
+    mitigated:
+    - >
+      Mitigation involves implementing strong cache isolation per user or tenant,
+      validating cached content integrity, using cryptographically secure cache
+      keys, and applying access controls to prevent unauthorized cache manipulation.
 - id: RVP
   title: Retrieval/Vector Store Poisoning
   shortDescription:
