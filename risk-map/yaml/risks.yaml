@@ -834,3 +834,67 @@ risks:
       Mitigation involves model output handling and granting minimal permissions
       to agents and plugins. Involving humans in the scoping process may be necessary
       for added oversight and control.
+- id: RVP
+  title: Retrieval/Vector Store Poisoning
+  shortDescription:
+  - >
+    Poisoning retrieval corpora or vector indices to steer RAG outputs. Retrieval/Vector
+    Store Poisoning can compromise the integrity of knowledge retrieval systems and
+    lead to misinformation or malicious content injection.
+  longDescription:
+  - >
+    Malicious modification of retrieval corpora, vector databases, or knowledge
+    bases used in Retrieval-Augmented Generation (RAG) systems to influence model
+    outputs in unintended ways.
+  - >
+    This attack involves injecting poisoned documents, embeddings, or metadata
+    into vector stores or retrieval systems that are used to provide context to
+    language models. When users query the system, the poisoned content gets retrieved
+    and incorporated into the model's response, potentially spreading misinformation,
+    biased content, or malicious instructions.
+  - >
+    Attackers may exploit vulnerabilities in data ingestion pipelines, compromise
+    data sources, or use adversarial techniques to craft documents that rank highly
+    in similarity searches while containing harmful content. The attack can be
+    particularly effective because users often trust retrieved information as factual
+    and authoritative.
+  - >
+    Vector store poisoning can also involve manipulating embedding spaces through
+    adversarial examples that appear semantically similar to legitimate queries
+    but retrieve malicious content, or by exploiting weaknesses in similarity
+    metrics used for retrieval ranking.
+  personas:
+  - personaModelCreator
+  - personaModelConsumer
+  controls:
+  - controlTrainingDataSanitization
+  - controlModelAndDataIntegrityManagement
+  - controlInputValidationAndSanitization
+  - controlOutputValidationAndSanitization
+  examples:
+  - >
+    Researchers have demonstrated <a href="https://arxiv.org/abs/2310.19156"
+    target="_blank" rel="noopener">adversarial attacks on retrieval systems</a>
+    where malicious documents are crafted to rank highly for specific queries
+    while containing harmful content.
+  - >
+    Studies show that <a href="https://arxiv.org/abs/2402.13532" target="_blank"
+    rel="noopener">poisoning attacks on vector databases</a> can successfully
+    manipulate RAG system outputs by injecting adversarial embeddings.
+  tourContent:
+    introduced:
+    - >
+      Retrieval/Vector Store Poisoning is introduced during data ingestion and
+      indexing processes when malicious content is added to knowledge bases, vector
+      stores, or retrieval corpora without proper validation and sanitization.
+    exposed:
+    - >
+      This risk is exposed during retrieval and generation phases when poisoned
+      content is retrieved and incorporated into model responses, potentially
+      spreading misinformation or executing malicious instructions.
+    mitigated:
+    - >
+      Mitigation involves implementing robust data validation and sanitization
+      during ingestion, maintaining data integrity through cryptographic verification,
+      and filtering both inputs and outputs to detect and prevent malicious content
+      retrieval.
