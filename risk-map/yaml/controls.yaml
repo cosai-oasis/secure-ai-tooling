@@ -80,6 +80,7 @@ controls:
   risks:
   - DP
   - UTD
+  - RVP
 - id: controlUserDataManagement
   title: User Data Management
   description:
@@ -151,6 +152,7 @@ controls:
   risks:
   - DP
   - MST
+  - RVP
 - id: controlSecureByDefaultMLTooling
   title: Secure-by-Default ML Tooling
   description:
@@ -184,6 +186,7 @@ controls:
   - componentInputHandling
   risks:
   - PIJ
+  - RVP
 - id: controlOutputValidationAndSanitization
   title: Output Validation and Sanitization
   description:
@@ -202,6 +205,7 @@ controls:
   - SDD
   - ISD
   - IMO
+  - RVP
 - id: controlAdversarialTrainingAndTesting
   title: Adversarial Training and Testing
   description:
