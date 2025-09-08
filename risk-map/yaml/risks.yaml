@@ -834,6 +834,405 @@ risks:
       Mitigation involves model output handling and granting minimal permissions
       to agents and plugins. Involving humans in the scoping process may be necessary
       for added oversight and control.
+- id: EDW
+  title: Economic Denial of Wallet
+  shortDescription:
+  - >
+    Cost abuse via token inflation, long context, or tool loops that spike spend.
+    Economic Denial of Wallet can lead to unexpected financial losses and service
+    disruption through resource exhaustion attacks.
+  longDescription:
+  - >
+    Attacks designed to cause excessive computational or financial costs by
+    exploiting AI service pricing models, resource consumption patterns, or
+    billing mechanisms to drain budgets or exhaust allocated resources.
+  - >
+    Many AI services operate on usage-based pricing models where costs scale
+    with token consumption, compute time, API calls, or resource utilization.
+    Attackers can exploit these models through various techniques including
+    token inflation attacks (crafting prompts that generate extremely long
+    responses), context window abuse (using maximum context lengths repeatedly),
+    recursive tool calling, or triggering expensive operations.
+  - >
+    Economic attacks can be particularly devastating because they directly
+    impact operational budgets and can force service shutdowns when cost limits
+    are reached. Attackers may use automated scripts to repeatedly trigger
+    expensive operations, exploit pricing arbitrage between different service
+    tiers, or abuse free trial periods to maximize damage.
+  - >
+    The risk extends beyond direct API abuse to include attacks on model
+    serving infrastructure where malicious inputs are designed to maximize
+    computational overhead, memory usage, or processing time. These attacks
+    can also target auto-scaling mechanisms to force unnecessary resource
+    provisioning and associated costs.
+  personas:
+  - personaModelConsumer
+  controls:
+  - controlApplicationAccessManagement
+  - controlThreatDetection
+  - controlVulnerabilityManagement
+  examples:
+  - >
+    Research has shown <a href="https://arxiv.org/abs/2401.07464" target="_blank"
+    rel="noopener">prompt injection attacks that cause excessive token generation</a>
+    leading to unexpected billing charges for AI service users.
+  - >
+    Security studies demonstrate <a href="https://arxiv.org/abs/2310.12739" target="_blank"
+    rel="noopener">resource exhaustion attacks on LLM APIs</a> where malicious
+    prompts are designed to maximize computational costs and processing time.
+  tourContent:
+    introduced:
+    - >
+      Economic Denial of Wallet risks are introduced when AI services lack
+      proper cost controls, rate limiting, or resource monitoring, allowing
+      malicious actors to exploit pricing models and resource consumption
+      patterns to cause financial damage.
+    exposed:
+    - >
+      This risk is exposed during service usage when attackers submit requests
+      designed to maximize costs, trigger expensive operations, or exhaust
+      allocated budgets through automated or manual abuse of pricing mechanisms.
+    mitigated:
+    - >
+      Mitigation involves implementing robust cost quotas and guardrails,
+      rate limiting and usage monitoring, anomaly detection for unusual
+      consumption patterns, and access controls to prevent unauthorized
+      or excessive resource usage.
+- id: FLP
+  title: Federated/Distributed Training Privacy
+  shortDescription:
+  - >
+    Gradient leakage and inversion attacks from untrusted clients in federated
+    learning. Federated/Distributed Training Privacy risks can expose sensitive
+    training data and compromise participant privacy.
+  longDescription:
+  - >
+    Privacy breaches in federated learning systems where malicious participants
+    or compromised clients can extract sensitive information from gradient
+    updates, model parameters, or aggregation processes.
+  - >
+    Federated learning enables collaborative model training without centralizing
+    raw data, but the shared gradient updates and model parameters can leak
+    sensitive information about participants' private datasets. Attackers can
+    use gradient inversion techniques, membership inference attacks, or property
+    inference to reconstruct training samples, identify dataset characteristics,
+    or determine if specific data points were used in training.
+  - >
+    The risk is amplified when federated learning systems lack proper privacy
+    protections such as differential privacy, secure aggregation, or robust
+    participant verification. Malicious clients can also poison the training
+    process by submitting adversarial gradients designed to compromise model
+    integrity while extracting information from honest participants.
+  - >
+    Advanced attacks may exploit the iterative nature of federated learning
+    to gradually extract information over multiple training rounds, use auxiliary
+    information to enhance reconstruction attacks, or coordinate between multiple
+    compromised clients to amplify privacy breaches.
+  personas:
+  - personaModelCreator
+  controls:
+  - controlPrivacyEnhancingTechnologies
+  - controlModelAndDataIntegrityManagement
+  - controlThreatDetection
+  - controlSecureByDefaultMLTooling
+  examples:
+  - >
+    Research demonstrates <a href="https://arxiv.org/abs/1906.08935" target="_blank"
+    rel="noopener">gradient inversion attacks</a> that can reconstruct private
+    training images from gradient updates in federated learning systems.
+  - >
+    Studies show <a href="https://arxiv.org/abs/2003.10595" target="_blank"
+    rel="noopener">membership inference attacks on federated learning</a>
+    where attackers can determine if specific data points were used in training.
+  tourContent:
+    introduced:
+    - >
+      Federated/Distributed Training Privacy risks are introduced when federated
+      learning systems lack adequate privacy protections, participant verification,
+      or secure aggregation mechanisms, allowing malicious clients to extract
+      sensitive information from shared updates.
+    exposed:
+    - >
+      This risk is exposed during federated training when gradient updates
+      or model parameters are shared between participants, creating opportunities
+      for privacy attacks that can reconstruct private data or infer sensitive
+      information about other participants.
+    mitigated:
+    - >
+      Mitigation involves implementing differential privacy mechanisms, secure
+      multi-party computation for aggregation, robust participant authentication,
+      gradient compression and noise injection, and monitoring for anomalous
+      client behavior during training.
+- id: ADI
+  title: Adapter/PEFT Injection
+  shortDescription:
+  - >
+    Trojaned adapters merged at runtime to bypass safety or exfiltrate data.
+    Adapter/PEFT Injection can compromise model behavior and enable unauthorized
+    access to sensitive information or system resources.
+  longDescription:
+  - >
+    Malicious injection of compromised adapters, LoRA modules, or Parameter-Efficient
+    Fine-Tuning (PEFT) components that contain backdoors, trojans, or malicious
+    functionality designed to subvert model behavior or extract sensitive information.
+  - >
+    Modern AI systems increasingly use adapter-based approaches like LoRA
+    (Low-Rank Adaptation), prefix tuning, or other PEFT methods to customize
+    foundation models for specific tasks without full retraining. These adapters
+    are often shared through repositories, marketplaces, or collaborative platforms,
+    creating opportunities for supply chain attacks where malicious actors
+    distribute trojaned adapters.
+  - >
+    Compromised adapters can be designed to activate under specific trigger
+    conditions, bypass safety guardrails, exfiltrate sensitive data from prompts
+    or model states, or redirect model outputs to serve attacker objectives.
+    The modular nature of adapters makes detection challenging since the malicious
+    functionality may only manifest under specific conditions or inputs.
+  - >
+    Runtime adapter injection attacks can also exploit vulnerabilities in
+    adapter loading mechanisms, merge processes, or dynamic adapter switching
+    to inject malicious components into otherwise secure model deployments.
+    These attacks may target adapter repositories, compromise distribution
+    channels, or exploit weak verification processes.
+  personas:
+  - personaModelCreator
+  - personaModelConsumer
+  controls:
+  - controlModelAndDataIntegrityManagement
+  - controlModelAndDataAccessControls
+  - controlSecureByDefaultMLTooling
+  - controlVulnerabilityManagement
+  examples:
+  - >
+    Research demonstrates <a href="https://arxiv.org/abs/2311.03262" target="_blank"
+    rel="noopener">backdoor attacks on LoRA adapters</a> where malicious
+    fine-tuning components can compromise model behavior while appearing benign.
+  - >
+    Security studies show <a href="https://arxiv.org/abs/2401.13025" target="_blank"
+    rel="noopener">supply chain attacks on adapter repositories</a> where
+    trojaned PEFT modules are distributed to unsuspecting users.
+  tourContent:
+    introduced:
+    - >
+      Adapter/PEFT Injection risks are introduced when adapter loading systems
+      lack proper verification mechanisms, integrity checks, or secure distribution
+      channels, allowing malicious actors to inject compromised adapters into
+      model deployments.
+    exposed:
+    - >
+      This risk is exposed during adapter loading, merging, or runtime switching
+      when trojaned components are integrated into model systems, potentially
+      activating malicious functionality or compromising model behavior under
+      specific trigger conditions.
+    mitigated:
+    - >
+      Mitigation involves implementing cryptographic verification of adapter
+      integrity, secure adapter repositories with provenance tracking, runtime
+      monitoring for anomalous behavior, sandboxed adapter loading processes,
+      and comprehensive testing of adapter functionality before deployment.
+- id: ORH
+  title: Orchestrator/Route Hijack
+  shortDescription:
+  - >
+    Silent model or route swaps via configuration tampering or prompt-based
+    routing abuse. Orchestrator/Route Hijack can redirect requests to malicious
+    models or compromise routing integrity in AI systems.
+  longDescription:
+  - >
+    Attacks that manipulate AI orchestration systems, routing mechanisms, or
+    configuration management to redirect requests to unauthorized models, compromise
+    routing decisions, or subvert intended model selection processes.
+  - >
+    Modern AI deployments often use orchestration systems that route requests
+    to different models based on various criteria such as prompt content, user
+    context, load balancing, or cost optimization. Attackers can exploit vulnerabilities
+    in these routing systems to redirect traffic to malicious models, compromise
+    routing logic, or manipulate configuration files to alter intended behavior.
+  - >
+    Route hijacking attacks can target various components including configuration
+    management systems, routing tables, load balancers, API gateways, or prompt-based
+    routing logic. Malicious actors may inject crafted prompts designed to
+    trigger routing to compromised models, exploit weak authentication in routing
+    decisions, or tamper with configuration files to establish persistent redirections.
+  - >
+    The impact of successful route hijacking can be severe, as attackers can
+    redirect users to models under their control, potentially exposing sensitive
+    data, delivering malicious responses, or bypassing safety mechanisms. These
+    attacks may be difficult to detect if the malicious models provide plausible
+    responses while secretly logging data or performing unauthorized actions.
+  personas:
+  - personaModelCreator
+  - personaModelConsumer
+  controls:
+  - controlModelAndDataIntegrityManagement
+  - controlModelAndDataAccessControls
+  - controlSecureByDefaultMLTooling
+  - controlThreatDetection
+  examples:
+  - >
+    Security research shows <a href="https://arxiv.org/abs/2402.14020" target="_blank"
+    rel="noopener">prompt-based routing attacks</a> where crafted inputs can
+    manipulate AI orchestration systems to route requests to unintended models.
+  - >
+    Studies demonstrate <a href="https://arxiv.org/abs/2310.15123" target="_blank"
+    rel="noopener">configuration tampering attacks</a> on AI serving infrastructure
+    that can redirect model requests to attacker-controlled endpoints.
+  tourContent:
+    introduced:
+    - >
+      Orchestrator/Route Hijack risks are introduced when AI routing and orchestration
+      systems lack proper access controls, integrity verification, or secure
+      configuration management, allowing attackers to manipulate routing decisions
+      or redirect requests to unauthorized models.
+    exposed:
+    - >
+      This risk is exposed during request routing and model selection when
+      compromised orchestration logic redirects traffic to malicious models
+      or when configuration tampering alters intended routing behavior, potentially
+      exposing users to unauthorized or compromised AI systems.
+    mitigated:
+    - >
+      Mitigation involves implementing secure configuration management with
+      integrity verification, robust access controls for routing systems,
+      cryptographic signing of routing configurations, monitoring for anomalous
+      routing patterns, and validation of model endpoints before request forwarding.
+- id: EBM
+  title: Evaluation/Benchmark Manipulation
+  shortDescription:
+  - >
+    Poisoned or leaked evaluation sets misleading safety and robustness signals.
+    Evaluation/Benchmark Manipulation can compromise model assessment accuracy
+    and lead to deployment of unsafe or unreliable AI systems.
+  longDescription:
+  - >
+    Attacks that compromise the integrity of evaluation datasets, benchmarks,
+    or assessment processes used to measure AI model performance, safety, or
+    robustness, leading to misleading or false quality signals.
+  - >
+    Reliable evaluation is critical for assessing AI model capabilities, safety,
+    and robustness before deployment. Attackers can compromise this process
+    by poisoning evaluation datasets with crafted examples, leaking evaluation
+    data to enable overfitting, manipulating benchmark results, or exploiting
+    weaknesses in evaluation methodologies to make models appear safer or more
+    capable than they actually are.
+  - >
+    Evaluation manipulation can occur through various vectors including data
+    poisoning of benchmark datasets, insider threats that leak evaluation sets,
+    adversarial examples designed to fool specific evaluation metrics, or
+    systematic gaming of evaluation processes. The impact is particularly severe
+    for safety-critical applications where compromised evaluations could lead
+    to deployment of dangerous systems.
+  - >
+    Advanced attacks may target the evaluation infrastructure itself, compromise
+    evaluation frameworks or tools, manipulate automated evaluation pipelines,
+    or exploit biases in evaluation methodologies to achieve favorable but
+    misleading results. These attacks can be difficult to detect and may have
+    long-lasting impacts on model development and deployment decisions.
+  personas:
+  - personaModelCreator
+  controls:
+  - controlModelAndDataIntegrityManagement
+  - controlRedTeaming
+  - controlVulnerabilityManagement
+  - controlThreatDetection
+  examples:
+  - >
+    Research demonstrates <a href="https://arxiv.org/abs/2108.07258" target="_blank"
+    rel="noopener">benchmark gaming attacks</a> where models are specifically
+    optimized to perform well on evaluation metrics while failing on real-world
+    tasks.
+  - >
+    Studies show <a href="https://arxiv.org/abs/2201.07085" target="_blank"
+    rel="noopener">evaluation dataset poisoning</a> where malicious examples
+    in benchmarks can mislead model assessment and safety evaluation processes.
+  tourContent:
+    introduced:
+    - >
+      Evaluation/Benchmark Manipulation risks are introduced when evaluation
+      processes lack proper security controls, dataset integrity verification,
+      or protection against data leakage, allowing attackers to compromise
+      assessment accuracy and reliability.
+    exposed:
+    - >
+      This risk is exposed during model evaluation and benchmarking when
+      compromised datasets or manipulated evaluation processes produce misleading
+      results, potentially leading to deployment of unsafe or unreliable models
+      based on false quality signals.
+    mitigated:
+    - >
+      Mitigation involves implementing secure evaluation pipelines with dataset
+      integrity verification, using diverse and protected evaluation sets,
+      employing red teaming and adversarial testing, monitoring for evaluation
+      anomalies, and maintaining strict access controls for evaluation data.
+- id: COV
+  title: Covert Channels in Model Outputs
+  shortDescription:
+  - >
+    Hidden information transmission through model outputs or behavior patterns.
+    Covert Channels in Model Outputs can enable unauthorized data exfiltration
+    and steganographic communication bypassing security controls.
+  longDescription:
+  - >
+    Exploitation of AI model outputs, behavior patterns, or response characteristics
+    to establish hidden communication channels for unauthorized information
+    transmission, data exfiltration, or steganographic messaging.
+  - >
+    AI models can be exploited to create covert communication channels through
+    various mechanisms including steganographic encoding in generated text,
+    images, or other outputs, subtle manipulation of response timing or patterns,
+    exploitation of model randomness or sampling behavior, or encoding information
+    in model confidence scores or attention patterns.
+  - >
+    These attacks can be used to exfiltrate sensitive information from restricted
+    environments, establish command and control channels for malware, bypass
+    network monitoring and data loss prevention systems, or enable unauthorized
+    communication between isolated systems. The covert nature of these channels
+    makes them particularly difficult to detect using traditional security monitoring.
+  - >
+    Advanced covert channel attacks may exploit model artifacts such as embedding
+    spaces, latent representations, or internal model states to hide information.
+    Attackers might also use adversarial techniques to encode data in model
+    outputs that appear normal to human observers but contain hidden information
+    extractable through specific decoding methods.
+  personas:
+  - personaModelCreator
+  - personaModelConsumer
+  controls:
+  - controlOutputValidationAndSanitization
+  - controlThreatDetection
+  - controlModelAndDataIntegrityManagement
+  - controlVulnerabilityManagement
+  examples:
+  - >
+    Research demonstrates <a href="https://arxiv.org/abs/2305.20010" target="_blank"
+    rel="noopener">steganographic attacks on language models</a> where hidden
+    information is encoded in generated text outputs without affecting apparent
+    quality or coherence.
+  - >
+    Studies show <a href="https://arxiv.org/abs/2210.01405" target="_blank"
+    rel="noopener">timing-based covert channels</a> in AI systems where
+    information is transmitted through response latency patterns and processing
+    delays.
+  tourContent:
+    introduced:
+    - >
+      Covert Channels in Model Outputs are introduced when AI systems lack
+      proper output monitoring, steganography detection, or behavioral analysis
+      capabilities, allowing attackers to exploit model outputs for hidden
+      information transmission.
+    exposed:
+    - >
+      This risk is exposed during model usage when attackers encode hidden
+      information in model outputs, response patterns, or behavioral characteristics,
+      potentially enabling unauthorized data exfiltration or covert communication
+      that bypasses traditional security controls.
+    mitigated:
+    - >
+      Mitigation involves implementing comprehensive output validation and
+      sanitization, deploying steganography detection systems, monitoring
+      for anomalous response patterns, analyzing model behavior for covert
+      channels, and applying randomization techniques to disrupt potential
+      information encoding mechanisms.
 - id: MLD
   title: Malicious Loader/Deserialization
   shortDescription:

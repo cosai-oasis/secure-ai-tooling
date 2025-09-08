@@ -50,6 +50,7 @@ controls:
   - componentModelEvaluation
   risks:
   - SDD
+  - FLP
 - id: controlTrainingDataManagement
   title: Training Data Management
   description:
@@ -135,6 +136,8 @@ controls:
   - DP
   - MST
   - MXF
+  - ADI
+  - ORH
   - MLD
   - PCP
 - id: controlModelAndDataIntegrityManagement
@@ -155,6 +158,11 @@ controls:
   risks:
   - DP
   - MST
+  - FLP
+  - ADI
+  - ORH
+  - EBM
+  - COV
   - MLD
   - PCP
   - RVP
@@ -179,6 +187,9 @@ controls:
   - MST
   - MXF
   - MDT
+  - FLP
+  - ADI
+  - ORH
   - MLD
 - id: controlInputValidationAndSanitization
   title: Input Validation and Sanitization
@@ -212,6 +223,7 @@ controls:
   - RA
   - SDD
   - ISD
+  - COV
   - PCP
   - IMO
   - RVP
@@ -247,6 +259,7 @@ controls:
   risks:
   - DMS
   - MRE
+  - EDW
 - id: controlUserTransparencyAndControls
   title: User Transparency and Controls
   description:
