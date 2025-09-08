@@ -205,7 +205,7 @@ risks:
   personas:
   - personaModelCreator
   controls:
-  - controlUserDataManagement
+  - controlUserDataManagement-will-cause-mapping failure # TESTING: will fail control-to-risk validation
   - controlUserTransparencyAndControls
   examples:
   - >

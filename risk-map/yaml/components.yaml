@@ -14,7 +14,7 @@
 
 id: components
 title: CoSAI Risk Map components
-description:
+description-lint-error: # TESTING: will fail schema linting
 - 'The CoSAI Risk Map categorizes AI development into four areas:'
 - - Data
   - Infrastructure
@@ -164,7 +164,7 @@ components:
   category: componentsInfrastructure
   edges:
     to:
-      - componentTrainingTuning
+      - componentTrainingTuning-will-cause-edge-validation-failure # TESTING: will fail edge validation
 - id: componentModelEvaluation
   title: Model Evaluation
   description:
@@ -178,7 +178,7 @@ components:
     to: 
     - componentTrainingTuning
     from:
-    - componentTheModel
+    - componentTheModel-will-cause-edge-validation-failure # TESTING: will fail edge validation
 - id: componentTrainingTuning
   title: Training and Tuning
   description:

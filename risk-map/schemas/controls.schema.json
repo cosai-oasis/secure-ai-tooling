@@ -36,7 +36,7 @@
             "controlAcceleratorIsolationAndSideChannelMitigation",
             "controlAdapterIntegrityAndAllowlisting",
             "controlAdversarialTrainingAndTesting",
-            "controlAgentPluginPermissions",
+            "controlAgentPluginPermissions-will-cause-lint-error",
             "controlAgentPluginUserControl",
             "controlApplicationAccessManagement",
             "controlCostQuotaGuardrails",

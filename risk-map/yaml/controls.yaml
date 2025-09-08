@@ -66,7 +66,7 @@ controls:
   - componentTrainingTuning
   - componentModelEvaluation
   risks:
-  - ISD
+  - ISD-will-cause-mapping-error # TESTING: will fail control-to-risk validation
   - UTD
 - id: controlTrainingDataSanitization
   title: Training Data Sanitization
