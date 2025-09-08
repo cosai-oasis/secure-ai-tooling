@@ -1,0 +1,103 @@
+name: CoSAI Risk Map Validation
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'risk-map/yaml/**'
+      - 'risk-map/schemas/**'
+      - '.github/workflows/validation.yml'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'risk-map/yaml/**'
+      - 'risk-map/schemas/**'
+
+jobs:
+  validate-risk-map:
+    runs-on: ubuntu-latest
+    name: Validate Risk Map Data
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install validation dependencies
+      run: |
+        pip install check-jsonschema pyyaml
+        
+    - name: Copy validation scripts to working directory
+      run: |
+        # Copy the scripts from the repo to make them executable in CI
+        cp scripts/hooks/validate_component_edges.py .
+        cp scripts/hooks/validate_control_risk_references.py .
+        
+    - name: Run YAML Schema Validation
+      run: |
+        echo "🔍 Running YAML schema validation..."
+        
+        BASE_URI="file://$(pwd)/risk-map/schemas/"
+        YAML_BASE_DIR="risk-map/yaml"
+        SCHEMA_BASE_DIR="risk-map/schemas"
+        SOURCE_FILES=("controls" "categories" "components" "personas" "risks" "self-assessment")
+        
+        validation_failed=false
+        
+        for target in "${SOURCE_FILES[@]}"; do
+          schema_file="${SCHEMA_BASE_DIR}/${target}.schema.json"
+          yaml_file="${YAML_BASE_DIR}/${target}.yaml"
+          
+          if [[ -f "$yaml_file" && -f "$schema_file" ]]; then
+            echo "Validating $yaml_file against $schema_file..."
+            if ! check-jsonschema --base-uri "$BASE_URI" --schemafile "$schema_file" "$yaml_file"; then
+              echo "❌ Schema validation failed for ${target}.yaml"
+              validation_failed=true
+            else
+              echo "✅ Schema validation passed for ${target}.yaml"
+            fi
+          else
+            echo "⚠️ Skipping ${target} - missing file(s)"
+          fi
+        done
+        
+        if [ "$validation_failed" = true ]; then
+          echo "::error::YAML schema validation failed"
+          exit 1
+        fi
+        
+        echo "🎉 All YAML schema validations passed!"
+        
+    - name: Run Component Edge Validation
+      run: |
+        echo "🔗 Running component edge validation..."
+        if python3 validate_component_edges.py --force; then
+          echo "✅ Component edge validation completed successfully"
+        else
+          echo "::error::Component edge validation failed"
+          exit 1
+        fi
+        
+    - name: Run Control-Risk Reference Validation
+      run: |
+        echo "🔗 Running control-to-risk reference validation..."
+        if python3 validate_control_risk_references.py --force; then
+          echo "✅ Control-to-risk reference validation completed successfully"
+        else
+          echo "::error::Control-to-risk reference validation failed"
+          exit 1
+        fi
+        
+    - name: Validation Summary
+      if: success()
+      run: |
+        echo "🎉 All CoSAI Risk Map validations completed successfully!"
+        echo "  ✅ YAML schema validation"
+        echo "  ✅ Component edge validation" 
+        echo "  ✅ Control-to-risk reference validation"
+        echo ""
+        echo "The Risk Map data maintains full integrity and consistency."
