@@ -177,8 +177,8 @@ components:
   edges:
     to: 
     - componentTrainingTuning
-#    from:
-#    - componentTheModel
+    from:
+    - componentTheModel
 - id: componentTrainingTuning
   title: Training and Tuning
   description:
