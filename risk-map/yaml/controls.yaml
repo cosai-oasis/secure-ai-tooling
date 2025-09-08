@@ -136,6 +136,7 @@ controls:
   - DP
   - MST
   - MXF
+  - ASC
   - ADI
   - ORH
   - MLD
@@ -187,6 +188,7 @@ controls:
   - MST
   - MXF
   - MDT
+  - ASC
   - FLP
   - ADI
   - ORH
