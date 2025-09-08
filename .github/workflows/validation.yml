@@ -2,13 +2,13 @@ name: CoSAI Risk Map Validation
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, testing/**]
     paths:
       - 'risk-map/yaml/**'
       - 'risk-map/schemas/**'
       - '.github/workflows/validation.yml'
   push:
-    branches: [main, develop]
+    branches: [main, develop, testing/**]
     paths:
       - 'risk-map/yaml/**'
       - 'risk-map/schemas/**'
