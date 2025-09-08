@@ -205,8 +205,8 @@ risks:
   personas:
   - personaModelCreator
   controls:
-  - controlUserDataManagement-will-cause-mapping failure # TESTING: will fail control-to-risk validation
-  - controlUserTransparencyAndControls
+  - controlUserDataManagement
+#  - controlUserTransparencyAndControls
   examples:
   - >
     <a href="https://www.forbes.com/sites/siladityaray/2023/05/02/samsung-bans-chatgpt-and-other-chatbots-for-employees-after-sensitive-code-leak/"
