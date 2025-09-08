@@ -397,3 +397,132 @@ controls:
   - personaModelConsumer
   components: none
   risks: all
+- id: controlAcceleratorIsolationAndSideChannelMitigation
+  title: Accelerator Isolation and Side-channel Mitigation
+  description:
+  - >
+    Implement hardware-level isolation, secure scheduling, and side-channel
+    monitoring for GPU/TPU and other AI accelerator resources to prevent
+    cross-tenant information leakage.
+  category: controlsInfrastructure
+  personas:
+  - personaModelCreator
+  - personaModelConsumer
+  components:
+  - componentModelServing
+  - componentTrainingTuning
+  risks:
+  - ASC
+- id: controlRetrievalAndVectorStorePoisoningDefense
+  title: Retrieval and Vector Store Poisoning Defense
+  description:
+  - >
+    Implement provenance tracking, cryptographic signing, deduplication,
+    embedding anomaly detection, and index integrity checks to protect
+    retrieval systems and vector databases from poisoning attacks.
+  category: controlsData
+  personas:
+  - personaModelCreator
+  - personaModelConsumer
+  components:
+  - componentDataSources
+  - componentDataStorage
+  - componentDataFilteringAndProcessing
+  risks:
+  - RVP
+- id: controlAdapterIntegrityAndAllowlisting
+  title: Adapter Integrity and Allowlisting
+  description:
+  - >
+    Implement cryptographic signing, checksums, and allowlisting for LoRA/PEFT
+    adapters with runtime verification to prevent injection of malicious
+    fine-tuning components.
+  category: controlsModel
+  personas:
+  - personaModelCreator
+  - personaModelConsumer
+  components:
+  - componentTheModel
+  - componentModelServing
+  - componentModelStorage
+  risks:
+  - ADI
+  - MLD
+- id: controlFederatedTrainingPrivacyAndRobustAggregation
+  title: Federated Training Privacy and Robust Aggregation
+  description:
+  - >
+    Implement secure aggregation protocols, differential privacy mechanisms,
+    robust aggregation rules, and client attestation to protect participant
+    privacy in federated learning systems.
+  category: controlsModel
+  personas:
+  - personaModelCreator
+  components:
+  - componentTrainingTuning
+  - componentModelEvaluation
+  risks:
+  - FLP
+- id: controlOrchestratorAndRouteIntegrity
+  title: Orchestrator and Route Integrity
+  description:
+  - >
+    Implement signed route manifests, configuration integrity verification,
+    and response provenance tracking to prevent routing manipulation and
+    ensure request routing to authorized models.
+  category: controlsInfrastructure
+  personas:
+  - personaModelCreator
+  - personaModelConsumer
+  components:
+  - componentModelServing
+  - componentApplication
+  risks:
+  - ORH
+- id: controlModelRepositoryTrustAndAttestation
+  title: Model Repository Trust and Attestation
+  description:
+  - >
+    Implement repository trust policies, cryptographic signatures, attestation
+    frameworks, and offline verification capabilities to ensure integrity
+    and authenticity of models and artifacts.
+  category: controlsInfrastructure
+  personas:
+  - personaModelCreator
+  - personaModelConsumer
+  components:
+  - componentModelStorage
+  - componentModelServing
+  risks:
+  - ADI
+  - MLD
+- id: controlCostQuotaGuardrails
+  title: Cost Quota Guardrails
+  description:
+  - >
+    Implement comprehensive cost monitoring, usage quotas, rate limiting,
+    and anomaly detection to prevent economic denial of wallet attacks
+    and resource exhaustion.
+  category: controlsApplication
+  personas:
+  - personaModelConsumer
+  components:
+  - componentApplication
+  - componentModelServing
+  risks:
+  - EDW
+- id: controlEvaluationProvenanceAndDriftDetection
+  title: Evaluation Provenance and Drift Detection
+  description:
+  - >
+    Implement secure evaluation pipelines with dataset provenance tracking,
+    integrity verification, and drift detection to prevent manipulation
+    of evaluation and benchmark processes.
+  category: controlsModel
+  personas:
+  - personaModelCreator
+  components:
+  - componentModelEvaluation
+  - componentTrainingTuning
+  risks:
+  - EBM

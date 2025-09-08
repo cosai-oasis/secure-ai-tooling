@@ -162,6 +162,8 @@ risks:
   - controlModelAndDataIntegrityManagement
   - controlModelAndDataAccessControls
   - controlModelAndDataInventoryManagement
+  - controlModelRepositoryTrustAndAttestation
+  - controlAdapterIntegrityAndAllowlisting
   examples:
   - >
     The nightly build of <a href="https://pytorch.org/blog/compromised-nightly-dependency/">PyTorch
@@ -256,6 +258,8 @@ risks:
   - controlModelAndDataInventoryManagement
   - controlModelAndDataAccessControls
   - controlSecureByDefaultMLTooling
+  - controlModelRepositoryTrustAndAttestation
+  - controlAdapterIntegrityAndAllowlisting
   examples:
   - >
     <a href="https://www.theverge.com/2023/3/8/23629362/meta-ai-language-model-llama-leak-online-misuse"
@@ -304,6 +308,7 @@ risks:
   - personaModelConsumer
   controls:
   - controlSecureByDefaultMLTooling
+  - controlOrchestratorAndRouteIntegrity
   examples:
   - >
     <a href="https://www.wiz.io/blog/wiz-and-hugging-face-address-risks-to-ai-infrastructure#what-did-we-find-11"
@@ -353,6 +358,7 @@ risks:
   - personaModelConsumer
   controls:
   - controlApplicationAccessManagement
+  - controlCostQuotaGuardrails
   examples:
   - >
     Researchers have proven how slight perturbation to images <a href="https://arxiv.org/abs/2205.13618"
