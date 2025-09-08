@@ -135,6 +135,7 @@ controls:
   - DP
   - MST
   - MXF
+  - MLD
   - PCP
 - id: controlModelAndDataIntegrityManagement
   title: Model and Data Integrity Management
@@ -154,6 +155,7 @@ controls:
   risks:
   - DP
   - MST
+  - MLD
   - PCP
   - RVP
 - id: controlSecureByDefaultMLTooling
@@ -177,6 +179,7 @@ controls:
   - MST
   - MXF
   - MDT
+  - MLD
 - id: controlInputValidationAndSanitization
   title: Input Validation and Sanitization
   description:
@@ -189,6 +192,7 @@ controls:
   - componentInputHandling
   risks:
   - PIJ
+  - MLD
   - PCP
   - RVP
 - id: controlOutputValidationAndSanitization
