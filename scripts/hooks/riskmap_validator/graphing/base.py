@@ -318,6 +318,8 @@ class BaseGraph:
 
             if category not in groups:
                 groups[category] = [node_id]
+            else:
+                groups[category].append(node_id)
 
             if category not in subcat_groups and process_subcategories:
                 if process_subcategories:
@@ -325,7 +327,6 @@ class BaseGraph:
                     subcat_groups[category][subcat] = [node_id]
                 continue
 
-            groups[category].append(node_id)
             if process_subcategories:
                 subcat_groups[category][subcat].append(node_id)
 
