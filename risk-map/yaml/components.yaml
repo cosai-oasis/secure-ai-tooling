@@ -81,6 +81,19 @@ categories:
           - >
             Primary processes and artifacts leveraged in the training of models from source data
             and algorithms.
+      - id: componentsOrchestration
+        title: Orchestration
+        description:
+          - >
+            Beyond its core reasoning and planning capabilities, an agent relies on a 
+            variety of external components to access information, process data, and 
+            execute actions. This process is called orchestration because it involves 
+            managing and coordinating a variety of independent services and data sources 
+            to achieve a single, complex task. These resources provide the agent with its 
+            memory, its ability to act in the physical world, and the specific knowledge 
+            needed to complete taste. Securing these external components is critical, 
+            since they represent key interaction points that can be targeted by attackers 
+            to manipulate the agent’s behavior.
   - id: componentsApplication
     title: Application components
     description:
@@ -99,6 +112,12 @@ categories:
         opens up exciting possibilities of more complex behaviors, each connection
         also increases the potential impact of a successful attack on the AI model
         or network.
+    subcategory:
+      - id: componentsAgent
+        title: Agent components
+        description:
+          - >
+            Agentic systems differ from other AI systems in their ability to take autonomous actions.
 components:
   - id: componentDataSources
     title: Data Sources
@@ -113,8 +132,7 @@ components:
     edges:
       to:
         - componentDataFilteringAndProcessing
-      from:
-        - componentApplication
+      from: []
   - id: componentDataFilteringAndProcessing
     title: Data Filtering and Processing
     description:
@@ -250,43 +268,17 @@ components:
     category: componentsModel
     edges:
       to:
-        - componentOutputHandling
         - componentModelEvaluation
+        - componentAgentInputHandling
+        - componentApplicationInputHandling
+        - componentOrchestrationInputHandling
       from:
         - componentModelTrainingTuning
         - componentModelServing
         - componentModelStorage
-        - componentInputHandling
-  - id: componentInputHandling
-    title: Input Handling
-    description:
-      - >
-        Input handling components filter, sanitize, and protect against potentially
-        malicious inputs, whether from a user or more generally from anything outside
-        the trusted system. Input handling acts as a control against numerous risks
-        and is an area ripe for more research and development.
-    category: componentsModel
-    edges:
-      to:
-        - componentTheModel
-      from:
-        - componentApplication
-        - componentAgentPlugin
-  - id: componentOutputHandling
-    title: Output Handling
-    description:
-      - >
-        Similar to input handling, output handling components filter, sanitize, and
-        protect against unwanted, unexpected or dangerous outputs from a model. Output
-        handling is a major line of defense against various risks and an area primed
-        for more development.
-    category: componentsModel
-    edges:
-      to:
-        - componentApplication
-        - componentAgentPlugin
-      from:
-        - componentTheModel
+        - componentAgentOutputHandling
+        - componentApplicationOutputHandling
+        - componentOrchestrationOutputHandling
   - id: componentApplication
     title: Application
     description:
@@ -300,26 +292,234 @@ components:
     category: componentsApplication
     edges:
       to:
-        - componentInputHandling
-        - componentAgentPlugin
-        - componentDataSources
+        - componentApplicationOutputHandling
+        - componentAgentInputHandling
       from:
-        - componentAgentPlugin
-        - componentOutputHandling
-  - id: componentAgentPlugin
-    title: Agent/Plugin
+        - componentApplicationInputHandling
+        - componentAgentOutputHandling
+  - id: componentApplicationOutputHandling
+    title: Output Handling
     description:
       - >
-        A service, application, or additional model called by an AI application or model
-        to complete a specific task (also known  as “tool use”). Since agents/plugins
-        may call on external data or trigger requests to another model, each use of
-        a plugin may open a transitive set of risks, multiplying the risks already
-        present in the AI development process.
+        Input handling components filter, sanitize, and protect against potentially
+        malicious inputs, whether from a user or more generally from anything outside
+        the trusted system. Input handling acts as a control against numerous risks
+        and is an area ripe for more research and development.
     category: componentsApplication
     edges:
       to:
-        - componentInputHandling
+        - componentTheModel
+      from:
+        - componentApplication
+  - id: componentApplicationInputHandling
+    title: Input Handling
+    description:
+      - >
+        Similar to input handling, output handling components filter, sanitize, and
+        protect against unwanted, unexpected or dangerous outputs from a model. Output
+        handling is a major line of defense against various risks and an area primed
+        for more development.
+    category: componentsApplication
+    edges:
+      to:
         - componentApplication
       from:
-        - componentOutputHandling
+        - componentTheModel
+  - id: componentReasoningCore
+    title: Agent Reasoning Core
+    description:
+      - >
+        The core of an agent’s functionality is its ability to reason about a user’s goal
+        and create a plan to achieve it. The reasoning core processes system instructions,
+        user queries, and contextual information to generate a sequence of actions. The 
+        actions, or tool calls, allow the agent to affect the real world—interacting with 
+        external systems, retrieving new information, or making changes to data and resources.
+
+        The reasoning core typically consists of one or more models—possibly separate 
+        models for the reasoning and then planning steps, or potentially one large model 
+        able to do both. The process of planning is often iterative, taking place in a 
+        “reasoning loop” where the plan is refined based on new information or the results 
+        of previous actions. This iterative nature, combined with the ingestion of 
+        external data, creates a vulnerability to indirect prompt injection, where 
+        adversarially crafted information can manipulate the agent's planning process.
+
+        The complexity of plans determines the agent’s level of autonomy, which can 
+        range from selecting a predefined workflow to dynamically orchestrating 
+        multi-step actions. This level of autonomy directly governs the potential 
+        severity of a security failure—the more an agent can do on its own, the greater 
+        the risk from manipulation or misalignment, if the agent's actions do not have 
+        guardrails.
+    category: componentsApplication
+    subcategory: componentsAgent
+    edges:
+      to:
+        - componentAgentOutputHandling
+        - componentOrchestrationInputHandling
+      from:
+        - componentAgentInputHandling
+        - componentOrchestrationOutputHandling
+  - id: componentOrchestrationOutputHandling
+    title: Output Handling
+    description:
+      - >
+        Orchestration output is responsible for validating, sanitizing, and safely 
+        formatting data as it exits the system to external or downstream components. 
+        This control ensures outbound data meets defined schemas, strips sensitive 
+        information that shouldn't be exposed, prevents injection attacks by properly 
+        encoding outputs for their destination context (such as HTML encoding for 
+        web responses or parameterization for database queries), and enforces 
+        data classification policies.
+    category: componentsModel
+    subcategory: componentsOrchestration
+    edges:
+      to:
+        - componentReasoningCore
+        - componentTheModel
+      from:
+        - componentTools
+        - componentMemory
+        - componentRAGContent
+  - id: componentOrchestrationInputHandling
+    title: Input Handling
+    description:
+      - >
+        Orchestration input handling  is responsible for validating, sanitizing, and 
+        normalizing all data entering the system from external sources before it 
+        reaches core orchestration logic.
+    category: componentsModel
+    subcategory: componentsOrchestration
+    edges:
+      to:
+        - componentTools
+        - componentMemory
+        - componentRAGContent
+      from:
+        - componentTheModel
+        - componentReasoningCore
+  - id: componentTools
+    title: External Tools and Services
+    description:
+      - >
+        Tools are the external APIs and services an agent uses to take action in the 
+        world, which must be secured with least-privilege permissions. A key risk comes 
+        from deceptive descriptions on third-party tools, which can trick the agent into 
+        performing unintended, harmful functions.
+    category: componentsModel
+    subcategory: componentsOrchestration
+    edges:
+      to:
+        - componentOrchestrationOutputHandling
+      from:
+        - componentOrchestrationInputHandling
+  - id: componentMemory
+    title: Model Memory
+    description:
+      - >
+        Memory allows a model or agent to retain context and learn facts across interactions. 
+        It becomes a security risk if malicious data is stored, leading to persistent 
+        attacks, or if memory isn't properly isolated between different users.
+    category: componentsModel
+    subcategory: componentsOrchestration
+    edges:
+      to:
+        - componentOrchestrationOutputHandling
+      from:
+        - componentOrchestrationInputHandling
+  - id: componentRAGContent
+    title: Retrieval Augmented Generation & Content
+    description:
+      - >
+        Content for Retrieval-Augmented Generation (RAG) provides the agent with curated 
+        knowledge to ground its responses and improve accuracy. The main security risk is 
+        data poisoning, where an attacker corrupts this knowledge source to manipulate the 
+        agent's output.
+    category: componentsModel
+    subcategory: componentsOrchestration
+    edges:
+      to:
+        - componentOrchestrationOutputHandling
+      from:
+        - componentOrchestrationInputHandling
+  - id: componentAgentUserQuery
+    title: Agent User Query
+    description:
+      - >
+        These contain the specific details of a user’s request after being processed. The 
+        query is then combined with system instructions and other contextual data, like 
+        agent memory or external information, to create a single, structured prompt for 
+        the reasoning core to process.
+    category: componentsApplication
+    subcategory: componentsAgent
+    edges:
+      to:
+        - componentAgentInputHandling
+      from: []
+  - id: componentAgentSystemInstruction
+    title: Agent System Instructions
+    description:
+      - >
+        These define an agent’s capabilities, permissions, and limitations, such as the 
+        actions it can take and the tools it is allowed to use. For security, it’s 
+        critical to unambiguously separate these instructions from user data and other 
+        inputs, often using special control tokens to prevent prompt injection attacks.
+    category: componentsApplication
+    subcategory: componentsAgent
+    edges:
+      to:
+        - componentAgentInputHandling
+      from: []
+  - id: componentAgentInputHandling
+    title: Input Handling
+    description:
+      - >
+        An agent’s interaction with the world begins at the User or Application, which 
+        serves as the interface for collecting both explicit user instructions and passively 
+        collected contextual data from its environment. This blend of inputs creates a 
+        primary security challenge of reliably distinguishing trusted commands from the 
+        controlling user versus potentially untrusted information from other sources. 
+        An agent application processes explicit user instructions, which can be given 
+        directly (synchronously) like a typed command, or be configured to execute 
+        automatically when a specific event occurs (asynchronously). It also gathers 
+        implicit contextual inputs—data that isn’t a direct command but is passively 
+        collected from the environment, such sensor readings, application state, or the 
+        content of recently opened documents.
+
+        Input Handling is is responsible for processing and understanding these inputs 
+        before they are sent to the agent’s reasoning core. This handoff is a critical 
+        security juncture, as the perception layer must reliably distinguish trusted user 
+        commands from untrusted data to prevent manipulation of the agent’s core logic.
+    category: componentsApplication
+    subcategory: componentsAgent
+    edges:
+      to:
+        - componentReasoningCore
+      from:
+        - componentAgentUserQuery
+        - componentAgentSystemInstruction
+        - componentTheModel
         - componentApplication
+  - id: componentAgentOutputHandling
+    title: Output Handling
+    description:
+      - >
+        The final step in an agent’s workflow is response rendering, the process or 
+        formatting of an AI agent’s generated output for display and interaction within a 
+        user application. This stage is a critical security boundary because it involves 
+        taking dynamic content from the agent and displaying it within the trusted context 
+        of a user’s application, such as a web browser or mobile application. Flaws in 
+        this process can allow malicious content generated by a compromised agent to be 
+        executed by the application, leading to significant security breaches.
+
+        Agents often produce content in a universal format like Markdown, which is then 
+        interpreted and rendered by the specific client application. If this output isn’t 
+        properly sanitized according to the content type, it can create severe 
+        vulnerabilities. For example, unsanitized output can lead to attacks like data 
+        exfiltration or even cross-site scripting (XSS).
+    category: componentsApplication
+    subcategory: componentsAgent
+    edges:
+      to:
+        - componentApplication
+        - componentTheModel
+      from:
+        - componentReasoningCore

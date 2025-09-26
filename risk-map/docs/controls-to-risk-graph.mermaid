@@ -102,10 +102,13 @@ graph LR
     end
 
     subgraph componentsModel ["Model Components"]
-        componentInputHandling[Input Handling]
+        componentMemory[Model Memory]
         componentModelFrameworksAndCode[Model Frameworks and Code]
-        componentOutputHandling[Output Handling]
+        componentOrchestrationInputHandling[Input Handling]
+        componentOrchestrationOutputHandling[Output Handling]
+        componentRAGContent[Retrieval Augmented Generation & Content]
         componentTheModel[The Model]
+        componentTools[External Tools and Services]
         subgraph componentsModelSubgroup ["Model Subgroup"]
             componentModelEvaluation[Model Evaluation]
             componentModelTrainingTuning[Training and Tuning]
@@ -113,8 +116,14 @@ graph LR
     end
 
     subgraph componentsApplication ["Application Components"]
-        componentAgentPlugin[Agent/Plugin]
+        componentAgentInputHandling[Input Handling]
+        componentAgentOutputHandling[Output Handling]
+        componentAgentSystemInstruction[Agent System Instructions]
+        componentAgentUserQuery[Agent User Query]
         componentApplication[Application]
+        componentApplicationInputHandling[Input Handling]
+        componentApplicationOutputHandling[Output Handling]
+        componentReasoningCore[Agent Reasoning Core]
     end
 
     end
@@ -205,7 +214,6 @@ graph LR
     RVP --> controlTrainingDataSanitization
 
     %% Control to Component relationships (reused from ControlGraph)
-    controlPrivacyEnhancingTechnologies --> componentOutputHandling
     controlPrivacyEnhancingTechnologies --> componentsModelSubgroup
     controlTrainingDataManagement --> componentDataSources
     controlTrainingDataManagement --> componentTrainingData
@@ -220,13 +228,9 @@ graph LR
     controlModelAndDataIntegrityManagement --> componentsModels
     controlSecureByDefaultMLTooling --> componentsModelSubgroup
     controlSecureByDefaultMLTooling --> componentsModels
-    controlInputValidationAndSanitization --> componentInputHandling
-    controlOutputValidationAndSanitization --> componentOutputHandling
     controlAdversarialTrainingAndTesting --> componentTheModel
     controlApplicationAccessManagement --> componentApplication
     controlUserTransparencyAndControls --> componentApplication
-    controlAgentPluginUserControl --> componentAgentPlugin
-    controlAgentPluginPermissions --> componentAgentPlugin
     controlRedTeaming -.-> components
     controlVulnerabilityManagement -.-> components
     controlThreatDetection -.-> components

@@ -5,11 +5,11 @@
   "description": "Schema for validating YAML-based components definition",
   "type": "object",
   "properties": {
-    "title": {"type": "string"},
-    "description": {"$ref": "riskmap.schema.json#/definitions/utils/text"},
+    "title": { "type": "string" },
+    "description": { "$ref": "riskmap.schema.json#/definitions/utils/text" },
     "categories": {
       "type": "array",
-      "items": {"$ref": "#/definitions/category"}
+      "items": { "$ref": "#/definitions/category" }
     },
     "subcategory": {
       "type": "array",
@@ -17,7 +17,7 @@
     },
     "components": {
       "type": "array",
-      "items": {"$ref": "#/definitions/component"}
+      "items": { "$ref": "#/definitions/component" }
     }
   },
   "required": ["title", "description", "categories", "components"],
@@ -27,7 +27,11 @@
       "properties": {
         "id": {
           "type": "string",
-          "enum": ["componentsInfrastructure", "componentsModel", "componentsApplication"]
+          "enum": [
+            "componentsInfrastructure",
+            "componentsModel",
+            "componentsApplication"
+          ]
         },
         "title": {"type": "string"},
         "subcategory": {
@@ -43,7 +47,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "enum": ["componentsModelTraining", "componentsData"]
+          "enum": ["componentsModelTraining", "componentsData", "componentsAgent","componentsOrchestration"]
         },
         "title": {"type": "string"},
         "description": {"$ref": "riskmap.schema.json#/definitions/utils/text"}
@@ -69,7 +73,20 @@
             "componentInputHandling",
             "componentOutputHandling",
             "componentApplication",
-            "componentAgentPlugin"
+            "componentApplicationInputHandling",
+            "componentApplicationOutputHandling",
+            "componentAgentPlugin",
+            "componentReasoningCore",
+            "componentOrchestrationInputHandling",
+            "componentOrchestrationOutputHandling",
+            "componentTools",
+            "componentMemory",
+            "componentRAGContent", 
+            "componentAgentUserQuery",
+            "componentAgentSystemInstruction",
+            "componentAgentRendering",
+            "componentAgentInputHandling",
+            "componentAgentOutputHandling"
           ]
         },
         "title": {"type": "string"},
@@ -80,26 +97,23 @@
         "subcategory": { 
           "$ref": "#/definitions/subcategory/properties/id"
         },
-        "edges": {"$ref": "#/definitions/edges"}
+        "edges": { "$ref": "#/definitions/edges" }
       },
-      "required": ["id", "title", "category", "edges"] 
+      "required": ["id", "title", "category", "edges"]
     },
     "edges": {
       "type": "object",
       "properties": {
         "to": {
           "type": "array",
-          "items": {"$ref": "#/definitions/component/properties/id"}
+          "items": { "$ref": "#/definitions/component/properties/id" }
         },
         "from": {
           "type": "array",
-          "items": {"$ref": "#/definitions/component/properties/id"}
+          "items": { "$ref": "#/definitions/component/properties/id" }
         }
       },
-      "anyOf": [
-        {"required": ["to"]},
-        {"required": ["from"]}
-      ]
+      "anyOf": [{ "required": ["to"] }, { "required": ["from"] }]
     }
   }
 }

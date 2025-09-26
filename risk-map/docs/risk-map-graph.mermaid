@@ -23,19 +23,32 @@ graph TD
     end
 
     subgraph componentsModel ["Model Components"]
-        componentInputHandling[Input Handling]
-        componentOutputHandling[Output Handling]
         componentTheModel[The Model]
         subgraph componentsModelTraining ["Model Training"]
             componentModelEvaluation[Model Evaluation]
             componentModelFrameworksAndCode[Model Frameworks and Code]
             componentModelTrainingTuning[Training and Tuning]
         end
+        subgraph componentsOrchestration ["Orchestration"]
+            componentMemory[Model Memory]
+            componentOrchestrationInputHandling[Input Handling]
+            componentOrchestrationOutputHandling[Output Handling]
+            componentRAGContent[Retrieval Augmented Generation & Content]
+            componentTools[External Tools and Services]
+        end
     end
 
     subgraph componentsApplication ["Application Components"]
-        componentAgentPlugin[Agent/Plugin]
         componentApplication[Application]
+        componentApplicationInputHandling[Input Handling]
+        componentApplicationOutputHandling[Output Handling]
+        subgraph componentsAgent ["Agent"]
+            componentAgentInputHandling[Input Handling]
+            componentAgentOutputHandling[Output Handling]
+            componentAgentSystemInstruction[Agent System Instructions]
+            componentAgentUserQuery[Agent User Query]
+            componentReasoningCore[Agent Reasoning Core]
+        end
     end
 
 
@@ -48,16 +61,29 @@ graph TD
     componentModelTrainingTuning --> componentTheModel
     componentModelStorage --> componentTheModel
     componentModelServing --> componentTheModel
-    componentTheModel --> componentOutputHandling
     componentTheModel --> componentModelEvaluation
-    componentInputHandling --> componentTheModel
-    componentOutputHandling --> componentApplication
-    componentOutputHandling --> componentAgentPlugin
-    componentApplication --> componentInputHandling
-    componentApplication --> componentAgentPlugin
-    componentApplication --> componentDataSources
-    componentAgentPlugin --> componentInputHandling
-    componentAgentPlugin --> componentApplication
+    componentTheModel --> componentAgentInputHandling
+    componentTheModel --> componentApplicationInputHandling
+    componentTheModel --> componentOrchestrationInputHandling
+    componentApplication --> componentApplicationOutputHandling
+    componentApplication --> componentAgentInputHandling
+    componentApplicationOutputHandling --> componentTheModel
+    componentApplicationInputHandling --> componentApplication
+    componentReasoningCore --> componentAgentOutputHandling
+    componentReasoningCore --> componentOrchestrationInputHandling
+    componentOrchestrationOutputHandling --> componentReasoningCore
+    componentOrchestrationOutputHandling --> componentTheModel
+    componentOrchestrationInputHandling --> componentTools
+    componentOrchestrationInputHandling --> componentMemory
+    componentOrchestrationInputHandling --> componentRAGContent
+    componentTools --> componentOrchestrationOutputHandling
+    componentMemory --> componentOrchestrationOutputHandling
+    componentRAGContent --> componentOrchestrationOutputHandling
+    componentAgentUserQuery --> componentAgentInputHandling
+    componentAgentSystemInstruction --> componentAgentInputHandling
+    componentAgentInputHandling --> componentReasoningCore
+    componentAgentOutputHandling --> componentApplication
+    componentAgentOutputHandling --> componentTheModel
 
 %% Node style definitions
     style componentsInfrastructure fill:#e6f3e6,stroke:#333333,stroke-width:2px

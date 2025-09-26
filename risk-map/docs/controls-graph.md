@@ -75,10 +75,13 @@ graph LR
     end
 
     subgraph componentsModel ["Model Components"]
-        componentInputHandling[Input Handling]
+        componentMemory[Model Memory]
         componentModelFrameworksAndCode[Model Frameworks and Code]
-        componentOutputHandling[Output Handling]
+        componentOrchestrationInputHandling[Input Handling]
+        componentOrchestrationOutputHandling[Output Handling]
+        componentRAGContent[Retrieval Augmented Generation & Content]
         componentTheModel[The Model]
+        componentTools[External Tools and Services]
         subgraph componentsModelSubgroup ["Model Subgroup"]
             componentModelEvaluation[Model Evaluation]
             componentModelTrainingTuning[Training and Tuning]
@@ -86,14 +89,19 @@ graph LR
     end
 
     subgraph componentsApplication ["Application Components"]
-        componentAgentPlugin[Agent/Plugin]
+        componentAgentInputHandling[Input Handling]
+        componentAgentOutputHandling[Output Handling]
+        componentAgentSystemInstruction[Agent System Instructions]
+        componentAgentUserQuery[Agent User Query]
         componentApplication[Application]
+        componentApplicationInputHandling[Input Handling]
+        componentApplicationOutputHandling[Output Handling]
+        componentReasoningCore[Agent Reasoning Core]
     end
 
     end
 
     %% Control to Component relationships
-    controlPrivacyEnhancingTechnologies --> componentOutputHandling
     controlPrivacyEnhancingTechnologies --> componentsModelSubgroup
     controlTrainingDataManagement --> componentDataSources
     controlTrainingDataManagement --> componentTrainingData
@@ -108,13 +116,9 @@ graph LR
     controlModelAndDataIntegrityManagement --> componentsModels
     controlSecureByDefaultMLTooling --> componentsModelSubgroup
     controlSecureByDefaultMLTooling --> componentsModels
-    controlInputValidationAndSanitization --> componentInputHandling
-    controlOutputValidationAndSanitization --> componentOutputHandling
     controlAdversarialTrainingAndTesting --> componentTheModel
     controlApplicationAccessManagement --> componentApplication
     controlUserTransparencyAndControls --> componentApplication
-    controlAgentPluginUserControl --> componentAgentPlugin
-    controlAgentPluginPermissions --> componentAgentPlugin
     controlRedTeaming -.-> components
     controlVulnerabilityManagement -.-> components
     controlThreatDetection -.-> components
@@ -141,11 +145,11 @@ graph LR
     controlVulnerabilityManagement:::allControl
 
     %% Edge styling
-    linkStyle 22,23,24,25 stroke:#4285f4,stroke-width:3px,stroke-dasharray: 8 4
-    linkStyle 1,4,7,8,9,10,11,12,13,14,32,33,36,39 stroke:#34a853,stroke-width:2px
-    linkStyle 2,28 stroke:#9c27b0,stroke-width:2px
-    linkStyle 3,29 stroke:#ff9800,stroke-width:2px,stroke-dasharray: 5 5
-    linkStyle 30 stroke:#e91e63,stroke-width:2px,stroke-dasharray: 10 2
+    linkStyle 17,18,19,20 stroke:#4285f4,stroke-width:3px,stroke-dasharray: 8 4
+    linkStyle 0,3,6,7,8,9,10,11,12,13,27,28,31,34 stroke:#34a853,stroke-width:2px
+    linkStyle 1,23 stroke:#9c27b0,stroke-width:2px
+    linkStyle 2,24 stroke:#ff9800,stroke-width:2px,stroke-dasharray: 5 5
+    linkStyle 25 stroke:#e91e63,stroke-width:2px,stroke-dasharray: 10 2
 
 %% Node style definitions
     style components fill:#f0f0f0,stroke:#666666,stroke-width:3px,stroke-dasharray: 10 5
