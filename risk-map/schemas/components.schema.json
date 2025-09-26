@@ -73,13 +73,12 @@
           ]
         },
         "title": {"type": "string"},
-        "parentCategory": { 
-          "type": "array",
-          "items": {"$ref": "#/definitions/subcategory"} 
-        },
         "description": {"$ref": "riskmap.schema.json#/definitions/utils/text"},
         "category": { 
           "$ref": "#/definitions/category/properties/id"
+        },
+        "subcategory": { 
+          "$ref": "#/definitions/subcategory/properties/id"
         },
         "edges": {"$ref": "#/definitions/edges"}
       },
