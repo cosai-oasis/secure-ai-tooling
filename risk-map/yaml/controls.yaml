@@ -203,6 +203,8 @@ controls:
       - personaModelConsumer
     components:
       - componentInputHandling
+      - componentAgentInputHandling
+      - componentOrchestrationInputHandling
     risks:
       - PIJ
       - MLD
@@ -220,6 +222,8 @@ controls:
       - personaModelConsumer
     components:
       - componentOutputHandling
+      - componentAgentOutputHandling
+      - componentOrchestrationOutputHandling
     risks:
       - PIJ
       - RA
@@ -277,31 +281,42 @@ controls:
       - SDD
       - EDH
   - id: controlAgentPluginUserControl
-    title: Agent/Plugin User Control
+    title: Agent User Control
     description:
       - >
-        Ensure user approval for any actions performed by agents/plugins that alter
-        user data or act on the user’s behalf.
+        Ensure user approval for any actions performed by agents/plugins that alter user 
+        data or act on the user’s behalf.
     category: controlsApplication
     personas:
       - personaModelConsumer
     components:
-      - componentAgentPlugin
+      - componentReasoningCore
     risks:
+      - SDD
       - RA
   - id: controlAgentPluginPermissions
-    title: Agent/Plugin Permissions
+    title: Agent Permissions
     description:
       - >
-        Use least-privilege principle to minimize the number of tools that an agent/plugin
-        is permitted to interact with and the actions it is allowed to take.
+        Use least-privilege principle as the upper bound on agentic system permissions to 
+        minimize the number of tools that an agent is permitted to interact with and the 
+        actions it is allowed to take. An agentic system’s use of privileges should be 
+        contextual and dynamic, adapting to the specific user query and trusted contextual 
+        information. This design also applies to agents that have access to user 
+        information. For example, an agent asked to fill out a form or answer questions 
+        should share only contextually appropriate information and can be designed to 
+        dynamically minimize exposed data using reference monitors.
     category: controlsApplication
     personas:
       - personaModelConsumer
     components:
-      - componentAgentPlugin
+      - componentReasoningCore
+      - componentTools
+      - componentRAGContent
+      - componentMemory
     risks:
       - IIC
+      - SDD
       - RA
   - id: controlRedTeaming
     title: Red Teaming
@@ -532,3 +547,22 @@ controls:
       - componentModelTrainingTuning
     risks:
       - EBM
+  - id: controlAgentObservability
+    title: Agent Observability
+    description:
+      - >
+        Ensure an agent's actions, tool use, and reasoning are transparent and auditable 
+        through logging, allowing for debugging, security oversight, and user insights 
+        into agent activity.
+    category: controlsApplication
+    personas:
+      - personaModelConsumer
+    components:
+      - componentOrchestrationInputHandling
+      - componentOrchestrationOutputHandling
+      - componentAgentInputHandling
+      - componentAgentOutputHandling
+      - componentReasoningCore
+    risks:
+      - SDD
+      - RA

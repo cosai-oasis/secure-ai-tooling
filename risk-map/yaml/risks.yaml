@@ -620,30 +620,47 @@ risks:
     longDescription:
       - Disclosure of private or confidential data through querying of the model.
       - >
-        This data might include memorized training/tuning data, user chat history,
-        and confidential data in the prompt preamble. This is a risk to user privacy,
-        organizations reputation, and intellectual property.
+        For non-agentic systems, this data might include memorized training/tuning data, 
+        user chat history, and confidential data in the prompt preamble. Agentic systems 
+        magnify this risk, as they may be granted privileged access to a user's email, 
+        files, or even an entire computer, creating the potential to exfiltrate vast 
+        amounts of personal or corporate data like source code and internal documents. 
+        Sensitive data disclosure is a risk to user privacy, organizations reputation, 
+        and intellectual property.
       - >
-        Sensitive information is generally disclosed in two ways: leakage of user
-        query data (affecting user input, model output, and data that passes through
-        integrated plugins) and leakage of training, tuning, and prompt preamble data.
+        Sensitive information is generally disclosed in two ways: leakage of data provided 
+        to the model or agent during use (such as user input and data that passes through 
+        integrated systems, like emails, texts, or system prompts) and leakage of data 
+        used for training and tuning of the model.
       - - >
-          <strong>Leakage of user query data:</strong> This is similar to the traditional
-          scenario in which a web query that is leaked may disclose potentially sensitive
-          information about the author of the web query. LLM prompts, however, can
-          be much longer than a typical web query, such as when asking the LLM to rewrite
-          an email or optimize code, increasing the risk that this sensitive data poses.
-          An application integrated with a model might also retain logs of model queries
-          and responses, including information from integrated plugins that could have
-          sensitive data (for example, information retrieved from a calendar app integration).
-          Additionally, generative AI applications sometimes retain user queries and
-          responses for continuous learning, with a risk of leakage if there are vulnerabilities
-          in data storage.
-        - >
-          <strong>Leakage of training, tuning, or prompt preamble data:</strong> Refers
-          to revealing a part of the data that was used to train, tune, or prompt the
-          model. For example, a model that has not been tested for memorization might
-          reveal names, addresses, or other sensitive information from datasets.
+          <strong>Models:</strong> Models can leak sensitive data in two primary ways: 
+          from the information provided by the user and from the data used for the model's 
+          own training. Similar to how a leaked web query can reveal user information, 
+          LLM prompts risk data leakage at time of use, a threat that is heightened 
+          because prompts often contain confidential data like entire emails or blocks of 
+          proprietary code. This exposure can occur through several vectors: application 
+          logs may store entire interactions, including data retrieved from integrated 
+          tools, and user conversations may be retained for model retraining, creating a 
+          vulnerable database of sensitive information. Beyond leaking user-provided data, 
+          attackers can actively steal system instructions through iterative queries, or a 
+          model may inadvertently leak the data it was trained on. This phenomenon, known as 
+          memorization, occurs when a model reveals parts of its training dataset, 
+          potentially exposing sensitive information like names, addresses, or other 
+          personally identifiable information (PII).
+
+          <strong>Agents</strong> For agentic systems, the risk of sensitive data 
+          disclosure is exponentially multiplied, since agents may access user data that 
+          passes through integrated systems, like emails, texts, or proprietary 
+          organizational information. In extreme cases, agents can even reveal credentials 
+          and API keys they have been trusted with. Additionally, agents may use tools to 
+          not only access sensitive data on behalf of the user, but also use those tools 
+          to leak sensitive data. For example, an agent can leak information by creating 
+          and sharing a document with an attacker, writing an email, opening a website and 
+          leaking information in the URL or a markdown image, or through any tool that 
+          allows it to pass information to the outside world. Context-hijacking attacks 
+          show that an adversary can confuse the agent to reveal data that is not 
+          appropriate for a specific context, such as sharing health history when the 
+          agent should be booking a restaurant reservation.
     personas:
       - personaModelCreator
       - personaModelConsumer
@@ -652,6 +669,9 @@ risks:
       - controlUserDataManagement
       - controlOutputValidationAndSanitization
       - controlAdversarialTrainingAndTesting
+      - controlAgentPluginPermissions
+      - controlAgentPluginUserControl
+      - controlAgentObservability
       - controlUserTransparencyAndControls
       - controlUserPoliciesAndEducation
     examples:
@@ -795,31 +815,43 @@ risks:
       - >
         Given the projected ability for advanced generative AI models to not only
         understand their environment, but also to initiate actions with varying levels
-        of autonomy, Rogue Actions have the potential to become a serious risk to organizational
-        reputation, user trust, security, and safety.
+        of autonomy, Rogue Actions have the potential to become a serious risk to 
+        organizational reputation, user trust, security, and safety.
       - - >
-          <strong>Accidental rogue actions:</strong> This risk could be due to mistakes
-          in task planning, reasoning, or environment sensing, and might be exacerbated
-          by the inherent variability in LLM responses. Prompt engineering shows the
-          spacing and ordering of examples can have a significant impact on the response,
-          so varying input (even when not maliciously planted) could result in unexpected
-          response or actions when integrated with tools and services.
+          <strong>Accidental rogue actions:</strong> This risk, sometimes known as 
+          misalignment, could be due to mistakes in task planning, reasoning, or 
+          environment sensing, and might be exacerbated by the inherent variability in 
+          LLM responses. Prompt engineering shows the spacing and ordering of examples 
+          can have a significant impact on the response, so varying input (even when not 
+          maliciously planted) could result in unexpected outcomes. Even simple ambiguity 
+          can cause rogue actions, such as an agent emailing the wrong "Mike," 
+          unintentionally sharing private data.
         - >
-          <strong>Malicious actions:</strong> This risk could include manipulating
-          model output using attacks such as prompt injection, poisoning, or evasion.
+          <strong>Malicious actions:</strong> This risk could include manipulating model 
+          output using attacks such as indirect prompt injection, poisoning, or evasion. 
+          The threat can be amplified in multi-agent systems, where the attacker can 
+          hijack the communication between two agents to execute arbitrary malicious code, 
+          even if the individual agents are secured against direct attacks. 
+          Malicious actions may also be asynchronous. An attacker can plant a dormant 
+          "named trigger" that activates later during an unrelated task—for instance, 
+          a rule hidden in a calendar invite that opens the front door whenever the user 
+          says an unrelated keyword. Other actions may be time-based, occurring after a 
+          set number of interactions, making the rogue action appear spontaneous and 
+          disconnected from the malicious source.
       - >
-        Rogue Actions are related to <a href="#IIC">Insecure Integrated Components</a>,
-        but differ by the degree of model functionality or agency. The model having
-        <strong>excessive functionality or agency</strong> available to it for the
-        purpose of assisting the user (e.g. excessive ability to access plugins or
-        functionality in plugins) increases the risk and blast radius of such accidental
-        or malicious Rogue Actions when compared to Insecure Integrated Components.
+        Rogue Actions are related to Insecure Integrated Components, but differ by the 
+        degree of model functionality or agency.  The severity of a rogue action is 
+        directly proportional to the agent's capabilities, and the possibility that an 
+        agent has excessive functionality or permissions available to it increases the 
+        risk and blast radius of Rogue Actions when compared to Insecure Integrated 
+        Components.
     personas:
       - personaModelConsumer
     controls:
       - controlAgentPluginPermissions
       - controlAgentPluginUserControl
       - controlOutputValidationAndSanitization
+      - controlAgentObservability
     examples:
       - >
         An attack on ChatGPT plugins was described in <a href="https://embracethered.com/blog/posts/2023/chatgpt-plugin-vulns-chat-with-code/"

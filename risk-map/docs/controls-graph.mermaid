@@ -39,8 +39,9 @@ graph LR
     end
 
     subgraph controlsApplication ["Application Controls"]
-        controlAgentPluginPermissions[Agent/Plugin Permissions]
-        controlAgentPluginUserControl[Agent/Plugin User Control]
+        controlAgentObservability[Agent Observability]
+        controlAgentPluginPermissions[Agent Permissions]
+        controlAgentPluginUserControl[Agent User Control]
         controlApplicationAccessManagement[Application Access Management]
         controlCostQuotaGuardrails[Cost Quota Guardrails]
         controlUserTransparencyAndControls[User Transparency and Controls]
@@ -115,9 +116,18 @@ graph LR
     controlModelAndDataIntegrityManagement --> componentsModels
     controlSecureByDefaultMLTooling --> componentsModelSubgroup
     controlSecureByDefaultMLTooling --> componentsModels
+    controlInputValidationAndSanitization --> componentAgentInputHandling
+    controlInputValidationAndSanitization --> componentOrchestrationInputHandling
+    controlOutputValidationAndSanitization --> componentAgentOutputHandling
+    controlOutputValidationAndSanitization --> componentOrchestrationOutputHandling
     controlAdversarialTrainingAndTesting --> componentTheModel
     controlApplicationAccessManagement --> componentApplication
     controlUserTransparencyAndControls --> componentApplication
+    controlAgentPluginUserControl --> componentReasoningCore
+    controlAgentPluginPermissions --> componentMemory
+    controlAgentPluginPermissions --> componentRAGContent
+    controlAgentPluginPermissions --> componentReasoningCore
+    controlAgentPluginPermissions --> componentTools
     controlRedTeaming -.-> components
     controlVulnerabilityManagement -.-> components
     controlThreatDetection -.-> components
@@ -136,6 +146,11 @@ graph LR
     controlCostQuotaGuardrails --> componentApplication
     controlCostQuotaGuardrails --> componentModelServing
     controlEvaluationProvenanceAndDriftDetection --> componentsModelSubgroup
+    controlAgentObservability --> componentAgentInputHandling
+    controlAgentObservability --> componentAgentOutputHandling
+    controlAgentObservability --> componentOrchestrationInputHandling
+    controlAgentObservability --> componentOrchestrationOutputHandling
+    controlAgentObservability --> componentReasoningCore
 
     %% Apply styling to controls mapped to 'all'
     controlIncidentResponseManagement:::allControl
@@ -144,11 +159,12 @@ graph LR
     controlVulnerabilityManagement:::allControl
 
     %% Edge styling
-    linkStyle 17,18,19,20 stroke:#4285f4,stroke-width:3px,stroke-dasharray: 8 4
-    linkStyle 0,3,6,7,8,9,10,11,12,13,27,28,31,34 stroke:#34a853,stroke-width:2px
-    linkStyle 1,23 stroke:#9c27b0,stroke-width:2px
-    linkStyle 2,24 stroke:#ff9800,stroke-width:2px,stroke-dasharray: 5 5
-    linkStyle 25 stroke:#e91e63,stroke-width:2px,stroke-dasharray: 10 2
+    linkStyle 26,27,28,29 stroke:#4285f4,stroke-width:3px,stroke-dasharray: 8 4
+    linkStyle 0,3,6,7,8,9,10,11,12,13,36,37,40,43 stroke:#34a853,stroke-width:2px
+    linkStyle 1,22,32,44,48 stroke:#9c27b0,stroke-width:2px
+    linkStyle 2,23,33,45 stroke:#ff9800,stroke-width:2px,stroke-dasharray: 5 5
+    linkStyle 24,34,46 stroke:#e91e63,stroke-width:2px,stroke-dasharray: 10 2
+    linkStyle 25,47 stroke:#C95792,stroke-width:2px,stroke-dasharray: 10 5
 
 %% Node style definitions
     style components fill:#f0f0f0,stroke:#666666,stroke-width:3px,stroke-dasharray: 10 5

@@ -68,8 +68,9 @@ graph LR
     end
 
     subgraph controlsApplication ["Application Controls"]
-        controlAgentPluginPermissions[Agent/Plugin Permissions]
-        controlAgentPluginUserControl[Agent/Plugin User Control]
+        controlAgentObservability[Agent Observability]
+        controlAgentPluginPermissions[Agent Permissions]
+        controlAgentPluginUserControl[Agent User Control]
         controlApplicationAccessManagement[Application Access Management]
         controlCostQuotaGuardrails[Cost Quota Guardrails]
         controlUserTransparencyAndControls[User Transparency and Controls]
@@ -162,6 +163,9 @@ graph LR
     PIJ --> controlOutputValidationAndSanitization
     MEV --> controlAdversarialTrainingAndTesting
     SDD --> controlAdversarialTrainingAndTesting
+    SDD --> controlAgentObservability
+    SDD --> controlAgentPluginPermissions
+    SDD --> controlAgentPluginUserControl
     SDD --> controlOutputValidationAndSanitization
     SDD --> controlPrivacyEnhancingTechnologies
     SDD --> controlUserDataManagement
@@ -172,6 +176,7 @@ graph LR
     ISD --> controlTrainingDataManagement
     IMO --> controlAdversarialTrainingAndTesting
     IMO --> controlOutputValidationAndSanitization
+    RA --> controlAgentObservability
     RA --> controlAgentPluginPermissions
     RA --> controlAgentPluginUserControl
     RA --> controlOutputValidationAndSanitization
@@ -229,9 +234,18 @@ graph LR
     controlModelAndDataIntegrityManagement --> componentsModels
     controlSecureByDefaultMLTooling --> componentsModelSubgroup
     controlSecureByDefaultMLTooling --> componentsModels
+    controlInputValidationAndSanitization --> componentAgentInputHandling
+    controlInputValidationAndSanitization --> componentOrchestrationInputHandling
+    controlOutputValidationAndSanitization --> componentAgentOutputHandling
+    controlOutputValidationAndSanitization --> componentOrchestrationOutputHandling
     controlAdversarialTrainingAndTesting --> componentTheModel
     controlApplicationAccessManagement --> componentApplication
     controlUserTransparencyAndControls --> componentApplication
+    controlAgentPluginUserControl --> componentReasoningCore
+    controlAgentPluginPermissions --> componentMemory
+    controlAgentPluginPermissions --> componentRAGContent
+    controlAgentPluginPermissions --> componentReasoningCore
+    controlAgentPluginPermissions --> componentTools
     controlRedTeaming -.-> components
     controlVulnerabilityManagement -.-> components
     controlThreatDetection -.-> components
@@ -250,12 +264,17 @@ graph LR
     controlCostQuotaGuardrails --> componentApplication
     controlCostQuotaGuardrails --> componentModelServing
     controlEvaluationProvenanceAndDriftDetection --> componentsModelSubgroup
+    controlAgentObservability --> componentAgentInputHandling
+    controlAgentObservability --> componentAgentOutputHandling
+    controlAgentObservability --> componentOrchestrationInputHandling
+    controlAgentObservability --> componentOrchestrationOutputHandling
+    controlAgentObservability --> componentReasoningCore
 
     %% Edge styling
-    linkStyle 0,4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80 stroke:#e6cbce,stroke-width:2px,stroke-dasharray: 5 3
-    linkStyle 1,5,9,13,17,21,25,29,33,37,41,45,49,53,57,61,65,69,73,77,81 stroke:#b66871,stroke-width:2px,stroke-dasharray: 8 4
-    linkStyle 2,6,10,14,18,22,26,30,34,38,42,46,50,54,58,62,66,70,74,78,82 stroke:#b66871,stroke-width:2px,stroke-dasharray: 10 2
-    linkStyle 3,7,11,15,19,23,27,31,35,39,43,47,51,55,59,63,67,71,75,79 stroke:#1c0d0f,stroke-width:2px,stroke-dasharray: 12 5
+    linkStyle 0,4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80,84 stroke:#e6cbce,stroke-width:2px,stroke-dasharray: 5 3
+    linkStyle 1,5,9,13,17,21,25,29,33,37,41,45,49,53,57,61,65,69,73,77,81,85 stroke:#b66871,stroke-width:2px,stroke-dasharray: 8 4
+    linkStyle 2,6,10,14,18,22,26,30,34,38,42,46,50,54,58,62,66,70,74,78,82,86 stroke:#b66871,stroke-width:2px,stroke-dasharray: 10 2
+    linkStyle 3,7,11,15,19,23,27,31,35,39,43,47,51,55,59,63,67,71,75,79,83 stroke:#1c0d0f,stroke-width:2px,stroke-dasharray: 12 5
 
 %% Node style definitions
     style risks fill:#ffeef0,stroke:#e91e63,stroke-width:2px
