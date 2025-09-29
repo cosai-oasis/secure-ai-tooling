@@ -14,7 +14,6 @@ from pathlib import Path
 
 import yaml
 
-from .config import DEFAULT_COMPONENTS_FILE
 from .models import ComponentNode, ControlNode, RiskNode
 
 
@@ -222,11 +221,14 @@ def get_staged_yaml_files(target_file: Path | None = None, force_check: bool = F
     Returns:
         List of Path objects for files to validate
     """
-    if target_file is None:
-        target_file = DEFAULT_COMPONENTS_FILE
+    target_files = [
+        Path("risk-map/yaml/components.yaml"),
+        Path("risk-map/yaml/controls.yaml"),
+        Path("risk-map/yaml/risks.yaml"),
+                    ]
 
     # Force check mode - return target file if exists
-    if force_check:
+    if force_check and isinstance(target_file, Path):
         if target_file.exists():
             return [target_file]
         else:
@@ -244,11 +246,19 @@ def get_staged_yaml_files(target_file: Path | None = None, force_check: bool = F
 
         staged_files = result.stdout.strip().split("\n") if result.stdout.strip() else []
 
-        # Check if target file is staged
-        if str(target_file) in staged_files and target_file.exists():
-            return [target_file]
+        if target_file is None:
+            files: list[Path]= []
+            for target in target_files:
+                # Check if target file is staged
+                if str(target) in staged_files and target.exists():
+                    files.append(target)
+            return files
+
         else:
-            return []
+            if isinstance(target_file, Path) and target_file.exists():
+                return[target_file]
+            else:
+                return []
 
     except subprocess.CalledProcessError as e:
         print(f"⚠️  Error getting staged files: {e}")

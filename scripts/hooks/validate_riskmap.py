@@ -69,7 +69,6 @@ Exit Codes:
     parser.add_argument(
         "--file",
         type=Path,
-        default=DEFAULT_COMPONENTS_FILE,
         help=f"Path to YAML file to validate (default: {DEFAULT_COMPONENTS_FILE})",
     )
 
@@ -133,7 +132,12 @@ def main() -> None:
                 print("🔍 Checking for staged YAML files...")
 
         # Get files to validate
-        yaml_files = get_staged_yaml_files(args.file, args.force)
+        if args.force:
+            target_file = DEFAULT_COMPONENTS_FILE
+        else:
+            target_file = None
+
+        yaml_files = get_staged_yaml_files(target_file, args.force)
 
         if not yaml_files:
             if not args.quiet:
@@ -145,10 +149,10 @@ def main() -> None:
             file_word = "file" if file_count == 1 else "files"
             print(f"   Found {file_count} YAML {file_word} to validate")
 
-        # Validate all files
+        # Validation of components.yaml is required if we are checking any other file
         all_valid = True
-        for yaml_file in yaml_files:
-            if not validator.validate_file(yaml_file):
+        if yaml_files:
+            if not validator.validate_file(DEFAULT_COMPONENTS_FILE):
                 all_valid = False
             if not args.quiet and len(yaml_files) > 1:
                 print()  # Add spacing between files

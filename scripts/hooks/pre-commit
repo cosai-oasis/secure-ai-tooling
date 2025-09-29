@@ -555,18 +555,6 @@ generate_mermaid_svgs() {
     return $svg_failed
 }
 
-# Only run SVG generation when mermaid files change and not in force mode
-if [[ $FORCE_VALIDATE -eq 0 ]] || git diff --cached --name-only | grep -q '\.\(mmd\|mermaid\)$'; then
-    generate_mermaid_svgs
-    if [[ $? -ne 0 ]]; then
-        VALIDATION_FAILED=1
-    fi
-else
-    echo "🎨 No Mermaid files changed - skipping SVG generation"
-fi
-
-echo  # Add blank line for readability
-
 # =============================================================================
 # Risk Graph Generation
 # =============================================================================
@@ -593,6 +581,18 @@ if [[ $FORCE_VALIDATE -eq 0 ]] && git diff --cached --name-only | grep -q "risk-
         echo "   ❌ Risk-to-Controls Graph generation failed"
         VALIDATION_FAILED=1
     fi
+fi
+
+echo  # Add blank line for readability
+
+# Only run SVG generation when mermaid files change and not in force mode
+if [[ $FORCE_VALIDATE -eq 0 ]] && git diff --cached --name-only | grep -q '\.\(mmd\|mermaid\)$'; then
+    generate_mermaid_svgs
+    if [[ $? -ne 0 ]]; then
+        VALIDATION_FAILED=1
+    fi
+else
+    echo "🎨 No Mermaid files changed - skipping SVG generation"
 fi
 
 echo  # Add blank line for readability
