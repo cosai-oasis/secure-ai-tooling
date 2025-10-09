@@ -91,7 +91,7 @@ categories:
             managing and coordinating a variety of independent services and data sources 
             to achieve a single, complex task. These resources provide the agent with its 
             memory, its ability to act in the physical world, and the specific knowledge 
-            needed to complete taste. Securing these external components is critical, 
+            needed to complete tasks. Securing these external components is critical, 
             since they represent key interaction points that can be targeted by attackers 
             to manipulate the agent’s behavior.
   - id: componentsApplication
@@ -347,8 +347,11 @@ components:
         range from selecting a predefined workflow to dynamically orchestrating 
         multi-step actions. This level of autonomy directly governs the potential 
         severity of a security failure—the more an agent can do on its own, the greater 
-        the risk from manipulation or misalignment, if the agent's actions do not have 
-        guardrails.
+        the risk from manipulation or misalignment. This risk can be, at least partially, 
+        mitigated through guardrails that constrain actions taken by an agent; for 
+        example, by making certain actions subject to mandatory user confirmation. 
+        However, this can in turn result in limitations on the agent's autonomy, thus 
+        requiring a careful tradeoff between autonomy and security.
     category: componentsApplication
     subcategory: componentsAgent
     edges:
@@ -416,8 +419,15 @@ components:
     description:
       - >
         Memory allows a model or agent to retain context and learn facts across interactions. 
-        It becomes a security risk if malicious data is stored, leading to persistent 
-        attacks, or if memory isn't properly isolated between different users.
+        Memory implementations may result in additional security and data risk exposures 
+        requiring mitigation. Examples include:
+         
+        - Persistent attacks: Malicious data stored in memory could enable ongoing 
+          attacks against a user
+        - Data loss through improper isolation: Sensitive data may be disclosed due 
+          to inadequate memory isolation between different users and contexts
+        - Unintended data transfer: Sensitive information may be inappropriately
+          transferred to third parties through undesired or unexpected tool calls
     category: componentsModel
     subcategory: componentsOrchestration
     edges:
@@ -461,7 +471,8 @@ components:
         These define an agent’s capabilities, permissions, and limitations, such as the 
         actions it can take and the tools it is allowed to use. For security, it’s 
         critical to unambiguously separate these instructions from user data and other 
-        inputs, often using special control tokens to prevent prompt injection attacks.
+        inputs, often using special control tokens as a defense against prompt 
+        injection attacks.
     category: componentsApplication
     subcategory: componentsAgent
     edges:
@@ -481,8 +492,8 @@ components:
         directly (synchronously) like a typed command, or be configured to execute 
         automatically when a specific event occurs (asynchronously). It also gathers 
         implicit contextual inputs—data that isn’t a direct command but is passively 
-        collected from the environment, such sensor readings, application state, or the 
-        content of recently opened documents.
+        collected from the environment, such as sensor readings, application state, tool
+        call responses or the content of recently opened documents.
 
         Input Handling is is responsible for processing and understanding these inputs 
         before they are sent to the agent’s reasoning core. This handoff is a critical 
@@ -513,8 +524,12 @@ components:
         Agents often produce content in a universal format like Markdown, which is then 
         interpreted and rendered by the specific client application. If this output isn’t 
         properly sanitized according to the content type, it can create severe 
-        vulnerabilities. For example, unsanitized output can lead to attacks like data 
-        exfiltration or even cross-site scripting (XSS).
+        vulnerabilities. For example, unsanitized output can enable data exfiltration when 
+        content-embedded resources like images are automatically loaded by the 
+        application, implicitly passing sensitive information to an attacker's server via 
+        the resource's URL. Similarly, improper sanitization can lead to cross-site 
+        scripting (XSS) attacks.
+
     category: componentsApplication
     subcategory: componentsAgent
     edges:

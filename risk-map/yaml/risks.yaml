@@ -625,7 +625,7 @@ risks:
         magnify this risk, as they may be granted privileged access to a user's email, 
         files, or even an entire computer, creating the potential to exfiltrate vast 
         amounts of personal or corporate data like source code and internal documents. 
-        Sensitive data disclosure is a risk to user privacy, organizations reputation, 
+        Sensitive data disclosure is a risk to user privacy, an organization's reputation, 
         and intellectual property.
       - >
         Sensitive information is generally disclosed in two ways: leakage of data provided 
@@ -633,34 +633,46 @@ risks:
         integrated systems, like emails, texts, or system prompts) and leakage of data 
         used for training and tuning of the model.
       - - >
-          <strong>Models:</strong> Models can leak sensitive data in two primary ways: 
-          from the information provided by the user and from the data used for the model's 
-          own training. Similar to how a leaked web query can reveal user information, 
-          LLM prompts risk data leakage at time of use, a threat that is heightened 
-          because prompts often contain confidential data like entire emails or blocks of 
-          proprietary code. This exposure can occur through several vectors: application 
-          logs may store entire interactions, including data retrieved from integrated 
-          tools, and user conversations may be retained for model retraining, creating a 
-          vulnerable database of sensitive information. Beyond leaking user-provided data, 
-          attackers can actively steal system instructions through iterative queries, or a 
-          model may inadvertently leak the data it was trained on. This phenomenon, known as 
-          memorization, occurs when a model reveals parts of its training dataset, 
-          potentially exposing sensitive information like names, addresses, or other 
-          personally identifiable information (PII).
+          <strong>AI Systems:</strong> AI systems can leak sensitive data sourced from 
+          three primary sources: 
+          - data provided by the user
+          - data used in model training and deployment including system prompts
+          - data accessed or produced via tool call responses and external system usage 
 
-          <strong>Agents</strong> For agentic systems, the risk of sensitive data 
+          Data leakage occurs due to gaps in the system, application and deployment 
+          security controls and is analogous to the leakage vectors that exist in 
+          classical applications.  
+
+          Data leakage can occur through several vectors: 
+          - Application Logs: Logs may store entire interactions, including sensitive data 
+            retrieved by tools
+          - Retraining Data: User conversations retained for model retraining can create a 
+            vulnerable database of sensitive information
+          - Prompt Stealing: Attackers can use carefully crafted queries to trick the 
+            model into revealing its confidential system prompts or instructions
+          - Memorization: A model may inadvertently reveal parts of its training data 
+            verbatim. This phenomenon, also called recitation, can expose sensitive 
+            details like names, addresses, or other Personally Identifiable 
+            Information (PII).
+            Note: The risk of memorization is significantly higher when a model is 
+            retrained on private user data and then used by others, as it could expose one 
+            user's information to another.
+
+          <strong>Agents:</strong> For agentic systems, the risk of sensitive data 
           disclosure is exponentially multiplied, since agents may access user data that 
           passes through integrated systems, like emails, texts, or proprietary 
           organizational information. In extreme cases, agents can even reveal credentials 
           and API keys they have been trusted with. Additionally, agents may use tools to 
           not only access sensitive data on behalf of the user, but also use those tools 
-          to leak sensitive data. For example, an agent can leak information by creating 
-          and sharing a document with an attacker, writing an email, opening a website and 
-          leaking information in the URL or a markdown image, or through any tool that 
-          allows it to pass information to the outside world. Context-hijacking attacks 
-          show that an adversary can confuse the agent to reveal data that is not 
-          appropriate for a specific context, such as sharing health history when the 
-          agent should be booking a restaurant reservation.
+          to leak sensitive data. For example, an agent can leak information by: 
+          - creating and sharing a document with an attacker 
+          - writing an email
+          - opening a website and leaking information in the URL or a markdown image
+          - through any tool that allows it to pass information to the outside world. 
+
+          Context-hijacking attacks show that an adversary can potentially confuse the 
+          agent to reveal data that is not appropriate for a specific context, such as 
+          sharing health history when the agent should be booking a restaurant reservation.
     personas:
       - personaModelCreator
       - personaModelConsumer
@@ -830,8 +842,8 @@ risks:
           <strong>Malicious actions:</strong> This risk could include manipulating model 
           output using attacks such as indirect prompt injection, poisoning, or evasion. 
           The threat can be amplified in multi-agent systems, where the attacker can 
-          hijack the communication between two agents to execute arbitrary malicious code, 
-          even if the individual agents are secured against direct attacks. 
+          potentially hijack the communication between two agents to execute arbitrary 
+          malicious code, even if the individual agents are secured against direct attacks. 
           Malicious actions may also be asynchronous. An attacker can plant a dormant 
           "named trigger" that activates later during an unrelated task—for instance, 
           a rule hidden in a calendar invite that opens the front door whenever the user 
@@ -854,7 +866,8 @@ risks:
       - controlAgentObservability
     examples:
       - >
-        An attack on ChatGPT plugins was described in <a href="https://embracethered.com/blog/posts/2023/chatgpt-plugin-vulns-chat-with-code/"
+        An attack on ChatGPT plugins was described in 
+        <a href="https://embracethered.com/blog/posts/2023/chatgpt-plugin-vulns-chat-with-code/"
         target="_blank" rel="noopener">Plugin Vulnerabilities: Visit a Website and
         Have Your Source Code Stolen</a>.
     tourContent:
