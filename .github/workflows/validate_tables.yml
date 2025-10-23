@@ -1,0 +1,252 @@
+name: Validate Markdown Tables
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'risk-map/yaml/**'
+      - 'risk-map/tables/**'
+      - 'scripts/hooks/yaml_to_markdown.py'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'risk-map/yaml/**'
+      - 'risk-map/tables/**'
+      - 'scripts/hooks/yaml_to_markdown.py'
+
+env:
+  TABLE_DIR: ./risk-map/tables
+  TABLE_GENERATOR: scripts/hooks/yaml_to_markdown.py
+
+permissions:
+  contents: read
+
+jobs:
+  validate-tables:
+    runs-on: ubuntu-latest
+    name: Validate Markdown Tables
+    outputs:
+      validation_status: ${{ steps.validate-tables.outputs.status }}
+      tables_validated: ${{ steps.validate-tables.outputs.tables_validated }}
+      missing_files: ${{ steps.validate-tables.outputs.missing_files }}
+      mismatched_files: ${{ steps.validate-tables.outputs.mismatched_files }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: Validate tables
+      id: validate-tables
+      run: |
+        set -euo pipefail
+
+        echo "🔍 Validating markdown tables against YAML sources..."
+
+        # Define expected table files (8 total)
+        declare -a TABLE_FILES=(
+          "components-full.md"
+          "components-summary.md"
+          "risks-full.md"
+          "risks-summary.md"
+          "controls-full.md"
+          "controls-summary.md"
+          "controls-xref-risks.md"
+          "controls-xref-components.md"
+        )
+
+        # Setup temporary directory for generated tables
+        TEMP_TABLE_DIR=$(mktemp -d)
+        echo "📁 Using temporary directory: ${TEMP_TABLE_DIR}"
+
+        # Check if PR tables directory exists
+        if [ ! -d "${TABLE_DIR}" ]; then
+          echo "❌ ERROR: Tables directory '${TABLE_DIR}' does not exist in PR"
+          echo "::error::The risk-map/tables/ directory is missing. Run: mkdir -p risk-map/tables && python3 scripts/hooks/yaml_to_markdown.py --all --all-formats"
+          rm -rf ${TEMP_TABLE_DIR}
+          exit 1
+        fi
+
+        # Generate all tables directly to temp directory using --output-dir
+        echo ""
+        echo "🔨 Generating all tables from current YAML files..."
+
+        if ! python3 ${TABLE_GENERATOR} --all --all-formats --output-dir "${TEMP_TABLE_DIR}" --quiet; then
+          echo "❌ Failed to generate tables from YAML files"
+          echo "::error::Table generation failed. Check YAML file syntax and generator script."
+          rm -rf ${TEMP_TABLE_DIR}
+          exit 1
+        fi
+
+        echo "✅ Table generation completed"
+
+        # Initialize validation tracking
+        validation_failed=false
+        tables_validated=0
+        missing_count=0
+        mismatch_count=0
+        missing_files=""
+        mismatched_files=""
+
+        echo ""
+        echo "📊 Validating ${#TABLE_FILES[@]} expected table files..."
+        echo ""
+
+        # Validate each expected table file
+        for table_file in "${TABLE_FILES[@]}"; do
+          tables_validated=$((tables_validated + 1))
+          pr_table="${TABLE_DIR}/${table_file}"
+          generated_table="${TEMP_TABLE_DIR}/${table_file}"
+
+          echo "🔍 Checking ${table_file}..."
+
+          # Check if PR version exists
+          if [ ! -f "${pr_table}" ]; then
+            echo "   ❌ MISSING: File not found in PR"
+            echo "::error file=${pr_table}::Required table file '${table_file}' is missing. Run: python3 scripts/hooks/yaml_to_markdown.py --all --all-formats"
+            validation_failed=true
+            missing_count=$((missing_count + 1))
+            missing_files="${missing_files}${table_file}, "
+            continue
+          fi
+
+          # Check if generated version exists
+          if [ ! -f "${generated_table}" ]; then
+            echo "   ❌ ERROR: Failed to generate this file"
+            echo "::error::Failed to generate ${table_file} from YAML files"
+            validation_failed=true
+            continue
+          fi
+
+          # Compare PR version with generated version
+          if ! diff_output=$(diff -u "${pr_table}" "${generated_table}" 2>&1); then
+            echo "   ❌ MISMATCH: File does not match generated version"
+            echo "::error file=${pr_table}::Table '${table_file}' is outdated and doesn't match the version generated from YAML files"
+            echo "::group::📋 Diff for ${table_file}"
+            echo "${diff_output}"
+            echo "::endgroup::"
+            validation_failed=true
+            mismatch_count=$((mismatch_count + 1))
+            mismatched_files="${mismatched_files}${table_file}, "
+          else
+            echo "   ✅ Valid: Matches generated version"
+          fi
+        done
+
+        # Cleanup
+        rm -rf ${TEMP_TABLE_DIR}
+
+        # Trim trailing commas
+        missing_files="${missing_files%, }"
+        mismatched_files="${mismatched_files%, }"
+
+        # Set outputs
+        echo "tables_validated=${tables_validated}" >> $GITHUB_OUTPUT
+        echo "missing_files=${missing_files}" >> $GITHUB_OUTPUT
+        echo "mismatched_files=${mismatched_files}" >> $GITHUB_OUTPUT
+
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+        if [ "$validation_failed" = true ]; then
+          echo "❌ Table validation FAILED"
+          echo ""
+          [ $missing_count -gt 0 ] && echo "   Missing files: ${missing_count}"
+          [ $mismatch_count -gt 0 ] && echo "   Mismatched files: ${mismatch_count}"
+          echo ""
+          echo "💡 To fix locally:"
+          echo "   cd $(pwd)"
+          echo "   python3 scripts/hooks/yaml_to_markdown.py --all --all-formats"
+          echo "   git add risk-map/tables/*.md"
+          echo "   git commit --amend --no-edit"
+          echo ""
+          echo "status=failed" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+        echo "✅ All table validations PASSED"
+        echo "   ${tables_validated} files validated successfully"
+        echo ""
+        echo "status=success" >> $GITHUB_OUTPUT
+
+  validation-summary:
+    runs-on: ubuntu-latest
+    name: Validation Summary
+    needs: [validate-tables]
+    if: always()
+    steps:
+    - name: Generate Summary
+      run: |
+        set -euo pipefail
+
+        echo "# 📋 Markdown Table Validation Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        validation_result="${{ needs.validate-tables.result }}"
+        validation_status="${{ needs.validate-tables.outputs.validation_status }}"
+        tables_validated="${{ needs.validate-tables.outputs.tables_validated }}"
+        missing_files="${{ needs.validate-tables.outputs.missing_files }}"
+        mismatched_files="${{ needs.validate-tables.outputs.mismatched_files }}"
+
+        if [ "$validation_result" = "success" ]; then
+          echo "## ✅ Status: Success" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All ${tables_validated} markdown table files are present and match the versions generated from YAML files." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Validated Files:" >> $GITHUB_STEP_SUMMARY
+          echo "- \`components-full.md\` ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- \`components-summary.md\` ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- \`risks-full.md\` ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- \`risks-summary.md\` ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- \`controls-full.md\` ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- \`controls-summary.md\` ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- \`controls-xref-risks.md\` ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- \`controls-xref-components.md\` ✅" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "## ❌ Status: Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Markdown table validation failed." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -n "$missing_files" ]; then
+            echo "### ❌ Missing Files:" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "${missing_files}" | tr ',' '\n' | sed 's/^ *//' >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -n "$mismatched_files" ]; then
+            echo "### ⚠️ Outdated Files (don't match YAML):" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "${mismatched_files}" | tr ',' '\n' | sed 's/^ *//' >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "### 🔧 How to Fix:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Run these commands locally:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "# Generate all table files" >> $GITHUB_STEP_SUMMARY
+          echo "python3 scripts/hooks/yaml_to_markdown.py --all --all-formats" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Stage the updated files" >> $GITHUB_STEP_SUMMARY
+          echo "git add risk-map/tables/*.md" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Commit (or amend existing commit)" >> $GITHUB_STEP_SUMMARY
+          echo "git commit -m \"Update markdown tables\"" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "💡 **Note:** The pre-commit hook should do this automatically. If tables are out of sync, the hook may not be installed." >> $GITHUB_STEP_SUMMARY
+
+          echo "::error::Markdown table validation failed"
+          exit 1
+        fi

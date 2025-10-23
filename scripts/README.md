@@ -201,6 +201,48 @@ git commit -m "Add component flow diagram"
 - **Force mode**: Skips SVG generation (generation only runs for actual commits)
 - **Error handling**: Gracefully handles missing Chrome/Chromium with clear error messages
 
+#### 7. Markdown Table Generation
+
+Automatically generates markdown tables from YAML files when staged for commit:
+
+**Features:**
+
+- **Automatic conversion**: Converts staged YAML to multiple table formats
+- **Output location**: Tables saved to `risk-map/tables/` with format-specific filenames
+- **Smart regeneration**: Cross-reference tables regenerated when dependencies change
+- **Auto-staging**: Generated tables automatically added to commit
+
+**Generation rules:**
+
+- `components.yaml` staged → generates `components-full.md`, `components-summary.md`, and regenerates `controls-xref-components.md`
+- `risks.yaml` staged → generates `risks-full.md`, `risks-summary.md`, and regenerates `controls-xref-risks.md`
+- `controls.yaml` staged → generates all 4 formats: `controls-full.md`, `controls-summary.md`, `controls-xref-risks.md`, `controls-xref-components.md`
+
+**Dependencies:**
+
+- Python 3.10+
+- pandas (already in requirements.txt)
+
+**Example workflow:**
+
+```bash
+# Edit controls.yaml
+git add risk-map/yaml/controls.yaml
+
+# Pre-commit hook automatically:
+# 1. Detects staged controls.yaml
+# 2. Generates all 4 control table formats
+# 3. Stages the generated markdown files
+
+git commit -m "Update controls"
+# Both YAML and 4 generated tables are committed
+```
+
+**Behavior:**
+
+- **Normal mode**: Only processes staged YAML files in `risk-map/yaml/`
+- **Force mode**: Skips table generation (generation only runs for actual commits)
+
 ### Requirements
 
 Install all required Python packages:
@@ -254,10 +296,14 @@ When you commit changes, the hook will:
    - If `components.yaml`, `controls.yaml` or `risks.yaml` changed: generate `./risk-map/docs/controls-to-risk-graph.md`
 6. **SVG Generation** - Convert staged Mermaid files to SVG format:
    - If `.mmd/.mermaid` files changed: generate corresponding SVG files in `./risk-map/svg/`
-7. **Control-Risk Validation** - Verify control-risk cross-reference consistency
-8. **Block commit** if any validation fails
+7. **Table Generation** - Convert staged YAML files to markdown tables:
+   - If `components.yaml` changed: generate component tables + regenerate controls-xref-components
+   - If `risks.yaml` changed: generate risk tables + regenerate controls-xref-risks
+   - If `controls.yaml` changed: generate all 4 control table formats
+8. **Control-Risk Validation** - Verify control-risk cross-reference consistency
+9. **Block commit** if any validation fails
 
-**Note**: Graph generation and SVG generation only occur when relevant files are staged for commit, not in `--force` mode.
+**Note**: Graph and table generation only occur when relevant files are staged for commit, not in `--force` mode.
 
 #### Manual Validation of Unstaged Files
 
@@ -294,11 +340,19 @@ In addition to local pre-commit validation, the repository includes GitHub Actio
   - Control graph (`./risk-map/docs/controls-graph.md`)
   - Controls-to-risk graph (`./risk-map/docs/controls-to-risk-graph.md`)
 - **Mermaid SVG Validation**: Validates Mermaid diagram syntax and generates SVG previews
+- **Markdown Table Validation**: Generates and compares markdown tables against committed versions
+  - Components tables (`components-full.md`, `components-summary.md`)
+  - Risks tables (`risks-full.md`, `risks-summary.md`)
+  - Controls tables (`controls-full.md`, `controls-summary.md`, `controls-xref-risks.md`, `controls-xref-components.md`)
 
 **Different Roles:**
 
-- **Pre-commit hooks**: Generate SVG files from Mermaid diagrams and stage them
-- **GitHub Actions**: Validate Mermaid syntax and provide SVG previews in PR comments (does not generate files for commit)
+- **Pre-commit hooks**:
+  - Generate SVG files from Mermaid diagrams and stage them
+  - Generate markdown tables from YAML files and stage them
+- **GitHub Actions**:
+  - Validate Mermaid syntax and provide SVG previews in PR comments (does not generate files for commit)
+  - Validate that markdown tables match generated versions (does not generate files for commit)
 
 **Graph Validation Process:**
 
@@ -327,6 +381,32 @@ git add risk-map/docs/risk-map-graph.md risk-map/docs/controls-graph.md risk-map
 git commit -m "Update generated graphs"
 ```
 
+**Table Validation Process:**
+
+- GitHub Actions generates fresh markdown tables from YAML files
+- Compares generated tables with the committed versions in the PR
+- Fails the build if tables are missing or don't match, indicating they need to be regenerated
+- Provides diff output showing exactly what differences were found
+
+**When Table Validation Fails:**
+
+```bash
+# The most common cause is missing table regeneration
+# Fix by running locally and committing the updated tables:
+
+# Generate all table files (recommended)
+python3 scripts/hooks/yaml_to_markdown.py --all --all-formats
+
+# Or generate specific tables:
+python3 scripts/hooks/yaml_to_markdown.py components --all-formats
+python3 scripts/hooks/yaml_to_markdown.py risks --all-formats
+python3 scripts/hooks/yaml_to_markdown.py controls --all-formats
+
+# Then commit the updated tables:
+git add risk-map/tables/*.md
+git commit -m "Update markdown tables"
+```
+
 #### Manual Graph Generation
 
 Generate all three graph types manually using the validation script:
@@ -353,6 +433,48 @@ Generate all three graph types manually using the validation script:
 - `--debug` - Include rank comments for debugging (component graphs only)
 - `--quiet` - Minimize output (only show errors)
 - `--allow-isolated` - Allow components with no edges
+
+#### Manual Table Generation
+
+Generate markdown tables from YAML files using the table generator script:
+
+```bash
+# Generate all formats for a single type
+python3 .git/hooks/yaml_to_markdown.py components --all-formats
+# Output: components-full.md, components-summary.md
+
+python3 .git/hooks/yaml_to_markdown.py controls --all-formats
+# Output: controls-full.md, controls-summary.md, controls-xref-risks.md, controls-xref-components.md
+
+# Generate specific format
+python3 .git/hooks/yaml_to_markdown.py controls --format summary
+python3 .git/hooks/yaml_to_markdown.py controls --format xref-risks
+
+# Generate all types, all formats (8 files)
+python3 .git/hooks/yaml_to_markdown.py --all --all-formats
+
+# Generate to custom output directory
+python3 .git/hooks/yaml_to_markdown.py --all --all-formats --output-dir /tmp/tables
+
+# Custom output file (single type, single format only)
+python3 .git/hooks/yaml_to_markdown.py components --format full -o custom.md
+
+# Quiet mode
+python3 .git/hooks/yaml_to_markdown.py --all --all-formats --quiet
+```
+
+**Table Formats:**
+
+- `full` - Complete detail tables with all columns
+- `summary` - Condensed tables (ID, Title, Description, Category)
+- `xref-risks` - Control-to-risk cross-reference (controls only)
+- `xref-components` - Control-to-component cross-reference (controls only)
+
+**Output Files:**
+
+- Components: `components-full.md`, `components-summary.md` (2 files)
+- Controls: `controls-full.md`, `controls-summary.md`, `controls-xref-risks.md`, `controls-xref-components.md` (4 files)
+- Risks: `risks-full.md`, `risks-summary.md` (2 files)
 
 ### Troubleshooting
 
@@ -535,6 +657,49 @@ npx playwright install chromium --with-deps
 
 # Re-run installation to detect Chromium
 ./install-precommit-hook.sh --force
+```
+
+#### Common table generation errors
+
+```
+⚠️ Directory ./risk-map/tables does not exist - skipping table generation
+```
+
+**Fix**: Create the directory: `mkdir -p risk-map/tables`
+
+```
+❌ Table generation failed for controls
+```
+
+**Fix**: Check that Python dependencies are installed and YAML files are valid:
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Test manually
+python3 .git/hooks/yaml_to_markdown.py controls --all-formats
+```
+
+```
+⚠️ Warning: Could not stage generated table files
+```
+
+**Fix**: Check file permissions and git repository status
+
+#### Debugging table generation
+
+Run table generation manually to test:
+
+```bash
+# Test component table generation
+python3 .git/hooks/yaml_to_markdown.py components --all-formats
+
+# Test controls table generation (all 4 formats)
+python3 .git/hooks/yaml_to_markdown.py controls --all-formats
+
+# Test with verbose output
+python3 .git/hooks/yaml_to_markdown.py controls --all-formats
 ```
 
 #### Debugging validation manually

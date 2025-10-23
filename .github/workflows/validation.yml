@@ -269,9 +269,9 @@ jobs:
         RISK_MAP_TEMP_FILE=$(mktemp)
         CONTROLS_TEMP_FILE=$(mktemp)
         RISK_CONTROLS_TEMP_FILE=$(mktemp)
-        RISKMAP_PATH="./risk-map/docs/risk-map-graph.md"
-        CONTROL_GRAPH_PATH="./risk-map/docs/controls-graph.md"
-        RISK_CONTROLS_PATH="./risk-map/docs/controls-to-risk-graph.md"
+        RISKMAP_PATH="./risk-map/diagrams/risk-map-graph.md"
+        CONTROL_GRAPH_PATH="./risk-map/diagrams/controls-graph.md"
+        RISK_CONTROLS_PATH="./risk-map/diagrams/controls-to-risk-graph.md"
         VALIDATE_CMD="validate_riskmap.py"
 
         # Define graph configurations as arrays

@@ -10,7 +10,7 @@ on:
 
 # Environment variables for configuration
 env:
-  MERMAID_PATH: ./risk-map/docs/
+  MERMAID_PATH: ./risk-map/diagrams/
   PREVIEW_PATH: ./preview-svgs
   MAX_SVG_EMBED_SIZE: 5000  # Max characters to embed in PR comment
   MAX_COMMENT_SIZE: 60000    # GitHub's limit is 65536, leave buffer
@@ -211,7 +211,7 @@ jobs:
             commentBody += `Found ${validationErrors} Mermaid file(s) with syntax errors:\n\n`;
             
             for (const file of failedFiles) {
-              const relativePath = file.replace('./risk-map/docs/', '');
+              const relativePath = file.replace('./risk-map/diagrams/', '');
               commentBody += `- ❌ \`${relativePath}\`\n`;
             }
             
@@ -223,20 +223,20 @@ jobs:
             commentBody += `npx mmdc -i your-file.mmd -o test.svg\n`;
             commentBody += `\`\`\`\n`;
             commentBody += `3. Fix the syntax errors and push your changes\n`;
-            
+
           } else if (validFiles.length > 0) {
             // Validation succeeded
             commentBody = `## ✅ Mermaid Validation Successful\n\n`;
             commentBody += `All ${validFiles.length} Mermaid file(s) passed validation.\n\n`;
-            
+
             // Add previews if they fit
             let previewsAdded = 0;
             let currentSize = commentBody.length;
-            
+
             for (const filePath of validFiles) {
               const fileName = path.basename(filePath);
               const svgFileName = fileName.replace(/\.(mmd|mermaid)$/, '.svg');
-              const relativePath = filePath.replace('./risk-map/docs/', '');
+              const relativePath = filePath.replace('./risk-map/diagrams/', '');
               
               try {
                 const svgContent = fs.readFileSync(`preview-svgs/${svgFileName}`, 'utf8');

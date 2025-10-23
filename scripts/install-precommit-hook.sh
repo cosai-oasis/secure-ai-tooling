@@ -184,6 +184,7 @@ PRECOMMIT_SRC="scripts/hooks/pre-commit"
 VALIDATOR_SRC="scripts/hooks/validate_riskmap.py"
 VALIDATOR_MODULE_SRC="scripts/hooks/riskmap_validator"
 REF_VALIDATOR_SRC="scripts/hooks/validate_control_risk_references.py"
+YAML_TO_MD_SRC="scripts/hooks/yaml_to_markdown.py"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -202,9 +203,10 @@ while [[ $# -gt 0 ]]; do
             echo "  --help, -h               Show this help message"
             echo ""
             echo "This script installs:"
-            echo "  - Pre-commit hook (YAML schema validation, SVG generation)"
+            echo "  - Pre-commit hook (YAML schema validation, SVG generation, table generation)"
             echo "  - Component edge validator (edge consistency validation)"
             echo "  - Control-to-risk reference validator (reference consistency validation)"
+            echo "  - Markdown table generator (YAML to markdown conversion)"
             echo ""
             echo "Chrome/Chromium configuration:"
             echo "  - On most platforms: automatic Chrome detection (recommended)"
@@ -225,6 +227,7 @@ TARGET_HOOK="$REPO_ROOT/.git/hooks/pre-commit"
 TARGET_VALIDATOR="$REPO_ROOT/.git/hooks/validate_riskmap.py"
 TARGET_VALIDATOR_MODULE="$REPO_ROOT/.git/hooks/riskmap_validator"
 TARGET_REF_VALIDATOR="$REPO_ROOT/.git/hooks/validate_control_risk_references.py"
+TARGET_YAML_TO_MD="$REPO_ROOT/.git/hooks/yaml_to_markdown.py"
 
 echo "Installing git hooks..."
 
@@ -256,10 +259,16 @@ if [[ ! -f "$REPO_ROOT/${REF_VALIDATOR_SRC}" ]]; then
     exit 1
 fi
 
+if [[ ! -f "$REPO_ROOT/${YAML_TO_MD_SRC}" ]]; then
+    echo "❌ Error: ${YAML_TO_MD_SRC} not found"
+    exit 1
+fi
+
 # Check if target files already exist
 EXISTING_HOOK=false
 EXISTING_VALIDATOR=false
 EXISTING_REF_VALIDATOR=false
+EXISTING_YAML_TO_MD=false
 
 if [[ -f "$TARGET_HOOK" ]]; then
     EXISTING_HOOK=true
@@ -274,11 +283,16 @@ if [[ -f "$TARGET_REF_VALIDATOR" ]]; then
     EXISTING_REF_VALIDATOR=true
 fi
 
-if [[ ($EXISTING_HOOK == true || $EXISTING_VALIDATOR == true || $EXISTING_REF_VALIDATOR == true) && "$FORCE" != "true" ]]; then
+if [[ -f "$TARGET_YAML_TO_MD" ]]; then
+    EXISTING_YAML_TO_MD=true
+fi
+
+if [[ ($EXISTING_HOOK == true || $EXISTING_VALIDATOR == true || $EXISTING_REF_VALIDATOR == true || $EXISTING_YAML_TO_MD == true) && "$FORCE" != "true" ]]; then
     echo "❌ Error: One or more hooks already exist:"
     [[ $EXISTING_HOOK == true ]] && echo "   - pre-commit hook exists at $TARGET_HOOK"
     [[ $EXISTING_VALIDATOR == true ]] && echo "   - component validator exists at $TARGET_VALIDATOR"
     [[ $EXISTING_REF_VALIDATOR == true ]] && echo "   - control-to-risk reference validator exists at $TARGET_REF_VALIDATOR"
+    [[ $EXISTING_YAML_TO_MD == true ]] && echo "   - markdown table generator exists at $TARGET_YAML_TO_MD"
     echo ""
     echo "💡 Use --force to overwrite, or remove the existing hooks manually"
     echo "   Example: $0 --force"
@@ -320,6 +334,11 @@ echo "🔗 Installing control-to-risk reference validator..."
 cp "$REPO_ROOT/${REF_VALIDATOR_SRC}" "$TARGET_REF_VALIDATOR"
 chmod +x "$TARGET_REF_VALIDATOR"
 
+# Install markdown table generator
+echo "📋 Installing markdown table generator..."
+cp "$REPO_ROOT/${YAML_TO_MD_SRC}" "$TARGET_YAML_TO_MD"
+chmod +x "$TARGET_YAML_TO_MD"
+
 # Success message
 if [[ "$FORCE" == "true" ]]; then
     echo ""
@@ -334,11 +353,13 @@ echo "📝 Installed hooks:"
 echo "   - Pre-commit hook: $TARGET_HOOK"
 echo "   - Edge validator: $TARGET_VALIDATOR"
 echo "   - Control-to-risk validator: $TARGET_REF_VALIDATOR"
+echo "   - Markdown table generator: $TARGET_YAML_TO_MD"
 echo ""
 echo "🔍 These hooks will now run automatically before each commit to validate:"
 echo "   ✅ YAML schema compliance"
 echo "   ✅ Component edge consistency"
 echo "   ✅ Control-to-risk reference consistency"
 echo "   ✅ Generate SVG files from Mermaid diagrams"
+echo "   ✅ Generate markdown tables from YAML files"
 echo ""
 echo "💡 To bypass hooks temporarily: git commit --no-verify"
