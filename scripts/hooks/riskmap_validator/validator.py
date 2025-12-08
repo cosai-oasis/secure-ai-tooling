@@ -20,6 +20,7 @@ class EdgeValidationError(Exception):
 
     pass
 
+
 class ComponentEdgeValidator:
     """
     Validates component edge consistency.
@@ -214,4 +215,3 @@ class ComponentEdgeValidator:
         except EdgeValidationError as e:
             self.log(f"Validation error: {e}", "error")
             return False
-

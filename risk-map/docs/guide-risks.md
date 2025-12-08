@@ -97,6 +97,37 @@ To ensure the framework remains fully connected, every control that mitigates yo
     - NEW # Add your new risk ID here
 ```
 
+### ⚠️ Important: Do NOT List Universal Controls
+
+Some controls have `risks: all` in controls.yaml, marking them as **universal controls**. These controls apply implicitly to all risks and should **NOT** be listed in the risk's `controls` field.
+
+**Universal Controls (Do NOT list these):**
+- controlRedTeaming
+- controlVulnerabilityManagement
+- controlThreatDetection
+- controlIncidentResponseManagement
+- controlInternalPoliciesAndEducation
+- controlProductGovernance
+- controlRiskGovernance
+
+**Example:**
+
+```yaml
+# ❌ WRONG
+- id: DataPoisoning
+  controls:
+    - controlTrainingDataSanitization  # ✅ OK - specific control
+    - controlRedTeaming                # ❌ NO - universal control
+
+# ✅ CORRECT
+- id: DataPoisoning
+  controls:
+    - controlTrainingDataSanitization  # ✅ Only list specific controls
+    # Universal controls like Red Teaming apply automatically
+```
+
+If you receive a validation error about "explicitly lists universal control", remove that control from the risk's `controls` list.
+
 ## 4. Validate Control-Risk References
 
 Before committing, validate that your control-to-risk cross-references are consistent:

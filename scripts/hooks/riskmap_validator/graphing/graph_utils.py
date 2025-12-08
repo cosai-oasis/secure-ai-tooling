@@ -392,13 +392,13 @@ class MermaidConfigLoader:
         result = self._get_safe_value("graphTypes", "control", "specialStyling", "edgeStyles", default={})
         return result if isinstance(result, dict) else {}
 
-    def get_risks_container_style(self, graph_type:str = "risk") -> dict:
+    def get_risks_container_style(self, graph_type: str = "risk") -> dict:
         return self._get_group_container_style("risksContainer", graph_type)
 
-    def get_components_container_style(self, graph_type:str = "risk") -> dict:
+    def get_components_container_style(self, graph_type: str = "risk") -> dict:
         return self._get_group_container_style("componentsContainer", graph_type)
 
-    def get_controls_container_style(self, graph_type:str = "risk") -> dict:
+    def get_controls_container_style(self, graph_type: str = "risk") -> dict:
         return self._get_group_container_style("controlsContainer", graph_type)
 
     def _get_group_container_style(self, container_type: str, graph_type: str) -> dict:

@@ -73,12 +73,12 @@ def parse_components_yaml(file_path: Path = None) -> dict[str, ComponentNode]:
 
             # Create ComponentNode with validation
             components[component_id] = ComponentNode(
-                    title=component_title,
-                    category=category,
-                    subcategory=subcategory,
-                    to_edges=[str(edge) for edge in to_edges if edge],
-                    from_edges=[str(edge) for edge in from_edges if edge],
-                )
+                title=component_title,
+                category=category,
+                subcategory=subcategory,
+                to_edges=[str(edge) for edge in to_edges if edge],
+                from_edges=[str(edge) for edge in from_edges if edge],
+            )
 
         return components
 
@@ -197,10 +197,7 @@ def parse_risks_yaml(file_path: Path = None) -> dict[str, RiskNode]:
             if not isinstance(personas, list):
                 personas = []
 
-            risks[risk_id] = RiskNode(
-                title=title,
-                category=category
-            )
+            risks[risk_id] = RiskNode(title=title, category=category)
 
         return risks
 
@@ -225,7 +222,7 @@ def get_staged_yaml_files(target_file: Path | None = None, force_check: bool = F
         Path("risk-map/yaml/components.yaml"),
         Path("risk-map/yaml/controls.yaml"),
         Path("risk-map/yaml/risks.yaml"),
-                    ]
+    ]
 
     # Force check mode - return target file if exists
     if force_check and isinstance(target_file, Path):
@@ -247,7 +244,7 @@ def get_staged_yaml_files(target_file: Path | None = None, force_check: bool = F
         staged_files = result.stdout.strip().split("\n") if result.stdout.strip() else []
 
         if target_file is None:
-            files: list[Path]= []
+            files: list[Path] = []
             for target in target_files:
                 # Check if target file is staged
                 if str(target) in staged_files and target.exists():
@@ -256,7 +253,7 @@ def get_staged_yaml_files(target_file: Path | None = None, force_check: bool = F
 
         else:
             if isinstance(target_file, Path) and target_file.exists():
-                return[target_file]
+                return [target_file]
             else:
                 return []
 

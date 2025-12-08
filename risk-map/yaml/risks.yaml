@@ -1293,8 +1293,6 @@ risks:
     controls:
       - controlSecureByDefaultMLTooling
       - controlModelAndDataAccessControls
-      - controlThreatDetection
-      - controlVulnerabilityManagement
       - controlIsolatedConfidentialComputing
     examples:
       - >
@@ -1365,8 +1363,6 @@ risks:
       - personaModelConsumer
     controls:
       - controlApplicationAccessManagement
-      - controlThreatDetection
-      - controlVulnerabilityManagement
     examples:
       - >
         Research has shown <a href="https://arxiv.org/abs/2401.07464" target="_blank"
@@ -1431,7 +1427,6 @@ risks:
       - controlModelPrivacyEnhancingTechnologies
       - controlRuntimePrivacyEnhancingTechnologies
       - controlModelAndDataIntegrityManagement
-      - controlThreatDetection
       - controlSecureByDefaultMLTooling
     examples:
       - >
@@ -1501,7 +1496,6 @@ risks:
       - controlModelAndDataIntegrityManagement
       - controlModelAndDataAccessControls
       - controlSecureByDefaultMLTooling
-      - controlVulnerabilityManagement
     examples:
       - >
         Research demonstrates <a href="https://arxiv.org/abs/2311.03262" target="_blank"
@@ -1569,7 +1563,6 @@ risks:
       - controlModelAndDataIntegrityManagement
       - controlModelAndDataAccessControls
       - controlSecureByDefaultMLTooling
-      - controlThreatDetection
       - controlOrchestratorAndRouteIntegrity
     examples:
       - >
@@ -1636,9 +1629,6 @@ risks:
       - personaModelCreator
     controls:
       - controlModelAndDataIntegrityManagement
-      - controlRedTeaming
-      - controlVulnerabilityManagement
-      - controlThreatDetection
     examples:
       - >
         Research demonstrates <a href="https://arxiv.org/abs/2108.07258" target="_blank"
@@ -1704,9 +1694,7 @@ risks:
       - personaModelConsumer
     controls:
       - controlOutputValidationAndSanitization
-      - controlThreatDetection
       - controlModelAndDataIntegrityManagement
-      - controlVulnerabilityManagement
     examples:
       - >
         Research demonstrates <a href="https://arxiv.org/abs/2305.20010" target="_blank"
@@ -1783,7 +1771,6 @@ risks:
       - controlModelAndDataExecutionIntegrity
       - controlModelAndDataIntegrityManagement
       - controlSecureByDefaultMLTooling
-      - controlVulnerabilityManagement
     examples:
       - >
         Research has demonstrated <a href="https://blog.trailofbits.com/2021/03/15/never-a-dill-moment-exploiting-machine-learning-pickle-files/"

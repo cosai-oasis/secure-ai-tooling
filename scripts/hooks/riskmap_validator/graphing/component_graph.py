@@ -85,7 +85,6 @@ class ComponentGraph(BaseGraph):
             style_str = self._get_node_style("componentCategory", category_config=category_config)
             graph_content.append(f"    style {category_key} {style_str}")
 
-
         return "\n".join(graph_content)
 
     def _build_subgraph_structure(

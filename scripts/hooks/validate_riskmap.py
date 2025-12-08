@@ -178,8 +178,8 @@ def main() -> None:
 
                 # Save .mermaid format if requested
                 if args.mermaid_format:
-                    mermaid_file = args.to_graph.with_suffix('.mermaid')
-                    mermaid_output = graph.to_mermaid(output_format='mermaid')
+                    mermaid_file = args.to_graph.with_suffix(".mermaid")
+                    mermaid_output = graph.to_mermaid(output_format="mermaid")
                     with open(mermaid_file, "w", encoding="utf-8") as f:
                         f.write(mermaid_output)
                     print(f"   Mermaid format saved to {mermaid_file}")
@@ -202,8 +202,8 @@ def main() -> None:
 
                 # Save .mermaid format if requested
                 if args.mermaid_format:
-                    mermaid_file = args.to_controls_graph.with_suffix('.mermaid')
-                    mermaid_output = control_graph.to_mermaid(output_format='mermaid')
+                    mermaid_file = args.to_controls_graph.with_suffix(".mermaid")
+                    mermaid_output = control_graph.to_mermaid(output_format="mermaid")
                     with open(mermaid_file, "w", encoding="utf-8") as f:
                         f.write(mermaid_output)
                     print(f"   Mermaid format saved to {mermaid_file}")
@@ -227,8 +227,8 @@ def main() -> None:
 
                 # Save .mermaid format if requested
                 if args.mermaid_format:
-                    mermaid_file = args.to_risk_graph.with_suffix('.mermaid')
-                    mermaid_output = risk_graph.to_mermaid(output_format='mermaid')
+                    mermaid_file = args.to_risk_graph.with_suffix(".mermaid")
+                    mermaid_output = risk_graph.to_mermaid(output_format="mermaid")
                     with open(mermaid_file, "w", encoding="utf-8") as f:
                         f.write(mermaid_output)
                     print(f"   Mermaid format saved to {mermaid_file}")

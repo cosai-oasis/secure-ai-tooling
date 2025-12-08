@@ -13,6 +13,8 @@ Tests cover:
 import sys
 from pathlib import Path
 
+import pytest
+
 # Add parent directory to path to import the validator
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -82,10 +84,7 @@ class TestExtractRiskFrameworkReferences:
         }
         result = extract_risk_framework_references(data)
         # Convert list values to sets for order-independent comparison
-        assert {k: set(v) for k, v in result.items()} == {
-            "DP": {"mitre-atlas", "stride"},
-            "UTD": {"stride"}
-        }
+        assert {k: set(v) for k, v in result.items()} == {"DP": {"mitre-atlas", "stride"}, "UTD": {"stride"}}
 
     def test_extract_risk_without_mappings(self):
         """Test extraction for risks without mappings field (backward compatibility)"""
@@ -429,3 +428,925 @@ class TestIntegration:
 
         reference_errors = validate_framework_references(valid_frameworks, risk_frameworks, control_frameworks)
         assert reference_errors == []
+
+
+# ============================================================================
+# CLI Integration Tests
+# ============================================================================
+
+
+class TestGetStagedYamlFiles:
+    """Test get_staged_yaml_files() function for git integration and file detection"""
+
+    def test_force_mode_returns_all_files_when_exist(self, tmp_path, monkeypatch):
+        """
+        Test force mode returns all target files when they exist.
+
+        Given: All three target YAML files exist in the file system
+        When: get_staged_yaml_files(force_check=True) is called
+        Then: Returns list of all three target files
+        """
+        # Import the module to get access to the function
+        from validate_framework_references import get_staged_yaml_files
+
+        # Create temporary files
+        yaml_dir = tmp_path / "risk-map" / "yaml"
+        yaml_dir.mkdir(parents=True)
+        (yaml_dir / "frameworks.yaml").write_text("frameworks: []")
+        (yaml_dir / "risks.yaml").write_text("risks: []")
+        (yaml_dir / "controls.yaml").write_text("controls: []")
+
+        # Change to temporary directory
+        monkeypatch.chdir(tmp_path)
+
+        # Call function with force=True
+        result = get_staged_yaml_files(force_check=True)
+
+        # Verify all three files are returned
+        assert len(result) == 3
+        assert Path("risk-map/yaml/frameworks.yaml") in result
+        assert Path("risk-map/yaml/risks.yaml") in result
+        assert Path("risk-map/yaml/controls.yaml") in result
+
+    def test_force_mode_returns_empty_when_files_missing(self, tmp_path, monkeypatch):
+        """
+        Test force mode returns empty list when files are missing.
+
+        Given: One or more target files do not exist
+        When: get_staged_yaml_files(force_check=True) is called
+        Then: Returns empty list
+        """
+        from validate_framework_references import get_staged_yaml_files
+
+        # Create only partial files
+        yaml_dir = tmp_path / "risk-map" / "yaml"
+        yaml_dir.mkdir(parents=True)
+        (yaml_dir / "frameworks.yaml").write_text("frameworks: []")
+        # Missing risks.yaml and controls.yaml
+
+        # Change to temporary directory
+        monkeypatch.chdir(tmp_path)
+
+        # Call function with force=True
+        result = get_staged_yaml_files(force_check=True)
+
+        # Should return empty list when not all files exist
+        assert result == []
+
+    def test_force_mode_prints_warning_for_missing_files(self, tmp_path, monkeypatch, capsys):
+        """
+        Test force mode prints warning for missing files.
+
+        Given: Target files do not exist
+        When: get_staged_yaml_files(force_check=True) is called
+        Then: Prints warning message listing missing files
+        """
+        from validate_framework_references import get_staged_yaml_files
+
+        # Change to temporary directory with no YAML files
+        monkeypatch.chdir(tmp_path)
+
+        # Call function with force=True
+        get_staged_yaml_files(force_check=True)
+
+        # Verify warning was printed
+        captured = capsys.readouterr()
+        assert "⚠️" in captured.out
+        assert "Target file(s) do not exist" in captured.out
+
+    def test_git_mode_returns_files_when_frameworks_staged(self, monkeypatch, tmp_path):
+        """
+        Test git mode returns files when frameworks.yaml is staged.
+
+        Given: frameworks.yaml is in staged files and all target files exist
+        When: get_staged_yaml_files(force_check=False) is called
+        Then: Returns all three target files
+        """
+        from unittest.mock import MagicMock
+
+        from validate_framework_references import get_staged_yaml_files
+
+        # Create all target files
+        yaml_dir = tmp_path / "risk-map" / "yaml"
+        yaml_dir.mkdir(parents=True)
+        (yaml_dir / "frameworks.yaml").write_text("frameworks: []")
+        (yaml_dir / "risks.yaml").write_text("risks: []")
+        (yaml_dir / "controls.yaml").write_text("controls: []")
+
+        monkeypatch.chdir(tmp_path)
+
+        # Mock subprocess.run to simulate frameworks.yaml being staged
+        import subprocess
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "risk-map/yaml/frameworks.yaml\n"
+
+        def mock_run(*args, **kwargs):
+            return mock_result
+
+        monkeypatch.setattr(subprocess, "run", mock_run)
+
+        # Call function without force
+        result = get_staged_yaml_files(force_check=False)
+
+        # Should return all target files
+        assert len(result) == 3
+
+    def test_git_mode_returns_files_when_risks_staged(self, monkeypatch, tmp_path):
+        """
+        Test git mode returns files when risks.yaml is staged.
+
+        Given: risks.yaml is in staged files and all target files exist
+        When: get_staged_yaml_files(force_check=False) is called
+        Then: Returns all three target files
+        """
+        from unittest.mock import MagicMock
+
+        from validate_framework_references import get_staged_yaml_files
+
+        # Create all target files
+        yaml_dir = tmp_path / "risk-map" / "yaml"
+        yaml_dir.mkdir(parents=True)
+        (yaml_dir / "frameworks.yaml").write_text("frameworks: []")
+        (yaml_dir / "risks.yaml").write_text("risks: []")
+        (yaml_dir / "controls.yaml").write_text("controls: []")
+
+        monkeypatch.chdir(tmp_path)
+
+        # Mock subprocess to simulate risks.yaml being staged
+        import subprocess
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "risk-map/yaml/risks.yaml\n"
+
+        def mock_run(*args, **kwargs):
+            return mock_result
+
+        monkeypatch.setattr(subprocess, "run", mock_run)
+
+        result = get_staged_yaml_files(force_check=False)
+        assert len(result) == 3
+
+    def test_git_mode_returns_files_when_controls_staged(self, monkeypatch, tmp_path):
+        """
+        Test git mode returns files when controls.yaml is staged.
+
+        Given: controls.yaml is in staged files and all target files exist
+        When: get_staged_yaml_files(force_check=False) is called
+        Then: Returns all three target files
+        """
+        from unittest.mock import MagicMock
+
+        from validate_framework_references import get_staged_yaml_files
+
+        # Create all target files
+        yaml_dir = tmp_path / "risk-map" / "yaml"
+        yaml_dir.mkdir(parents=True)
+        (yaml_dir / "frameworks.yaml").write_text("frameworks: []")
+        (yaml_dir / "risks.yaml").write_text("risks: []")
+        (yaml_dir / "controls.yaml").write_text("controls: []")
+
+        monkeypatch.chdir(tmp_path)
+
+        # Mock subprocess to simulate controls.yaml being staged
+        import subprocess
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "risk-map/yaml/controls.yaml\n"
+
+        def mock_run(*args, **kwargs):
+            return mock_result
+
+        monkeypatch.setattr(subprocess, "run", mock_run)
+
+        result = get_staged_yaml_files(force_check=False)
+        assert len(result) == 3
+
+    def test_git_mode_returns_empty_when_no_target_files_staged(self, monkeypatch):
+        """
+        Test git mode returns empty when no target files are staged.
+
+        Given: No framework-related files are staged
+        When: get_staged_yaml_files(force_check=False) is called
+        Then: Returns empty list
+        """
+        # Mock subprocess to return non-target files
+        import subprocess
+        from unittest.mock import MagicMock
+
+        from validate_framework_references import get_staged_yaml_files
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "other/file.txt\nREADME.md\n"
+
+        def mock_run(*args, **kwargs):
+            return mock_result
+
+        monkeypatch.setattr(subprocess, "run", mock_run)
+
+        result = get_staged_yaml_files(force_check=False)
+        assert result == []
+
+    def test_git_subprocess_error_handling(self, monkeypatch, capsys):
+        """
+        Test git subprocess error handling.
+
+        Given: Git command fails with CalledProcessError
+        When: get_staged_yaml_files(force_check=False) is called
+        Then: Returns empty list and prints error message
+        """
+        import subprocess
+
+        from validate_framework_references import get_staged_yaml_files
+
+        def mock_run_error(*args, **kwargs):
+            raise subprocess.CalledProcessError(1, "git")
+
+        monkeypatch.setattr(subprocess, "run", mock_run_error)
+
+        result = get_staged_yaml_files(force_check=False)
+
+        assert result == []
+        captured = capsys.readouterr()
+        assert "Error getting staged files" in captured.out
+
+
+class TestLoadYamlFile:
+    """Test load_yaml_file() function with error handling"""
+
+    def test_load_valid_yaml_file(self, tmp_path):
+        """
+        Test loading a valid YAML file successfully.
+
+        Given: A valid YAML file exists with proper content
+        When: load_yaml_file() is called with the file path
+        Then: Returns parsed YAML data as dictionary
+        """
+        from validate_framework_references import load_yaml_file
+
+        # Create valid YAML file
+        yaml_file = tmp_path / "test.yaml"
+        yaml_file.write_text("key: value\nlist:\n  - item1\n  - item2\n")
+
+        # Load the file
+        result = load_yaml_file(yaml_file)
+
+        # Verify content
+        assert result is not None
+        assert result["key"] == "value"
+        assert result["list"] == ["item1", "item2"]
+
+    def test_handle_yaml_error_for_malformed_yaml(self, tmp_path, capsys):
+        """
+        Test handling of yaml.YAMLError for malformed YAML.
+
+        Given: A file with invalid YAML syntax
+        When: load_yaml_file() is called
+        Then: Returns None and prints error message
+        """
+        from validate_framework_references import load_yaml_file
+
+        # Create malformed YAML file
+        yaml_file = tmp_path / "invalid.yaml"
+        yaml_file.write_text("invalid: yaml: content:: :\n  bad indentation\n")
+
+        # Attempt to load
+        result = load_yaml_file(yaml_file)
+
+        # Verify error handling
+        assert result is None
+        captured = capsys.readouterr()
+        assert "Error parsing YAML file" in captured.out
+        assert str(yaml_file) in captured.out
+
+    def test_handle_file_not_found_error(self, tmp_path, capsys):
+        """
+        Test handling of FileNotFoundError for missing file.
+
+        Given: A file path that does not exist
+        When: load_yaml_file() is called
+        Then: Returns None and prints error message
+        """
+        from validate_framework_references import load_yaml_file
+
+        # Use non-existent file path
+        missing_file = tmp_path / "nonexistent.yaml"
+
+        # Attempt to load
+        result = load_yaml_file(missing_file)
+
+        # Verify error handling
+        assert result is None
+        captured = capsys.readouterr()
+        assert "File not found" in captured.out
+        assert str(missing_file) in captured.out
+
+
+class TestValidateFrameworks:
+    """Test validate_frameworks() orchestration function"""
+
+    def test_success_case_all_valid(self, tmp_path, monkeypatch, capsys):
+        """
+        Test successful validation with all valid data.
+
+        Given: Valid frameworks, risks, and controls YAML files
+        When: validate_frameworks() is called
+        Then: Returns True and prints success message
+        """
+        from validate_framework_references import validate_frameworks
+
+        # Create valid YAML files
+        yaml_dir = tmp_path / "risk-map" / "yaml"
+        yaml_dir.mkdir(parents=True)
+
+        (yaml_dir / "frameworks.yaml").write_text(
+            """
+frameworks:
+  - id: mitre-atlas
+    name: MITRE ATLAS
+    fullName: Framework
+    description: Test
+    baseUri: https://example.com
+"""
+        )
+        (yaml_dir / "risks.yaml").write_text(
+            """
+risks:
+  - id: DP
+    title: Data Poisoning
+    mappings:
+      mitre-atlas:
+        - AML.T0020
+"""
+        )
+        (yaml_dir / "controls.yaml").write_text(
+            """
+controls:
+  - id: controlTest
+    title: Test Control
+    mappings:
+      mitre-atlas:
+        - AML.M0001
+"""
+        )
+
+        monkeypatch.chdir(tmp_path)
+
+        file_paths = [
+            Path("risk-map/yaml/frameworks.yaml"),
+            Path("risk-map/yaml/risks.yaml"),
+            Path("risk-map/yaml/controls.yaml"),
+        ]
+
+        result = validate_frameworks(file_paths)
+
+        assert result is True
+        captured = capsys.readouterr()
+        assert "✅ Framework references are consistent" in captured.out
+        assert "mitre-atlas" in captured.out
+
+    def test_failure_frameworks_yaml_load_error(self, tmp_path, monkeypatch, capsys):
+        """
+        Test failure when frameworks.yaml fails to load.
+
+        Given: frameworks.yaml does not exist or is invalid
+        When: validate_frameworks() is called
+        Then: Returns False and prints error message
+        """
+        from validate_framework_references import validate_frameworks
+
+        # Create directory without frameworks.yaml
+        yaml_dir = tmp_path / "risk-map" / "yaml"
+        yaml_dir.mkdir(parents=True)
+        (yaml_dir / "risks.yaml").write_text("risks: []")
+        (yaml_dir / "controls.yaml").write_text("controls: []")
+
+        monkeypatch.chdir(tmp_path)
+
+        file_paths = [
+            Path("risk-map/yaml/frameworks.yaml"),
+            Path("risk-map/yaml/risks.yaml"),
+            Path("risk-map/yaml/controls.yaml"),
+        ]
+
+        result = validate_frameworks(file_paths)
+
+        assert result is False
+        captured = capsys.readouterr()
+        assert "❌" in captured.out
+        assert "could not load frameworks.yaml" in captured.out
+
+    def test_failure_risks_yaml_load_error(self, tmp_path, monkeypatch, capsys):
+        """
+        Test failure when risks.yaml fails to load.
+
+        Given: risks.yaml does not exist or is invalid
+        When: validate_frameworks() is called
+        Then: Returns False and prints error message
+        """
+        from validate_framework_references import validate_frameworks
+
+        yaml_dir = tmp_path / "risk-map" / "yaml"
+        yaml_dir.mkdir(parents=True)
+        (yaml_dir / "frameworks.yaml").write_text("frameworks: []")
+        (yaml_dir / "controls.yaml").write_text("controls: []")
+
+        monkeypatch.chdir(tmp_path)
+
+        file_paths = [
+            Path("risk-map/yaml/frameworks.yaml"),
+            Path("risk-map/yaml/risks.yaml"),
+            Path("risk-map/yaml/controls.yaml"),
+        ]
+
+        result = validate_frameworks(file_paths)
+
+        assert result is False
+        captured = capsys.readouterr()
+        assert "❌" in captured.out
+        assert "could not load risks.yaml" in captured.out
+
+    def test_failure_controls_yaml_load_error(self, tmp_path, monkeypatch, capsys):
+        """
+        Test failure when controls.yaml fails to load.
+
+        Given: controls.yaml does not exist or is invalid
+        When: validate_frameworks() is called
+        Then: Returns False and prints error message
+        """
+        from validate_framework_references import validate_frameworks
+
+        yaml_dir = tmp_path / "risk-map" / "yaml"
+        yaml_dir.mkdir(parents=True)
+        (yaml_dir / "frameworks.yaml").write_text("frameworks: []")
+        (yaml_dir / "risks.yaml").write_text("risks: []")
+
+        monkeypatch.chdir(tmp_path)
+
+        file_paths = [
+            Path("risk-map/yaml/frameworks.yaml"),
+            Path("risk-map/yaml/risks.yaml"),
+            Path("risk-map/yaml/controls.yaml"),
+        ]
+
+        result = validate_frameworks(file_paths)
+
+        assert result is False
+        captured = capsys.readouterr()
+        assert "❌" in captured.out
+        assert "could not load controls.yaml" in captured.out
+
+    def test_success_with_empty_frameworks(self, tmp_path, monkeypatch, capsys):
+        """
+        Test success with empty frameworks (skip validation).
+
+        Given: frameworks.yaml has no frameworks defined
+        When: validate_frameworks() is called
+        Then: Returns True and skips reference validation
+        """
+        from validate_framework_references import validate_frameworks
+
+        yaml_dir = tmp_path / "risk-map" / "yaml"
+        yaml_dir.mkdir(parents=True)
+        (yaml_dir / "frameworks.yaml").write_text("frameworks: []\n")
+        (yaml_dir / "risks.yaml").write_text("risks: []")
+        (yaml_dir / "controls.yaml").write_text("controls: []")
+
+        monkeypatch.chdir(tmp_path)
+
+        file_paths = [
+            Path("risk-map/yaml/frameworks.yaml"),
+            Path("risk-map/yaml/risks.yaml"),
+            Path("risk-map/yaml/controls.yaml"),
+        ]
+
+        result = validate_frameworks(file_paths)
+
+        assert result is True
+        captured = capsys.readouterr()
+        assert "No frameworks found" in captured.out
+        assert "skipping reference validation" in captured.out
+
+    def test_failure_consistency_errors(self, tmp_path, monkeypatch, capsys):
+        """
+        Test failure when consistency errors are found.
+
+        Given: Framework definitions have consistency errors
+        When: validate_frameworks() is called
+        Then: Returns False and reports consistency errors
+        """
+        from validate_framework_references import validate_frameworks
+
+        yaml_dir = tmp_path / "risk-map" / "yaml"
+        yaml_dir.mkdir(parents=True)
+
+        # Missing required fields
+        (yaml_dir / "frameworks.yaml").write_text(
+            """
+frameworks:
+  - id: mitre-atlas
+    name: MITRE ATLAS
+    # Missing fullName, description, baseUri
+"""
+        )
+        (yaml_dir / "risks.yaml").write_text("risks: []")
+        (yaml_dir / "controls.yaml").write_text("controls: []")
+
+        monkeypatch.chdir(tmp_path)
+
+        file_paths = [
+            Path("risk-map/yaml/frameworks.yaml"),
+            Path("risk-map/yaml/risks.yaml"),
+            Path("risk-map/yaml/controls.yaml"),
+        ]
+
+        result = validate_frameworks(file_paths)
+
+        assert result is False
+        captured = capsys.readouterr()
+        assert "❌" in captured.out
+        assert "consistency errors" in captured.out
+
+    def test_failure_reference_errors(self, tmp_path, monkeypatch, capsys):
+        """
+        Test failure when reference errors are found.
+
+        Given: Risks or controls reference non-existent frameworks
+        When: validate_frameworks() is called
+        Then: Returns False and reports reference errors
+        """
+        from validate_framework_references import validate_frameworks
+
+        yaml_dir = tmp_path / "risk-map" / "yaml"
+        yaml_dir.mkdir(parents=True)
+
+        (yaml_dir / "frameworks.yaml").write_text(
+            """
+frameworks:
+  - id: mitre-atlas
+    name: MITRE ATLAS
+    fullName: Framework
+    description: Test
+    baseUri: https://example.com
+"""
+        )
+        (yaml_dir / "risks.yaml").write_text(
+            """
+risks:
+  - id: DP
+    title: Data Poisoning
+    mappings:
+      invalid-framework:
+        - technique1
+"""
+        )
+        (yaml_dir / "controls.yaml").write_text("controls: []")
+
+        monkeypatch.chdir(tmp_path)
+
+        file_paths = [
+            Path("risk-map/yaml/frameworks.yaml"),
+            Path("risk-map/yaml/risks.yaml"),
+            Path("risk-map/yaml/controls.yaml"),
+        ]
+
+        result = validate_frameworks(file_paths)
+
+        assert result is False
+        captured = capsys.readouterr()
+        assert "❌" in captured.out
+        assert "reference errors" in captured.out
+        assert "invalid-framework" in captured.out
+
+    def test_failure_both_consistency_and_reference_errors(self, tmp_path, monkeypatch, capsys):
+        """
+        Test failure when both consistency and reference errors exist.
+
+        Given: Both consistency errors and reference errors exist
+        When: validate_frameworks() is called
+        Then: Returns False and reports both types of errors
+        """
+        from validate_framework_references import validate_frameworks
+
+        yaml_dir = tmp_path / "risk-map" / "yaml"
+        yaml_dir.mkdir(parents=True)
+
+        # Missing required field (consistency error)
+        (yaml_dir / "frameworks.yaml").write_text(
+            """
+frameworks:
+  - id: mitre-atlas
+    name: MITRE ATLAS
+    fullName: Framework
+    # Missing description and baseUri
+"""
+        )
+        # Invalid reference (reference error)
+        (yaml_dir / "risks.yaml").write_text(
+            """
+risks:
+  - id: DP
+    title: Data Poisoning
+    mappings:
+      nonexistent:
+        - tech1
+"""
+        )
+        (yaml_dir / "controls.yaml").write_text("controls: []")
+
+        monkeypatch.chdir(tmp_path)
+
+        file_paths = [
+            Path("risk-map/yaml/frameworks.yaml"),
+            Path("risk-map/yaml/risks.yaml"),
+            Path("risk-map/yaml/controls.yaml"),
+        ]
+
+        result = validate_frameworks(file_paths)
+
+        assert result is False
+        captured = capsys.readouterr()
+        assert "consistency errors" in captured.out
+        assert "reference errors" in captured.out
+
+
+class TestParseArgs:
+    """Test parse_args() CLI argument parsing"""
+
+    def test_default_arguments(self, monkeypatch):
+        """
+        Test default argument parsing (no --force).
+
+        Given: No command line arguments provided
+        When: parse_args() is called
+        Then: Returns args with force=False
+        """
+        from validate_framework_references import parse_args
+
+        monkeypatch.setattr(sys, "argv", ["script.py"])
+
+        args = parse_args()
+
+        assert args.force is False
+
+    def test_force_flag_long_form(self, monkeypatch):
+        """
+        Test --force flag sets force=True.
+
+        Given: --force flag is provided
+        When: parse_args() is called
+        Then: Returns args with force=True
+        """
+        from validate_framework_references import parse_args
+
+        monkeypatch.setattr(sys, "argv", ["script.py", "--force"])
+
+        args = parse_args()
+
+        assert args.force is True
+
+    def test_force_flag_short_form(self, monkeypatch):
+        """
+        Test -f short form sets force=True.
+
+        Given: -f flag is provided
+        When: parse_args() is called
+        Then: Returns args with force=True
+        """
+        from validate_framework_references import parse_args
+
+        monkeypatch.setattr(sys, "argv", ["script.py", "-f"])
+
+        args = parse_args()
+
+        assert args.force is True
+
+
+class TestMain:
+    """Test main() function orchestration and exit codes"""
+
+    def test_exit_0_when_no_files_staged(self, monkeypatch, capsys):
+        """
+        Test exit code 0 when no files are staged.
+
+        Given: No framework-related files are staged
+        When: main() is called
+        Then: Exits with code 0
+        """
+        import subprocess
+        from unittest.mock import MagicMock
+
+        from validate_framework_references import main
+
+        # Mock subprocess to return no staged files
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = ""
+
+        def mock_run(*args, **kwargs):
+            return mock_result
+
+        monkeypatch.setattr(subprocess, "run", mock_run)
+        monkeypatch.setattr(sys, "argv", ["script.py"])
+
+        # main() calls sys.exit(), so we catch SystemExit
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        assert "No framework-related YAML files modified" in captured.out
+
+    def test_exit_0_when_validation_succeeds(self, monkeypatch, tmp_path, capsys):
+        """
+        Test exit code 0 when validation succeeds.
+
+        Given: Valid framework files are staged
+        When: main() is called
+        Then: Exits with code 0
+        """
+        from validate_framework_references import main
+
+        # Create valid YAML files
+        yaml_dir = tmp_path / "risk-map" / "yaml"
+        yaml_dir.mkdir(parents=True)
+
+        (yaml_dir / "frameworks.yaml").write_text(
+            """
+frameworks:
+  - id: test-framework
+    name: Test
+    fullName: Test Framework
+    description: Test description
+    baseUri: https://example.com
+"""
+        )
+        (yaml_dir / "risks.yaml").write_text("risks: []")
+        (yaml_dir / "controls.yaml").write_text("controls: []")
+
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", ["script.py", "--force"])
+
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        assert "✅" in captured.out
+        assert "validation passed" in captured.out
+
+    def test_exit_1_when_validation_fails(self, monkeypatch, tmp_path, capsys):
+        """
+        Test exit code 1 when validation fails.
+
+        Given: Invalid framework files are staged
+        When: main() is called
+        Then: Exits with code 1
+        """
+        from validate_framework_references import main
+
+        # Create invalid YAML files
+        yaml_dir = tmp_path / "risk-map" / "yaml"
+        yaml_dir.mkdir(parents=True)
+
+        (yaml_dir / "frameworks.yaml").write_text(
+            """
+frameworks:
+  - id: test-framework
+    name: Test
+    # Missing required fields
+"""
+        )
+        (yaml_dir / "risks.yaml").write_text("risks: []")
+        (yaml_dir / "controls.yaml").write_text("controls: []")
+
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", ["script.py", "--force"])
+
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "❌" in captured.out
+        assert "validation failed" in captured.out
+
+    def test_force_mode_message_output(self, monkeypatch, capsys):
+        """
+        Test force mode prints appropriate message.
+
+        Given: --force flag is used
+        When: main() is called
+        Then: Prints force mode message
+        """
+        import subprocess
+        from unittest.mock import MagicMock
+
+        from validate_framework_references import main
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = ""
+
+        def mock_run(*args, **kwargs):
+            return mock_result
+
+        monkeypatch.setattr(subprocess, "run", mock_run)
+        monkeypatch.setattr(sys, "argv", ["script.py", "--force"])
+
+        with pytest.raises(SystemExit):
+            main()
+
+        captured = capsys.readouterr()
+        assert "Force checking framework references" in captured.out
+
+    def test_normal_mode_message_output(self, monkeypatch, capsys):
+        """
+        Test normal mode prints appropriate message.
+
+        Given: No --force flag is used
+        When: main() is called
+        Then: Prints normal checking message
+        """
+        import subprocess
+        from unittest.mock import MagicMock
+
+        from validate_framework_references import main
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = ""
+
+        def mock_run(*args, **kwargs):
+            return mock_result
+
+        monkeypatch.setattr(subprocess, "run", mock_run)
+        monkeypatch.setattr(sys, "argv", ["script.py"])
+
+        with pytest.raises(SystemExit):
+            main()
+
+        captured = capsys.readouterr()
+        assert "Checking for framework-related YAML file changes" in captured.out
+
+    def test_success_message_and_exit_code(self, monkeypatch, tmp_path):
+        """
+        Test success message and exit code together.
+
+        Given: Validation passes
+        When: main() exits
+        Then: Prints success message and exits with 0
+        """
+        from validate_framework_references import main
+
+        yaml_dir = tmp_path / "risk-map" / "yaml"
+        yaml_dir.mkdir(parents=True)
+        (yaml_dir / "frameworks.yaml").write_text(
+            """
+frameworks:
+  - id: test
+    name: Test
+    fullName: Test
+    description: Test
+    baseUri: https://example.com
+"""
+        )
+        (yaml_dir / "risks.yaml").write_text("risks: []")
+        (yaml_dir / "controls.yaml").write_text("controls: []")
+
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", ["script.py", "-f"])
+
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+        assert exc_info.value.code == 0
+
+    def test_failure_message_and_exit_code(self, monkeypatch, tmp_path):
+        """
+        Test failure message and exit code together.
+
+        Given: Validation fails
+        When: main() exits
+        Then: Prints failure message and exits with 1
+        """
+        from validate_framework_references import main
+
+        yaml_dir = tmp_path / "risk-map" / "yaml"
+        yaml_dir.mkdir(parents=True)
+        # Invalid framework missing required fields
+        (yaml_dir / "frameworks.yaml").write_text("frameworks:\n  - id: test\n")
+        (yaml_dir / "risks.yaml").write_text("risks: []")
+        (yaml_dir / "controls.yaml").write_text("controls: []")
+
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", ["script.py", "-f"])
+
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+        assert exc_info.value.code == 1

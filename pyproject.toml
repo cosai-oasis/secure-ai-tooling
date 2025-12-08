@@ -1,0 +1,5 @@
+[tool.coverage.run]
+omit = [
+    "*/test_*.py", # Exclude files matching 'test_*.py' pattern anywhere
+    "*/conftest.py", # Exclude files matching 'test_*.py' pattern anywhere
+]

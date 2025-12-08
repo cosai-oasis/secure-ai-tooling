@@ -128,6 +128,7 @@ def collapse_column(entry) -> str:
 # Table Generator Classes
 # ============================================================================
 
+
 class TableGenerator(ABC):
     """
     Base class for table generation strategies.
@@ -263,7 +264,7 @@ class SummaryTableGenerator(TableGenerator):
                 "ID": item.get("id", ""),
                 "Title": item.get("title", ""),
                 "Description": collapse_column(desc) if desc else "",
-                "Category": item.get("category", "")
+                "Category": item.get("category", ""),
             }
             rows.append(row)
 
@@ -310,9 +311,7 @@ class RiskXRefTableGenerator(TableGenerator):
 
             # Handle special case: risks: "all" or risks: all
             is_all = risk_ids == "all" or (
-                isinstance(risk_ids, list)
-                and len(risk_ids) == 1
-                and risk_ids[0] == "all"
+                isinstance(risk_ids, list) and len(risk_ids) == 1 and risk_ids[0] == "all"
             )
             if is_all:
                 risk_ids_display = "all"
@@ -331,7 +330,7 @@ class RiskXRefTableGenerator(TableGenerator):
                 "Control ID": control_id,
                 "Control Title": control_title,
                 "Risk IDs": risk_ids_display,
-                "Risk Titles": risk_titles_display
+                "Risk Titles": risk_titles_display,
             }
             rows.append(row)
 
@@ -378,9 +377,7 @@ class ComponentXRefTableGenerator(TableGenerator):
 
             # Handle special case: components: "all" or components: all
             is_all = component_ids == "all" or (
-                isinstance(component_ids, list)
-                and len(component_ids) == 1
-                and component_ids[0] == "all"
+                isinstance(component_ids, list) and len(component_ids) == 1 and component_ids[0] == "all"
             )
             if is_all:
                 component_ids_display = "all"
@@ -399,7 +396,7 @@ class ComponentXRefTableGenerator(TableGenerator):
                 "Control ID": control_id,
                 "Control Title": control_title,
                 "Component IDs": component_ids_display,
-                "Component Titles": component_titles_display
+                "Component Titles": component_titles_display,
             }
             rows.append(row)
 

@@ -794,7 +794,7 @@ class TestComponentGraph:
     def test_to_mermaid_method(self, simple_forward_map, simple_components):
         """Test the to_mermaid method returns the built graph."""
         graph = ComponentGraph(simple_forward_map, simple_components)
-        assert graph.to_mermaid('mermaid') == graph.graph + "\n"
+        assert graph.to_mermaid("mermaid") == graph.graph + "\n"
 
     def test_empty_components(self):
         """Test handling of empty components."""

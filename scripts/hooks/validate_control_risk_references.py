@@ -78,12 +78,13 @@ def load_yaml_file(file_path: Path) -> dict | None:
         return None
 
 
-def extract_controls_data(yaml_data: dict) -> dict[str, list[str]]:
+def extract_controls_data(yaml_data: dict) -> dict[str, str | list[str]]:
     """
     Extract control IDs and risk references from controls.yaml.
 
     Returns:
-        Dict mapping control_id -> list of risk_ids
+        Dict mapping control_id -> str | list of risk_ids
+        (str for "all"/"none" keywords, list for specific risk IDs)
     """
     controls = {}
 
@@ -95,10 +96,38 @@ def extract_controls_data(yaml_data: dict) -> dict[str, list[str]]:
         if not control_id:
             continue
 
-        risks: list[str] = control.get("risks", [])
+        risks = control.get("risks", [])
+        # Keep "all" and "none" as strings (Option 1 approach)
+        # Type will be: str | list[str]
         controls[control_id] = risks
 
     return controls
+
+
+def is_universal_control(risks_value: str | list[str]) -> bool:
+    """
+    Check if control applies to all risks.
+
+    Args:
+        risks_value: Value from controls.yaml risks field
+
+    Returns:
+        True if control has risks="all" (universal control)
+    """
+    return risks_value == "all"
+
+
+def should_skip_validation(risks_value: str | list[str]) -> bool:
+    """
+    Check if control should skip bidirectional validation.
+
+    Args:
+        risks_value: Value from controls.yaml risks field
+
+    Returns:
+        True if value is "all", "none", or empty list
+    """
+    return risks_value in ("all", "none") or risks_value == []
 
 
 def extract_risks_data(yaml_data: dict) -> dict[str, list[str]]:
@@ -129,14 +158,14 @@ def extract_risks_data(yaml_data: dict) -> dict[str, list[str]]:
 
 
 def find_isolated_entries(
-    controls: dict[str, list[str]], risks: dict[str, list[str]]
+    controls: dict[str, str | list[str]], _risks: dict[str, list[str]]
 ) -> tuple[set[str], set[str]]:
     """
     Find entries with no cross-references.
 
     Args:
         controls: Dictionary mapping control_id -> list of risk_ids (from controls.yaml)
-        risks: Dictionary mapping control_id -> list of risk_ids (from risks.yaml)
+        _risks: Dictionary mapping control_id -> list of risk_ids (from risks.yaml) - currently unused
 
     Returns:
         tuple of (isolated_controls, isolated_risks)
@@ -153,7 +182,7 @@ def find_isolated_entries(
     return isolated_controls, isolated_risks
 
 
-def compare_control_maps(controls: dict[str, list[str]], risks: dict[str, list[str]]) -> list[str]:
+def compare_control_maps(controls: dict[str, str | list[str]], risks: dict[str, list[str]]) -> list[str]:
     """
     Compare control-to-risk mappings for consistency.
 
@@ -171,13 +200,36 @@ def compare_control_maps(controls: dict[str, list[str]], risks: dict[str, list[s
     # Get all control IDs mentioned in either file
     all_control_ids = set(controls.keys()) | set(risks.keys())
 
+    # Identify universal controls (those with risks="all")
+    universal_controls = {
+        control_id
+        for control_id, risks_value in controls.items()
+        if is_universal_control(risks_value)
+    }
+
+    # Check if any risks explicitly list universal controls
+    if universal_controls:
+        for control_id in universal_controls:
+            if control_id in risks:
+                # risks[control_id] = list of risk IDs that reference this control
+                violating_risks = risks[control_id]
+                for risk_id in violating_risks:
+                    errors.append(
+                        f"[ISSUE: risks.yaml] "
+                        f"Risk '{risk_id}' explicitly lists universal control '{control_id}' "
+                        f"in its 'controls' field.\n\tUniversal controls (those with 'risks: all' "
+                        f"in controls.yaml) apply implicitly to all risks and should NOT be "
+                        f"explicitly listed.\n\tACTION: Please remove '{control_id}' from the 'controls' "
+                        f"list for risk '{risk_id}'."
+                    )
+
     for control_id in all_control_ids:
         # Get risk lists from both perspectives
         risks_per_control_yaml = controls.get(control_id, [])  # What controls.yaml says
         risks_per_risks_yaml = risks.get(control_id, [])  # What we derive from risks.yaml
 
-        # Skip "all"/"none" and empty lists (covered in isolated checks)
-        if risks_per_control_yaml in ["all", "none"] or risks_per_control_yaml == []:
+        # Skip only when both perspectives agree there are no risks to validate
+        if risks_per_risks_yaml == [] and should_skip_validation(risks_per_control_yaml):
             continue
 
         # Case 1: Control in controls.yaml but not referenced in risks.yaml
@@ -199,6 +251,12 @@ def compare_control_maps(controls: dict[str, list[str]], risks: dict[str, list[s
             continue
 
         # Case 3: Control exists in both but risk lists don't match
+        # Skip if control has special keyword (already handled above)
+        if isinstance(risks_per_control_yaml, str):
+            # Special keywords "all"/"none" handled by skip logic or universal check
+            continue
+
+        # Safe to compare - both are lists
         if sorted(risks_per_control_yaml) != sorted(risks_per_risks_yaml):
             missing_from_risks_yaml = set(risks_per_control_yaml) - set(risks_per_risks_yaml)
             extra_in_risks_yaml = set(risks_per_risks_yaml) - set(risks_per_control_yaml)

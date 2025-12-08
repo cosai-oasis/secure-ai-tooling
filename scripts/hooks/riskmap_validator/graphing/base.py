@@ -85,9 +85,9 @@ class BaseGraph:
         if isinstance(risks, dict) and all(isinstance(node, RiskNode) for node in risks.values()):
             self.risks = risks
 
-    def to_mermaid(self, output_format: str = 'markdown'):
+    def to_mermaid(self, output_format: str = "markdown"):
         lines = self.graph
-        if output_format == 'markdown':
+        if output_format == "markdown":
             lines = "```mermaid\n" + lines + "\n```"
 
         return lines + "\n"
@@ -230,7 +230,7 @@ class BaseGraph:
                     subgroup_name = f"{node_category_prefix}{common_prefix.title()}"
                     if subgroup_name in self.component_by_category:
                         # Avoid conflict by adding parent category context
-                        parent_title = self.components[cluster_list[0]].category.replace(node_category_prefix,"")
+                        parent_title = self.components[cluster_list[0]].category.replace(node_category_prefix, "")
 
                         if common_prefix.title() == parent_title:
                             subgroup_name += "Subgroup"
@@ -272,7 +272,7 @@ class BaseGraph:
                 display_name = category.replace("controls", "").strip()
                 title_suffix = " Controls"
             elif category.startswith("risks"):
-                display_name = category.replace("risks","").strip()
+                display_name = category.replace("risks", "").strip()
                 title_suffix = " Risks"
             # This isn't an expected dynamic category
             else:
@@ -298,7 +298,6 @@ class BaseGraph:
         self.risks_by_category, _ = self._group_node_by("risks")
 
         return self.risks_by_category
-
 
     def _group_components_by_category(self, w_subcategories: bool = False):
         """Group component IDs by their category (simple mapping without subgroups)."""
@@ -420,7 +419,6 @@ class BaseGraph:
     def _get_nested_subgraph_new(
         self, component_ids: list[str], category: str, category_name: str
     ) -> list[str] | None:
-
         if not (category_subgroups := self.component_by_subcategory.get(category, {})):
             return None
 
@@ -442,7 +440,7 @@ class BaseGraph:
             if subgroup_lines and subgroup_lines[-1] == "":
                 subgroup_lines.pop()
             nested_subgraph.extend(subgroup_lines)
-#            self._processed_subgroups.add(subgroup_name)
+        #            self._processed_subgroups.add(subgroup_name)
 
         nested_subgraph.append("    end")
         nested_subgraph.append("")
@@ -506,7 +504,7 @@ class BaseGraph:
             # Default fallback
             return "fill:#ffffff,stroke:#333333,stroke-width:2px"
 
-    def _style_node_from_dict(self, style: dict)  -> str:
+    def _style_node_from_dict(self, style: dict) -> str:
         fill = style.get("fill", "#f0f0f0")
         stroke = style.get("stroke", "#666666")
         stroke_width = style.get("strokeWidth", "3px")
@@ -527,7 +525,7 @@ class MultiEdgeStyler:
         self.edges: list[list[int]] = [[], [], [], []]
         self.index: int = 0
         if not basegraph or not isinstance(basegraph, BaseGraph):
-            return TypeError("Requires an instance of a BaseGraph subclass")
+            raise TypeError("Requires an instance of a BaseGraph subclass")
 
         self.basegraph = basegraph
 

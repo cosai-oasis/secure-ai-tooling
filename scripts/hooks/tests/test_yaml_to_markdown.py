@@ -204,7 +204,7 @@ class TestFormattingFunctions:
         result = yaml_to_markdown.format_edges(pd.NA)
         assert result == ""
 
-        result = yaml_to_markdown.format_edges(float('nan'))
+        result = yaml_to_markdown.format_edges(float("nan"))
         assert result == ""
 
     def test_format_list_with_nan(self):
@@ -212,7 +212,7 @@ class TestFormattingFunctions:
         result = yaml_to_markdown.format_list(pd.NA)
         assert result == ""
 
-        result = yaml_to_markdown.format_list(float('nan'))
+        result = yaml_to_markdown.format_list(float("nan"))
         assert result == ""
 
     def test_format_dict_with_nan(self):
@@ -220,7 +220,7 @@ class TestFormattingFunctions:
         result = yaml_to_markdown.format_dict(pd.NA)
         assert result == ""
 
-        result = yaml_to_markdown.format_dict(float('nan'))
+        result = yaml_to_markdown.format_dict(float("nan"))
         assert result == ""
 
     def test_collapse_column_with_nan(self):
@@ -228,15 +228,12 @@ class TestFormattingFunctions:
         result = yaml_to_markdown.collapse_column(pd.NA)
         assert result == ""
 
-        result = yaml_to_markdown.collapse_column(float('nan'))
+        result = yaml_to_markdown.collapse_column(float("nan"))
         assert result == ""
 
     def test_format_mappings_simple(self):
         """Test formatting a simple mappings dictionary."""
-        test_dict = {
-            "NIST AI RMF": ["GOVERN-1.1", "GOVERN-1.2"],
-            "ISO 42001": ["5.1", "5.2"]
-        }
+        test_dict = {"NIST AI RMF": ["GOVERN-1.1", "GOVERN-1.2"], "ISO 42001": ["5.1", "5.2"]}
         result = yaml_to_markdown.format_mappings(test_dict)
 
         assert "**NIST AI RMF**:" in result
@@ -247,10 +244,7 @@ class TestFormattingFunctions:
 
     def test_format_mappings_string_values(self):
         """Test formatting mappings with string values."""
-        test_dict = {
-            "Framework1": "Single value",
-            "Framework2": ["Value1", "Value2"]
-        }
+        test_dict = {"Framework1": "Single value", "Framework2": ["Value1", "Value2"]}
         result = yaml_to_markdown.format_mappings(test_dict)
 
         assert "**Framework1**: Single value" in result
@@ -266,7 +260,7 @@ class TestFormattingFunctions:
         result = yaml_to_markdown.format_mappings(pd.NA)
         assert result == ""
 
-        result = yaml_to_markdown.format_mappings(float('nan'))
+        result = yaml_to_markdown.format_mappings(float("nan"))
         assert result == ""
 
     def test_format_mappings_non_dict(self):
@@ -440,9 +434,7 @@ class TestGetDefaultPaths:
         from pathlib import Path
 
         custom_dir = Path("/tmp/custom-tables")
-        input_path, output_path = yaml_to_markdown.get_default_paths(
-            "components", "full", output_dir=custom_dir
-        )
+        input_path, output_path = yaml_to_markdown.get_default_paths("components", "full", output_dir=custom_dir)
 
         assert "components.yaml" in str(input_path)
         assert "components-full.md" in str(output_path)

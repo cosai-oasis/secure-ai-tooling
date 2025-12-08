@@ -72,6 +72,52 @@ Next, define the control's properties in the main `controls.yaml` data file. Thi
 
 To ensure the framework remains fully connected, every risk that your new control mitigates must be updated to include a reference to that control. (This step is not necessary if you set `risks: all` in the previous step).
 
+### ⚠️ Important: Universal Controls
+
+Controls that apply to **all risks** should use the keyword `all`:
+
+```yaml
+- id: controlRedTeaming
+  risks: all  # Universal - applies to all risks implicitly
+```
+
+**When a control has `risks: all`, it is a universal control.** This means:
+- The control applies implicitly to ALL risks in the framework
+- Risks should **NOT** explicitly list this control in their `controls` field
+- The universal application is automatic
+
+**Example of INCORRECT usage:**
+
+```yaml
+# ❌ WRONG - Don't do this!
+# In risks.yaml
+- id: DataPoisoning
+  controls:
+    - controlRedTeaming  # ❌ This is a universal control - don't list it!
+```
+
+**Example of CORRECT usage:**
+
+```yaml
+# ✅ CORRECT
+# In risks.yaml
+- id: DataPoisoning
+  controls:
+    - controlTrainingDataSanitization  # ✅ Only list specific controls
+    # controlRedTeaming applies implicitly (don't list it)
+```
+
+**Universal Controls in the Framework:**
+- controlRedTeaming
+- controlVulnerabilityManagement
+- controlThreatDetection
+- controlIncidentResponseManagement
+- controlInternalPoliciesAndEducation
+- controlProductGovernance
+- controlRiskGovernance
+
+These controls apply to all risks by default and should never be explicitly listed in risks.yaml.
+
 - **File to edit**: `risks.yaml`
 - **Action**: For each risk ID you listed in the previous step (e.g., `IMO`, `PIJ`), find its definition in `risks.yaml` and add your new `controlNewControl` ID to its `controls` list.
 
