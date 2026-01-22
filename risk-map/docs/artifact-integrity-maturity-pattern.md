@@ -24,10 +24,10 @@ flowchart LR
     end
     
     subgraph maturity["With Maturity Model"]
-        M1["v1.0\n+ hash\n+ signature"] --> M2["v1.1\n+ lineage\n+ inputs verified"] --> M3["v1.2\n+ attestations\n+ policy pass"]
+        M1["v1.0 + hash + signature"] --> M2["v1.1 + lineage + inputs verified"] --> M3["v1.2 + attestations + policy pass"]
     end
     
-    traditional -.->|"What changed?\nWho approved?\nIs it safe?"| maturity
+    traditional -.->|"What changed? Who approved? Is it safe?"| maturity
     
     style traditional fill:#ffebee,stroke:#c62828
     style maturity fill:#e8f5e9,stroke:#2e7d32
