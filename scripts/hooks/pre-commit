@@ -24,9 +24,12 @@
 #          all files
 #        - components.yaml changes, generates component graph, component tables,
 #          and controls-xref-components table
-#        - controls.yaml changes, generates control graph and all 4 control tables
-#        - risks.yaml changes, generates risk graph, risk tables, and
-#          controls-xref-risks table
+#        - controls.yaml changes, generates control graph, all 4 control tables,
+#          and personas-xref-controls table
+#        - risks.yaml changes, generates risk graph, risk tables,
+#          controls-xref-risks table, and personas-xref-risks table
+#        - personas.yaml changes, generates all 4 persona tables
+#          (full, summary, xref-controls, xref-risks)
 #        - .mmd/.mermaid files change, generates corresponding SVG files in
 #          ./risk-map/svg/ and adds them to the staged files
 #        - Template sources, schemas, or frameworks.yaml change, regenerates
@@ -553,13 +556,14 @@ echo  # Add blank line for readability
 # Only generate tables in normal mode when YAML files are staged
 # Table generation logic:
 #   - components.yaml → components tables + controls-xref-components (regenerate)
-#   - risks.yaml → risks tables + controls-xref-risks (regenerate)
-#   - controls.yaml → all 4 controls tables (full, summary, xref-risks, xref-components)
+#   - risks.yaml → risks tables + controls-xref-risks + personas-xref-risks (regenerate)
+#   - controls.yaml → all 4 controls tables + personas-xref-controls (regenerate)
+#   - personas.yaml → all 4 personas tables (full, summary, xref-controls, xref-risks)
 if [[ $FORCE_VALIDATE -eq 0 ]]; then
     STAGED_FILES=$(git diff --cached --name-only)
 
     # Check if any YAML files requiring table generation are staged
-    if echo "$STAGED_FILES" | grep -q "risk-map/yaml/\(components\|controls\|risks\)\.yaml$"; then
+    if echo "$STAGED_FILES" | grep -q "risk-map/yaml/\(components\|controls\|risks\|personas\)\.yaml$"; then
         echo "📋 YAML files changed - generating markdown tables..."
 
         TABLE_GENERATOR=".git/hooks/yaml_to_markdown.py"
@@ -612,6 +616,16 @@ if [[ $FORCE_VALIDATE -eq 0 ]]; then
                     echo "   ❌ Controls xref-risks regeneration failed"
                     VALIDATION_FAILED=1
                 fi
+
+                # Also regenerate personas-xref-risks since risk->persona references changed
+                echo "   📐 Regenerating personas-xref-risks (risk data changed)..."
+                if python3 "$TABLE_GENERATOR" personas --format xref-risks --quiet; then
+                    echo "   ✅ Personas xref-risks table regenerated"
+                    stage_files "risk-map/tables/personas-xref-risks.md" "Personas xref-risks table" || true
+                else
+                    echo "   ❌ Personas xref-risks regeneration failed"
+                    VALIDATION_FAILED=1
+                fi
             fi
 
             # Controls: generate all 4 control formats (full, summary, xref-risks, xref-components)
@@ -622,6 +636,28 @@ if [[ $FORCE_VALIDATE -eq 0 ]]; then
                     stage_files "risk-map/tables/controls-*.md" "Controls tables" || true
                 else
                     echo "   ❌ Controls table generation failed"
+                    VALIDATION_FAILED=1
+                fi
+
+                # Also regenerate personas-xref-controls since control->persona references changed
+                echo "   📐 Regenerating personas-xref-controls (control data changed)..."
+                if python3 "$TABLE_GENERATOR" personas --format xref-controls --quiet; then
+                    echo "   ✅ Personas xref-controls table regenerated"
+                    stage_files "risk-map/tables/personas-xref-controls.md" "Personas xref-controls table" || true
+                else
+                    echo "   ❌ Personas xref-controls regeneration failed"
+                    VALIDATION_FAILED=1
+                fi
+            fi
+
+            # Personas: generate all 4 persona formats (full, summary, xref-controls, xref-risks)
+            if echo "$STAGED_FILES" | grep -q "personas.yaml$"; then
+                echo "   📐 Generating all tables for personas..."
+                if python3 "$TABLE_GENERATOR" personas --all-formats --quiet; then
+                    echo "   ✅ All personas tables generated (4 formats)"
+                    stage_files "risk-map/tables/personas-*.md" "Personas tables" || true
+                else
+                    echo "   ❌ Personas table generation failed"
                     VALIDATION_FAILED=1
                 fi
             fi

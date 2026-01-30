@@ -2,7 +2,7 @@
 """
 YAML to Markdown table generator for CoSAI Risk Map files.
 
-Converts structured YAML data (components, controls, risks) into formatted
+Converts structured YAML data (components, controls, risks, personas) into formatted
 Markdown tables with intelligent column-specific formatting.
 
 Supports multiple table formats:
@@ -52,8 +52,17 @@ def format_edges(edges: dict | None) -> str:
     return "<br>".join(parts) if parts else ""
 
 
-def format_list(entry) -> str:
-    """Format list entries with HTML line breaks."""
+def format_list(entry, prefix: str = "") -> str:
+    """
+    Format list entries with HTML line breaks.
+
+    Args:
+        entry: List of strings to format, or a single value
+        prefix: Optional prefix for each item (e.g., "- " for bulleted lists)
+
+    Returns:
+        HTML-formatted string with items separated by <br>
+    """
     # Handle pandas NaN values - check type first to avoid array ambiguity
     if not isinstance(entry, list) and pd.isna(entry):
         return ""
@@ -61,6 +70,8 @@ def format_list(entry) -> str:
     if not entry or not isinstance(entry, list):
         return str(entry) if entry else ""
 
+    if prefix:
+        return "<br>".join(f"{prefix}{item}" for item in entry)
     return "<br> ".join(entry)
 
 
@@ -272,6 +283,180 @@ class SummaryTableGenerator(TableGenerator):
         return df.to_markdown(index=False)
 
 
+class PersonaSummaryTableGenerator(TableGenerator):
+    """Generates summary tables for personas (no Category column)."""
+
+    def generate(self, yaml_data: dict, ytype: str) -> str:
+        """
+        Generate persona summary markdown table.
+
+        Args:
+            yaml_data: Parsed YAML data dictionary
+            ytype: Type of data (must be "personas")
+
+        Returns:
+            Formatted markdown table string
+
+        Raises:
+            ValueError: If ytype is not "personas"
+        """
+        if ytype != "personas":
+            raise ValueError(f"PersonaSummaryTableGenerator only works with 'personas', got '{ytype}'")
+
+        items = yaml_data.get("personas", [])
+        rows = []
+        for item in items:
+            desc = item.get("description", "")
+            row = {
+                "ID": item.get("id", ""),
+                "Title": item.get("title", ""),
+                "Description": collapse_column(desc) if desc else "",
+                "Status": "Deprecated" if item.get("deprecated", False) else "",
+            }
+            rows.append(row)
+
+        # Handle empty list case
+        if not rows:
+            df = pd.DataFrame(columns=["ID", "Title", "Description", "Status"])
+        else:
+            df = pd.DataFrame(rows).sort_values("ID")
+        return df.to_markdown(index=False)
+
+
+class PersonaFullDetailTableGenerator(TableGenerator):
+    """Generates full detail tables for personas with all fields."""
+
+    def generate(self, yaml_data: dict, ytype: str) -> str:
+        """
+        Generate persona full detail markdown table.
+
+        Args:
+            yaml_data: Parsed YAML data dictionary
+            ytype: Type of data (must be "personas")
+
+        Returns:
+            Formatted markdown table string
+
+        Raises:
+            ValueError: If ytype is not "personas"
+        """
+        if ytype != "personas":
+            raise ValueError(f"PersonaFullDetailTableGenerator only works with 'personas', got '{ytype}'")
+
+        items = yaml_data.get("personas", [])
+        rows = []
+        for item in items:
+            row = {
+                "ID": item.get("id", ""),
+                "Title": item.get("title", ""),
+                "Description": collapse_column(item.get("description", "")),
+                "Status": "Deprecated" if item.get("deprecated", False) else "",
+                "Responsibilities": format_list(item.get("responsibilities", []), prefix="- "),
+                "Identification Questions": format_list(item.get("identificationQuestions", []), prefix="- "),
+                "Mappings": format_mappings(item.get("mappings", {})),
+            }
+            rows.append(row)
+
+        # Handle empty list case
+        if not rows:
+            df = pd.DataFrame(
+                columns=[
+                    "ID",
+                    "Title",
+                    "Description",
+                    "Status",
+                    "Responsibilities",
+                    "Identification Questions",
+                    "Mappings",
+                ]
+            )
+        else:
+            df = pd.DataFrame(rows).sort_values("ID")
+        return df.to_markdown(index=False)
+
+
+class PersonaXRefTableGenerator(TableGenerator):
+    """
+    Base class for persona cross-reference table generators.
+
+    Inverts persona references from another YAML file (controls or risks)
+    to create persona-centric views showing what each persona is associated with.
+    """
+
+    # Subclasses must define these class attributes
+    yaml_file: str = ""  # e.g., "controls.yaml"
+    data_key: str = ""  # e.g., "controls"
+    id_column: str = ""  # e.g., "Control IDs"
+    title_column: str = ""  # e.g., "Control Titles"
+
+    def generate(self, yaml_data: dict, ytype: str) -> str:
+        """
+        Generate persona cross-reference table.
+
+        Args:
+            yaml_data: Parsed YAML data dictionary (must be personas)
+            ytype: Type of data (must be "personas")
+
+        Returns:
+            Formatted markdown table string
+
+        Raises:
+            ValueError: If ytype is not "personas"
+        """
+        if ytype != "personas":
+            raise ValueError(f"{self.__class__.__name__} only works with 'personas', got '{ytype}'")
+
+        # Load cross-reference YAML and invert persona references
+        xref_data = self._load_yaml(self.yaml_file)
+        persona_items = {}  # persona_id -> [(item_id, item_title), ...]
+
+        for item in xref_data.get(self.data_key, []):
+            for persona_id in item.get("personas", []):
+                if persona_id not in persona_items:
+                    persona_items[persona_id] = []
+                persona_items[persona_id].append((item.get("id", ""), item.get("title", "")))
+
+        # Build rows from personas
+        rows = []
+        for persona in yaml_data.get("personas", []):
+            pid = persona.get("id", "")
+            # Sort items alphabetically by ID to ensure consistent output
+            items_list = sorted(persona_items.get(pid, []), key=lambda x: x[0])
+            rows.append(
+                {
+                    "Persona ID": pid,
+                    "Persona Title": persona.get("title", ""),
+                    self.id_column: format_list([i[0] for i in items_list]),
+                    self.title_column: format_list([i[1] for i in items_list]),
+                }
+            )
+
+        # Handle empty list case
+        if not rows:
+            df = pd.DataFrame(columns=["Persona ID", "Persona Title", self.id_column, self.title_column])
+        else:
+            df = pd.DataFrame(rows).sort_values("Persona ID")
+        return df.to_markdown(index=False)
+
+
+class PersonaControlXRefTableGenerator(PersonaXRefTableGenerator):
+    """Shows which controls each persona is responsible for."""
+
+    yaml_file = "controls.yaml"
+    data_key = "controls"
+    id_column = "Control IDs"
+    title_column = "Control Titles"
+
+
+class PersonaRiskXRefTableGenerator(PersonaXRefTableGenerator):
+    """Shows which risks affect each persona."""
+
+    yaml_file = "risks.yaml"
+    data_key = "risks"
+    id_column = "Risk IDs"
+    title_column = "Risk Titles"
+
+
 class RiskXRefTableGenerator(TableGenerator):
     """
     Generates control-to-risk cross-reference tables.
@@ -428,8 +613,11 @@ def yaml_to_markdown_table(yaml_file, ytype, table_format: str = "full"):
     Raises:
         ValueError: If table_format is not recognized or incompatible with ytype
     """
-    # Validate format
-    if table_format not in TABLE_GENERATORS:
+    # Persona-specific formats handled separately below
+    persona_formats = {"full", "summary", "xref-controls", "xref-risks"}
+
+    # Validate format (defer persona-specific validation until we check ytype)
+    if table_format not in TABLE_GENERATORS and table_format not in persona_formats:
         valid_formats = ", ".join(TABLE_GENERATORS.keys())
         raise ValueError(f"Invalid table format '{table_format}'. Valid formats: {valid_formats}")
 
@@ -445,7 +633,23 @@ def yaml_to_markdown_table(yaml_file, ytype, table_format: str = "full"):
     input_dir = Path(yaml_file).parent
 
     # Create generator instance and generate table
-    generator_class = TABLE_GENERATORS[table_format]
+    # Handle persona-specific generators
+    if ytype == "personas":
+        persona_generators = {
+            "full": PersonaFullDetailTableGenerator,
+            "summary": PersonaSummaryTableGenerator,
+            "xref-controls": PersonaControlXRefTableGenerator,
+            "xref-risks": PersonaRiskXRefTableGenerator,
+        }
+        if table_format not in persona_generators:
+            valid = ", ".join(persona_generators.keys())
+            raise ValueError(
+                f"Invalid table format '{table_format}' for personas. Valid: {valid}"
+            )
+        generator_class = persona_generators[table_format]
+    else:
+        generator_class = TABLE_GENERATORS[table_format]
+
     generator = generator_class(input_dir=input_dir)
 
     return generator.generate(data, ytype)
@@ -477,12 +681,14 @@ Available Types:
   components    - AI system building blocks
   controls      - Security controls and mitigations
   risks         - Security threats and vulnerabilities
+  personas      - User roles and responsibilities
 
 Available Formats:
   full              - Complete detail tables with all columns (default)
-  summary           - Condensed tables (ID, Title, Description, Category)
-  xref-risks        - Control-to-risk cross-reference (controls only)
+  summary           - Condensed tables (ID, Title, Description, Category/Status)
+  xref-risks        - Cross-reference to risks (controls, personas)
   xref-components   - Control-to-component cross-reference (controls only)
+  xref-controls     - Persona-to-control cross-reference (personas only)
 
 Exit Codes:
   0 - Conversion completed successfully
@@ -494,22 +700,24 @@ Exit Codes:
     parser.add_argument(
         "types",
         nargs="*",
-        help="Type(s) of YAML data to convert: components, controls, risks",
+        help="Type(s) of YAML data to convert: components, controls, risks, personas",
     )
 
     parser.add_argument(
         "--all",
         "-a",
         action="store_true",
-        help="Convert all types (components, controls, risks)",
+        help="Convert all types (components, controls, risks, personas)",
     )
 
+    # All valid formats including persona-specific ones
+    all_formats = list(TABLE_GENERATORS.keys()) + ["xref-controls"]
     parser.add_argument(
         "--format",
         "-f",
         type=str,
         default="full",
-        choices=list(TABLE_GENERATORS.keys()),
+        choices=all_formats,
         help="Table format to generate (default: full)",
     )
 
@@ -581,7 +789,7 @@ def get_applicable_formats(ytype: str) -> list[str]:
     Get all applicable table formats for a given type.
 
     Args:
-        ytype: Data type (components, controls, risks)
+        ytype: Data type (components, controls, risks, personas)
 
     Returns:
         List of applicable format names
@@ -589,6 +797,8 @@ def get_applicable_formats(ytype: str) -> list[str]:
     # Base formats work for all types
     base_formats = ["full", "summary"]
 
+    if ytype == "personas":
+        return base_formats + ["xref-controls", "xref-risks"]
     # Cross-reference formats only work with controls
     if ytype == "controls":
         return base_formats + ["xref-risks", "xref-components"]
@@ -647,8 +857,19 @@ def convert_type(
     """
     try:
         # Validate format compatibility with type
-        if table_format in ["xref-risks", "xref-components"] and ytype != "controls":
+        # xref-components only works with controls
+        if table_format == "xref-components" and ytype != "controls":
             print(f"❌ Error: Format '{table_format}' only works with 'controls', not '{ytype}'")
+            return False
+
+        # xref-risks works with both controls and personas
+        if table_format == "xref-risks" and ytype not in ["controls", "personas"]:
+            print(f"❌ Error: Format '{table_format}' only works with 'controls' or 'personas', not '{ytype}'")
+            return False
+
+        # xref-controls only works with personas
+        if table_format == "xref-controls" and ytype != "personas":
+            print(f"❌ Error: Format '{table_format}' only works with 'personas', not '{ytype}'")
             return False
 
         # Determine paths
@@ -696,7 +917,7 @@ def main() -> None:
             sys.exit(1)
 
         # Validate type names
-        valid_types = {"components", "controls", "risks"}
+        valid_types = {"components", "controls", "risks", "personas"}
         if args.types:
             invalid_types = set(args.types) - valid_types
             if invalid_types:
@@ -715,16 +936,35 @@ def main() -> None:
             sys.exit(1)
 
         # Validate format compatibility (only if not using --all-formats)
-        if not args.all_formats and args.format in ["xref-risks", "xref-components"]:
-            types_to_convert = ["components", "controls", "risks"] if args.all else args.types
+        # xref-components only works with controls
+        if not args.all_formats and args.format == "xref-components":
+            types_to_convert = ["components", "controls", "risks", "personas"] if args.all else args.types
             non_control_types = [t for t in types_to_convert if t != "controls"]
             if non_control_types:
                 print(f"❌ Error: Format '{args.format}' only works with 'controls'")
                 print(f"   Cannot use with: {', '.join(non_control_types)}")
                 sys.exit(1)
 
+        # xref-risks works with both controls and personas
+        if not args.all_formats and args.format == "xref-risks":
+            types_to_convert = ["components", "controls", "risks", "personas"] if args.all else args.types
+            invalid_types = [t for t in types_to_convert if t not in ["controls", "personas"]]
+            if invalid_types:
+                print(f"❌ Error: Format '{args.format}' only works with 'controls' or 'personas'")
+                print(f"   Cannot use with: {', '.join(invalid_types)}")
+                sys.exit(1)
+
+        # xref-controls only works with personas
+        if not args.all_formats and args.format == "xref-controls":
+            types_to_convert = ["components", "controls", "risks", "personas"] if args.all else args.types
+            non_persona_types = [t for t in types_to_convert if t != "personas"]
+            if non_persona_types:
+                print(f"❌ Error: Format '{args.format}' only works with 'personas'")
+                print(f"   Cannot use with: {', '.join(non_persona_types)}")
+                sys.exit(1)
+
         # Determine which types to convert
-        types_to_convert = ["components", "controls", "risks"] if args.all else args.types
+        types_to_convert = ["components", "controls", "risks", "personas"] if args.all else args.types
 
         if not args.quiet:
             type_list = ", ".join(types_to_convert)

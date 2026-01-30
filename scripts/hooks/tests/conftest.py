@@ -253,6 +253,40 @@ def sample_risks():
 
 
 @pytest.fixture
+def sample_personas():
+    """Sample persona data for testing yaml_to_markdown persona generators."""
+    return {
+        "personas": [
+            {
+                "id": "personaTest1",
+                "title": "Test Persona Active",
+                "description": ["An active test persona"],
+                "responsibilities": ["Responsibility 1", "Responsibility 2"],
+                "identificationQuestions": ["Question 1?", "Question 2?"],
+                "mappings": {"iso-22989": ["AI Producer"]},
+            },
+            {
+                "id": "personaTest2",
+                "title": "Test Persona Deprecated",
+                "description": ["A deprecated test persona"],
+                "deprecated": True,
+            },
+        ]
+    }
+
+
+@pytest.fixture
+def sample_personas_minimal():
+    """Minimal persona data for testing xref generators."""
+    return {
+        "personas": [
+            {"id": "personaTest1", "title": "Test Persona 1"},
+            {"id": "personaTest2", "title": "Test Persona 2"},
+        ]
+    }
+
+
+@pytest.fixture
 def sample_component_yaml():
     """Sample YAML content for component testing."""
     return """

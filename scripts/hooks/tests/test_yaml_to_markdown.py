@@ -201,10 +201,10 @@ class TestFormattingFunctions:
     # NaN handling tests
     def test_format_edges_with_nan(self):
         """Test format_edges handles pandas NaN values correctly."""
-        result = yaml_to_markdown.format_edges(pd.NA)
+        result = yaml_to_markdown.format_edges(pd.NA)  # pyright: ignore[reportArgumentType]
         assert result == ""
 
-        result = yaml_to_markdown.format_edges(float("nan"))
+        result = yaml_to_markdown.format_edges(float("nan"))  # pyright: ignore[reportArgumentType]
         assert result == ""
 
     def test_format_list_with_nan(self):
@@ -985,3 +985,598 @@ class TestAllFormatsFeature:
             assert exc_info.value.code == 1
             captured = capsys.readouterr()
             assert "single type with a single format" in captured.out
+
+
+class TestPersonaTableGenerators:
+    """
+    Test persona-specific table generator classes.
+
+    Tests the PersonaSummaryTableGenerator and PersonaFullDetailTableGenerator
+    for generating persona tables with proper column structure and status handling.
+
+    Uses sample_personas fixture from conftest.py.
+    """
+
+    def test_persona_summary_generates_correct_columns(self, sample_personas):
+        """
+        Test PersonaSummaryTableGenerator creates correct columns.
+
+        Given: Sample personas data
+        When: PersonaSummaryTableGenerator.generate() is called
+        Then: Table includes ID, Title, Description, Status columns (no Category)
+        """
+        generator = yaml_to_markdown.PersonaSummaryTableGenerator()
+        result = generator.generate(sample_personas, "personas")
+
+        assert isinstance(result, str)
+        # Check header row contains expected columns (with padding)
+        header_line = result.split("\n")[0]
+        assert "ID" in header_line
+        assert "Title" in header_line
+        assert "Description" in header_line
+        assert "Status" in header_line
+        # Should NOT have Category column
+        assert "Category" not in header_line
+
+    def test_persona_summary_shows_deprecated_status(self, sample_personas):
+        """
+        Test PersonaSummaryTableGenerator shows "Deprecated" status.
+
+        Given: Personas data with deprecated persona
+        When: PersonaSummaryTableGenerator.generate() is called
+        Then: Deprecated personas show "Deprecated" in Status column
+        """
+        generator = yaml_to_markdown.PersonaSummaryTableGenerator()
+        result = generator.generate(sample_personas, "personas")
+
+        assert "Deprecated" in result
+        # Check it appears in the row for personaTest2
+        lines = result.split("\n")
+        test2_line = [line for line in lines if "personaTest2" in line]
+        assert len(test2_line) > 0
+        assert "Deprecated" in test2_line[0]
+
+    def test_persona_summary_active_has_empty_status(self, sample_personas):
+        """
+        Test PersonaSummaryTableGenerator shows empty status for active personas.
+
+        Given: Personas data with active persona
+        When: PersonaSummaryTableGenerator.generate() is called
+        Then: Active personas have empty string in Status column
+        """
+        generator = yaml_to_markdown.PersonaSummaryTableGenerator()
+        result = generator.generate(sample_personas, "personas")
+
+        # Verify personaTest1 appears but without "Deprecated" status
+        lines = result.split("\n")
+        test1_line = [line for line in lines if "personaTest1" in line]
+        assert len(test1_line) > 0
+        # The line should not have "Deprecated" in it
+        assert "Deprecated" not in test1_line[0]
+
+    def test_persona_summary_rejects_non_personas_type(self, sample_personas):
+        """
+        Test PersonaSummaryTableGenerator rejects non-personas types.
+
+        Given: Personas data
+        When: PersonaSummaryTableGenerator.generate() is called with ytype != "personas"
+        Then: ValueError is raised
+        """
+        generator = yaml_to_markdown.PersonaSummaryTableGenerator()
+
+        with pytest.raises(ValueError, match="only works with 'personas'"):
+            generator.generate(sample_personas, "components")
+
+    def test_persona_full_includes_all_fields(self, sample_personas):
+        """
+        Test PersonaFullDetailTableGenerator includes all 7 columns.
+
+        Given: Sample personas data
+        When: PersonaFullDetailTableGenerator.generate() is called
+        Then: Table includes ID, Title, Description, Status, Responsibilities,
+              Identification Questions, and Mappings columns
+        """
+        generator = yaml_to_markdown.PersonaFullDetailTableGenerator()
+        result = generator.generate(sample_personas, "personas")
+
+        assert isinstance(result, str)
+        # Check header row contains expected columns (with padding)
+        header_line = result.split("\n")[0]
+        assert "ID" in header_line
+        assert "Title" in header_line
+        assert "Description" in header_line
+        assert "Status" in header_line
+        assert "Responsibilities" in header_line
+        assert "Identification Questions" in header_line
+        assert "Mappings" in header_line
+
+    def test_persona_full_formats_responsibilities(self, sample_personas):
+        """
+        Test PersonaFullDetailTableGenerator formats responsibilities using format_list().
+
+        Given: Personas with responsibilities list
+        When: PersonaFullDetailTableGenerator.generate() is called
+        Then: Responsibilities are formatted with <br> separators
+        """
+        generator = yaml_to_markdown.PersonaFullDetailTableGenerator()
+        result = generator.generate(sample_personas, "personas")
+
+        assert "Responsibility 1" in result
+        assert "Responsibility 2" in result
+        # format_list adds <br> between items with dash prefix
+        assert "<br>" in result
+        assert "- Responsibility 1" in result
+
+    def test_persona_full_formats_mappings(self, sample_personas):
+        """
+        Test PersonaFullDetailTableGenerator formats mappings using format_mappings().
+
+        Given: Personas with iso-22989 mappings
+        When: PersonaFullDetailTableGenerator.generate() is called
+        Then: Mappings are formatted with framework names and values
+        """
+        generator = yaml_to_markdown.PersonaFullDetailTableGenerator()
+        result = generator.generate(sample_personas, "personas")
+
+        assert "iso-22989" in result
+        assert "AI Producer" in result
+        # format_mappings adds <br> and bold formatting
+        assert "**" in result
+
+    def test_persona_full_formats_identification_questions(self, sample_personas):
+        """
+        Test PersonaFullDetailTableGenerator formats identificationQuestions.
+
+        Given: Personas with identificationQuestions list
+        When: PersonaFullDetailTableGenerator.generate() is called
+        Then: Questions are formatted with <br> separators
+        """
+        generator = yaml_to_markdown.PersonaFullDetailTableGenerator()
+        result = generator.generate(sample_personas, "personas")
+
+        assert "Question 1?" in result
+        assert "Question 2?" in result
+        # format_list adds dash prefix for readability
+        assert "- Question 1?" in result
+
+    def test_persona_full_rejects_non_personas_type(self, sample_personas):
+        """
+        Test PersonaFullDetailTableGenerator rejects non-personas types.
+
+        Given: Personas data
+        When: PersonaFullDetailTableGenerator.generate() is called with ytype != "personas"
+        Then: ValueError is raised
+        """
+        generator = yaml_to_markdown.PersonaFullDetailTableGenerator()
+
+        with pytest.raises(ValueError, match="only works with 'personas'"):
+            generator.generate(sample_personas, "risks")
+
+    def test_persona_summary_empty_list(self):
+        """
+        Test PersonaSummaryTableGenerator handles empty personas list.
+
+        Given: Empty personas list
+        When: PersonaSummaryTableGenerator.generate() is called
+        Then: Valid table with headers is produced
+        """
+        empty_data = {"personas": []}
+        generator = yaml_to_markdown.PersonaSummaryTableGenerator()
+        result = generator.generate(empty_data, "personas")
+
+        assert isinstance(result, str)
+        header_line = result.split("\n")[0]
+        assert "ID" in header_line
+        assert "Title" in header_line
+
+    def test_persona_full_empty_list(self):
+        """
+        Test PersonaFullDetailTableGenerator handles empty personas list.
+
+        Given: Empty personas list
+        When: PersonaFullDetailTableGenerator.generate() is called
+        Then: Valid table with headers is produced
+        """
+        empty_data = {"personas": []}
+        generator = yaml_to_markdown.PersonaFullDetailTableGenerator()
+        result = generator.generate(empty_data, "personas")
+
+        assert isinstance(result, str)
+        header_line = result.split("\n")[0]
+        assert "ID" in header_line
+        assert "Responsibilities" in header_line
+
+    def test_persona_full_missing_optional_fields(self):
+        """
+        Test PersonaFullDetailTableGenerator handles missing optional fields.
+
+        Given: Persona with only required fields (id, title)
+        When: PersonaFullDetailTableGenerator.generate() is called
+        Then: Table is generated without errors
+        """
+        minimal_data = {
+            "personas": [
+                {
+                    "id": "personaMinimal",
+                    "title": "Minimal Persona",
+                    # Missing: description, responsibilities, identificationQuestions, mappings
+                }
+            ]
+        }
+        generator = yaml_to_markdown.PersonaFullDetailTableGenerator()
+        result = generator.generate(minimal_data, "personas")
+
+        assert "personaMinimal" in result
+        assert "Minimal Persona" in result
+        assert isinstance(result, str)
+
+
+class TestPersonaXRefGenerators:
+    """
+    Test persona cross-reference table generators.
+
+    Tests PersonaControlXRefTableGenerator and PersonaRiskXRefTableGenerator
+    for inverting persona references from controls/risks to create persona-centric views.
+
+    Uses sample_personas_minimal fixture from conftest.py.
+    """
+
+    @pytest.mark.skipif(
+        not (get_git_root() / "risk-map" / "yaml" / "controls.yaml").exists(),
+        reason="Real controls.yaml not available",
+    )
+    def test_persona_xref_controls_inverts_mappings(self, sample_personas):
+        """
+        Test PersonaControlXRefTableGenerator inverts persona references.
+
+        Given: Real controls.yaml with persona references
+        When: PersonaControlXRefTableGenerator.generate() is called
+        Then: Controls are loaded and persona references are inverted correctly
+        """
+        input_dir = get_git_root() / "risk-map" / "yaml"
+        generator = yaml_to_markdown.PersonaControlXRefTableGenerator(input_dir=input_dir)
+        result = generator.generate(sample_personas, "personas")
+
+        assert isinstance(result, str)
+        # Should contain table structure
+        assert "|" in result
+
+    @pytest.mark.skipif(
+        not (get_git_root() / "risk-map" / "yaml" / "controls.yaml").exists(),
+        reason="Real controls.yaml not available",
+    )
+    def test_persona_xref_controls_correct_columns(self, sample_personas):
+        """
+        Test PersonaControlXRefTableGenerator creates correct columns.
+
+        Given: Personas data
+        When: PersonaControlXRefTableGenerator.generate() is called
+        Then: Table includes Persona ID, Persona Title, Control IDs, Control Titles
+        """
+        input_dir = get_git_root() / "risk-map" / "yaml"
+        generator = yaml_to_markdown.PersonaControlXRefTableGenerator(input_dir=input_dir)
+        result = generator.generate(sample_personas, "personas")
+
+        # Check header row contains expected columns (with padding)
+        header_line = result.split("\n")[0]
+        assert "Persona ID" in header_line
+        assert "Persona Title" in header_line
+        assert "Control IDs" in header_line
+        assert "Control Titles" in header_line
+
+    def test_persona_xref_controls_rejects_non_personas(self, sample_personas):
+        """
+        Test PersonaControlXRefTableGenerator rejects non-personas types.
+
+        Given: Personas data
+        When: PersonaControlXRefTableGenerator.generate() is called with ytype != "personas"
+        Then: ValueError is raised
+        """
+        generator = yaml_to_markdown.PersonaControlXRefTableGenerator()
+
+        with pytest.raises(ValueError, match="only works with 'personas'"):
+            generator.generate(sample_personas, "controls")
+
+    @pytest.mark.skipif(
+        not (get_git_root() / "risk-map" / "yaml" / "risks.yaml").exists(),
+        reason="Real risks.yaml not available",
+    )
+    def test_persona_xref_risks_inverts_mappings(self, sample_personas):
+        """
+        Test PersonaRiskXRefTableGenerator inverts persona references.
+
+        Given: Real risks.yaml with persona references
+        When: PersonaRiskXRefTableGenerator.generate() is called
+        Then: Risks are loaded and persona references are inverted correctly
+        """
+        input_dir = get_git_root() / "risk-map" / "yaml"
+        generator = yaml_to_markdown.PersonaRiskXRefTableGenerator(input_dir=input_dir)
+        result = generator.generate(sample_personas, "personas")
+
+        assert isinstance(result, str)
+        # Should contain table structure
+        assert "|" in result
+
+    @pytest.mark.skipif(
+        not (get_git_root() / "risk-map" / "yaml" / "risks.yaml").exists(),
+        reason="Real risks.yaml not available",
+    )
+    def test_persona_xref_risks_correct_columns(self, sample_personas):
+        """
+        Test PersonaRiskXRefTableGenerator creates correct columns.
+
+        Given: Personas data
+        When: PersonaRiskXRefTableGenerator.generate() is called
+        Then: Table includes Persona ID, Persona Title, Risk IDs, Risk Titles
+        """
+        input_dir = get_git_root() / "risk-map" / "yaml"
+        generator = yaml_to_markdown.PersonaRiskXRefTableGenerator(input_dir=input_dir)
+        result = generator.generate(sample_personas, "personas")
+
+        # Check header row contains expected columns (with padding)
+        header_line = result.split("\n")[0]
+        assert "Persona ID" in header_line
+        assert "Persona Title" in header_line
+        assert "Risk IDs" in header_line
+        assert "Risk Titles" in header_line
+
+    def test_persona_xref_risks_rejects_non_personas(self, sample_personas):
+        """
+        Test PersonaRiskXRefTableGenerator rejects non-personas types.
+
+        Given: Personas data
+        When: PersonaRiskXRefTableGenerator.generate() is called with ytype != "personas"
+        Then: ValueError is raised
+        """
+        generator = yaml_to_markdown.PersonaRiskXRefTableGenerator()
+
+        with pytest.raises(ValueError, match="only works with 'personas'"):
+            generator.generate(sample_personas, "risks")
+
+    def test_persona_xref_controls_empty_personas(self, tmp_path):
+        """
+        Test PersonaControlXRefTableGenerator handles empty personas list.
+
+        Given: Empty personas list and valid controls.yaml
+        When: PersonaControlXRefTableGenerator.generate() is called
+        Then: Valid table with headers is produced
+        """
+        # Create mock controls.yaml
+        controls_file = tmp_path / "controls.yaml"
+        with open(controls_file, "w") as f:
+            yaml.dump({"controls": []}, f)
+
+        empty_data = {"personas": []}
+        generator = yaml_to_markdown.PersonaControlXRefTableGenerator(input_dir=tmp_path)
+        result = generator.generate(empty_data, "personas")
+
+        assert isinstance(result, str)
+        header_line = result.split("\n")[0]
+        assert "Persona ID" in header_line
+
+    def test_persona_xref_risks_empty_personas(self, tmp_path):
+        """
+        Test PersonaRiskXRefTableGenerator handles empty personas list.
+
+        Given: Empty personas list and valid risks.yaml
+        When: PersonaRiskXRefTableGenerator.generate() is called
+        Then: Valid table with headers is produced
+        """
+        # Create mock risks.yaml
+        risks_file = tmp_path / "risks.yaml"
+        with open(risks_file, "w") as f:
+            yaml.dump({"risks": []}, f)
+
+        empty_data = {"personas": []}
+        generator = yaml_to_markdown.PersonaRiskXRefTableGenerator(input_dir=tmp_path)
+        result = generator.generate(empty_data, "personas")
+
+        assert isinstance(result, str)
+        header_line = result.split("\n")[0]
+        assert "Persona ID" in header_line
+
+    def test_persona_xref_controls_no_matching_controls(self, tmp_path):
+        """
+        Test PersonaControlXRefTableGenerator when no controls reference personas.
+
+        Given: Personas and controls.yaml with no persona references
+        When: PersonaControlXRefTableGenerator.generate() is called
+        Then: Table is generated with empty control lists for each persona
+        """
+        # Create mock controls.yaml with no persona references
+        controls_file = tmp_path / "controls.yaml"
+        controls_data = {
+            "controls": [
+                {"id": "ctrl1", "title": "Control 1"},
+                {"id": "ctrl2", "title": "Control 2"},
+            ]
+        }
+        with open(controls_file, "w") as f:
+            yaml.dump(controls_data, f)
+
+        personas_data = {
+            "personas": [
+                {"id": "personaTest1", "title": "Test Persona 1"},
+            ]
+        }
+        generator = yaml_to_markdown.PersonaControlXRefTableGenerator(input_dir=tmp_path)
+        result = generator.generate(personas_data, "personas")
+
+        assert "personaTest1" in result
+        assert "Test Persona 1" in result
+        assert isinstance(result, str)
+
+    def test_persona_xref_controls_sorted_alphabetically(self, tmp_path):
+        """
+        Test that control IDs are sorted alphabetically within each persona row.
+
+        Given: Controls with deliberately unordered IDs referencing a persona
+        When: PersonaControlXRefTableGenerator.generate() is called
+        Then: Control IDs appear in alphabetical order in output
+        """
+        # Create mock controls.yaml with unordered control IDs
+        controls_file = tmp_path / "controls.yaml"
+        controls_data = {
+            "controls": [
+                {"id": "ZZZ", "title": "Last Control", "personas": ["persona1"]},
+                {"id": "AAA", "title": "First Control", "personas": ["persona1"]},
+                {"id": "MMM", "title": "Middle Control", "personas": ["persona1"]},
+            ]
+        }
+        with open(controls_file, "w") as f:
+            yaml.dump(controls_data, f)
+
+        personas_data = {
+            "personas": [
+                {"id": "persona1", "title": "Test Persona"},
+            ]
+        }
+        generator = yaml_to_markdown.PersonaControlXRefTableGenerator(input_dir=tmp_path)
+        result = generator.generate(personas_data, "personas")
+
+        # Extract Control IDs column content for persona1 row
+        lines = result.split("\n")
+        persona1_row = [line for line in lines if "persona1" in line][0]
+
+        # IDs should appear in order: AAA, MMM, ZZZ
+        aaa_pos = persona1_row.find("AAA")
+        mmm_pos = persona1_row.find("MMM")
+        zzz_pos = persona1_row.find("ZZZ")
+
+        assert aaa_pos < mmm_pos < zzz_pos, (
+            f"Control IDs not sorted alphabetically. "
+            f"Expected AAA < MMM < ZZZ, got positions: AAA={aaa_pos}, MMM={mmm_pos}, ZZZ={zzz_pos}"
+        )
+
+    def test_persona_xref_risks_sorted_alphabetically(self, tmp_path):
+        """
+        Test that risk IDs are sorted alphabetically within each persona row.
+
+        Given: Risks with deliberately unordered IDs referencing a persona
+        When: PersonaRiskXRefTableGenerator.generate() is called
+        Then: Risk IDs appear in alphabetical order in output
+        """
+        # Create mock risks.yaml with unordered risk IDs
+        risks_file = tmp_path / "risks.yaml"
+        risks_data = {
+            "risks": [
+                {"id": "RSK-Z", "title": "Last Risk", "personas": ["persona1"]},
+                {"id": "RSK-A", "title": "First Risk", "personas": ["persona1"]},
+                {"id": "RSK-M", "title": "Middle Risk", "personas": ["persona1"]},
+            ]
+        }
+        with open(risks_file, "w") as f:
+            yaml.dump(risks_data, f)
+
+        personas_data = {
+            "personas": [
+                {"id": "persona1", "title": "Test Persona"},
+            ]
+        }
+        generator = yaml_to_markdown.PersonaRiskXRefTableGenerator(input_dir=tmp_path)
+        result = generator.generate(personas_data, "personas")
+
+        # Extract Risk IDs column content for persona1 row
+        lines = result.split("\n")
+        persona1_row = [line for line in lines if "persona1" in line][0]
+
+        # IDs should appear in order: RSK-A, RSK-M, RSK-Z
+        a_pos = persona1_row.find("RSK-A")
+        m_pos = persona1_row.find("RSK-M")
+        z_pos = persona1_row.find("RSK-Z")
+
+        assert a_pos < m_pos < z_pos, (
+            f"Risk IDs not sorted alphabetically. "
+            f"Expected RSK-A < RSK-M < RSK-Z, got positions: RSK-A={a_pos}, RSK-M={m_pos}, RSK-Z={z_pos}"
+        )
+
+
+class TestPersonaCLIIntegration:
+    """
+    Test CLI integration for personas type.
+
+    Tests that the personas type is properly integrated into the CLI argument
+    parsing, validation, and format selection.
+    """
+
+    def test_valid_types_includes_personas(self):
+        """
+        Test that 'personas' is in valid_types set.
+
+        Given: CLI validation logic
+        When: Checking valid_types
+        Then: "personas" should be a valid type
+        """
+        # This test validates that personas is added to valid_types
+        # We test this indirectly through parse_args accepting it
+        with patch("sys.argv", ["yaml_to_markdown.py", "personas"]):
+            args = yaml_to_markdown.parse_args()
+            assert "personas" in args.types
+
+    def test_all_flag_includes_personas(self):
+        """
+        Test that --all flag includes personas in types_to_convert.
+
+        Given: --all flag is used
+        When: parse_args is called with --all
+        Then: Personas should be in the list of types to convert
+        """
+        # Verify --all flag sets args.all=True, which triggers personas inclusion
+        with patch("sys.argv", ["yaml_to_markdown.py", "--all"]):
+            args = yaml_to_markdown.parse_args()
+            assert args.all is True
+            # When args.all is True, main() includes personas in types_to_convert
+            # Verify get_applicable_formats works for personas as indirect validation
+            assert yaml_to_markdown.get_applicable_formats("personas") is not None
+
+    def test_get_applicable_formats_personas(self):
+        """
+        Test get_applicable_formats returns correct formats for personas.
+
+        Given: ytype="personas"
+        When: get_applicable_formats("personas") is called
+        Then: Returns ["full", "summary", "xref-controls", "xref-risks"]
+        """
+        formats = yaml_to_markdown.get_applicable_formats("personas")
+
+        assert isinstance(formats, list)
+        assert "full" in formats
+        assert "summary" in formats
+        assert "xref-controls" in formats
+        assert "xref-risks" in formats
+        assert len(formats) == 4
+
+    def test_format_validation_personas_xref(self, tmp_path):
+        """
+        Test that xref-controls and xref-risks are valid formats for personas.
+
+        Given: Personas YAML file
+        When: convert_type is called with xref-controls or xref-risks format
+        Then: Conversion should succeed
+        """
+        # Create test personas file
+        personas_file = tmp_path / "personas.yaml"
+        test_data = {"personas": [{"id": "test1", "title": "Test Persona"}]}
+        with open(personas_file, "w") as f:
+            yaml.dump(test_data, f)
+
+        # Create mock controls.yaml and risks.yaml (required for xref generators)
+        controls_file = tmp_path / "controls.yaml"
+        with open(controls_file, "w") as f:
+            yaml.dump({"controls": []}, f)
+
+        risks_file = tmp_path / "risks.yaml"
+        with open(risks_file, "w") as f:
+            yaml.dump({"risks": []}, f)
+
+        # Test that yaml_to_markdown_table accepts these formats
+        # This validates format parameter validation
+        try:
+            # These should not raise ValueError for invalid format
+            yaml_to_markdown.yaml_to_markdown_table(personas_file, "personas", table_format="xref-controls")
+            yaml_to_markdown.yaml_to_markdown_table(personas_file, "personas", table_format="xref-risks")
+            # If we get here without exception, format validation passed
+            assert True
+        except ValueError as e:
+            if "Invalid table format" in str(e):
+                pytest.fail(f"xref formats should be valid for personas: {e}")
