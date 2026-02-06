@@ -3,14 +3,14 @@
 	"dockerFile": "Dockerfile",
 	"build": {
 		"args": {
-			"WORKSPACE": "/workspace",
+			"WORKSPACE": "/workspaces",
 			"WORKSPACE_REPO": "secure-ai-tooling"
 		}
 	},
 
 	"features": {
 		"ghcr.io/devcontainers/features/python:1": {
-	      "version": "3.11"
+	      "version": "3.14"
 	    },
 		"ghcr.io/devcontainers/features/node:1": {},
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
@@ -19,8 +19,15 @@
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 
-	"onCreateCommand": "pip install -r requirements.txt",
-	"postCreateCommand": "bash .devcontainer/setup-script",
+
+	"onCreateCommand": {
+		"pip-install": "pip install -r requirements.txt",
+		"npm-install": "npm install"
+	},
+
+	"postCreateCommand": {
+		"setup-script": "bash .devcontainer/setup-script"
+	},
 
 	// Configure tool-specific properties.
 	"customizations": {
@@ -31,7 +38,10 @@
 				"redhat.vscode-yaml"
 			],
 			"settings": {
-				"python.defaultInterpreterPath": "/usr/local/python/current/bin/python"
+		        "python.globalModuleInstallation": true,
+				"python.defaultInterpreterPath": "/usr/local/python/current/bin/python",
+		        "python.testing.pytestEnabled": true,
+ 		        "python.testing.unittestEnabled": false
 			}
 		}
 	},

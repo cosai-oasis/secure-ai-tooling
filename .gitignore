@@ -1,0 +1,12 @@
+.DS_STORE
+*.pyc
+.vscode/*
+.pnpm-store
+.pytest_cache
+node_modules
+pnpm-lock.yaml
+__pycache__
+.env
+bin/act
+.coverage
+coverage.json

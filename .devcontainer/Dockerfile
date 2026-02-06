@@ -3,7 +3,7 @@ FROM mcr.microsoft.com/playwright:v1.56.1-noble
 ARG USERNAME=vscode
 ARG USER_UID=1000
 ARG USER_GID=${USER_UID}
-ARG WORKSPACE=/workspace
+ARG WORKSPACE=/workspaces
 ARG WORKSPACE_REPO=secure-ai-tooling
 
 # Remove ubuntu user if it exists
@@ -23,6 +23,9 @@ RUN groupadd --gid ${USER_GID} ${USERNAME} && \
     && echo vscode ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/vscode \
     && chmod 0440 /etc/sudoers.d/vscode
 
+# Remove base image Python binaries without full uninstall
+RUN rm -f /usr/bin/python3 /usr/bin/python3.* /usr/bin/python
+
 # Set up workspace with proper permissions
 RUN mkdir -p ${WORKSPACE}/${WORKSPACE_REPO} && chown -R vscode:vscode ${WORKSPACE}
 
@@ -32,3 +35,4 @@ USER vscode
 RUN npx playwright@1.56.1 install chromium --with-deps
 
 WORKDIR ${WORKSPACE}/${WORKSPACE_REPO}
+ENV PATH="/usr/local/python/current/bin:${PATH}"
