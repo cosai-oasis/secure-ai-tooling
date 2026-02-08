@@ -45,13 +45,13 @@ In addition to local pre-commit validation, the repository includes GitHub Actio
 # Fix by running locally and committing the updated graphs:
 
 # For component graph issues:
-python3 .git/hooks/validate_riskmap.py --to-graph ./risk-map/diagrams/risk-map-graph.md --force
+python3 scripts/hooks/validate_riskmap.py --to-graph ./risk-map/diagrams/risk-map-graph.md --force
 
 # For control graph issues:
-python3 .git/hooks/validate_riskmap.py --to-controls-graph ./risk-map/diagrams/controls-graph.md --force
+python3 scripts/hooks/validate_riskmap.py --to-controls-graph ./risk-map/diagrams/controls-graph.md --force
 
 # For controls-to-risk graph issues:
-python3 .git/hooks/validate_riskmap.py --to-risk-graph ./risk-map/diagrams/controls-to-risk-graph.md --force
+python3 scripts/hooks/validate_riskmap.py --to-risk-graph ./risk-map/diagrams/controls-to-risk-graph.md --force
 
 # Then commit the updated graphs:
 git add risk-map/diagrams/risk-map-graph.md risk-map/diagrams/controls-graph.md risk-map/diagrams/controls-to-risk-graph.md

@@ -261,7 +261,7 @@ Automatically generates SVG files from Mermaid diagrams when `.mmd` or `.mermaid
 
 **Dependencies:**
 
-- **Node.js 18+**: Required for npx and mermaid-cli execution
+- **Node.js 22+**: Required for npx and mermaid-cli execution
 - **@mermaid-js/mermaid-cli**: Installed via `npm install` (converts .mmd to .svg)
 - **Chrome/Chromium**: Used by mermaid-cli via puppeteer for rendering SVGs
   - **Mac/Windows/Linux x64**: Automatic Chrome detection (puppeteer bundled with dependencies handles Chrome)
@@ -307,7 +307,7 @@ Automatically generates markdown tables from YAML files when staged for commit:
 
 **Dependencies:**
 
-- Python 3.10+
+- Python 3.14+
 - pandas (already in requirements.txt)
 
 **Example workflow:**

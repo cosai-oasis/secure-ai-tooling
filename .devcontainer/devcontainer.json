@@ -1,26 +1,31 @@
 {
-	"name": "Python-3",
-	"dockerFile": "Dockerfile",
+	"name": "secure-ai-tooling",
 	"build": {
+		"context": "..",
+		"dockerfile": "Dockerfile",
 		"args": {
-			"WORKSPACE": "/workspace",
+			"WORKSPACE": "/workspaces",
 			"WORKSPACE_REPO": "secure-ai-tooling"
 		}
 	},
 
 	"features": {
-		"ghcr.io/devcontainers/features/python:1": {
-	      "version": "3.11"
-	    },
-		"ghcr.io/devcontainers/features/node:1": {},
+		"ghcr.io/devcontainers/features/common-utils:2": {
+			"username": "vscode",
+			"uid": "automatic",
+			"gid": "automatic",
+			"installZsh": false,
+			"installOhMyZsh": false
+		},
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
 	},
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 
-	"onCreateCommand": "pip install -r requirements.txt",
-	"postCreateCommand": "bash .devcontainer/setup-script",
+	"onCreateCommand": {
+		"install-deps": "bash scripts/tools/install-deps.sh"
+	},
 
 	// Configure tool-specific properties.
 	"customizations": {
@@ -31,7 +36,10 @@
 				"redhat.vscode-yaml"
 			],
 			"settings": {
-				"python.defaultInterpreterPath": "/usr/local/python/current/bin/python"
+				"python.globalModuleInstallation": true,
+				"python.defaultInterpreterPath": "~/.local/share/mise/shims/python",
+				"python.testing.pytestEnabled": true,
+				"python.testing.unittestEnabled": false
 			}
 		}
 	},

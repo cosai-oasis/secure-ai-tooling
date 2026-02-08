@@ -1,14 +1,36 @@
 # Setup & Prerequisites
 
+> **Dev Container users:** If you are using the VS Code Dev Container, all setup is handled automatically by `install-deps.sh` (including pre-commit hooks). See [risk-map/docs/setup.md](../../risk-map/docs/setup.md) for Dev Container instructions. The manual steps below are for contributors working outside the container.
+
 ## Git Hooks Setup
 
 **Prerequisites:**
 
-- Python 3.10 or higher
-- Node.js 18+ and npm
+- Python 3.14 or higher
+- Node.js 22+ and npm
 - Chrome/Chromium browser (for SVG generation from Mermaid diagrams)
 
-Install dependencies and pre-commit hook (one-time setup):
+### Automated setup (recommended)
+
+`install-deps.sh` installs all dependencies, pre-commit hooks, and Playwright Chromium in one step. It is idempotent — safe to re-run at any time.
+
+```bash
+# From the repository root — installs everything and verifies
+./scripts/tools/install-deps.sh
+
+# Preview what would be installed without making changes
+./scripts/tools/install-deps.sh --dry-run
+```
+
+After installation, verify the environment:
+
+```bash
+./scripts/tools/verify-deps.sh
+```
+
+### Manual setup
+
+If you prefer to install dependencies individually:
 
 ```bash
 # Install required Python packages
@@ -17,11 +39,8 @@ pip install -r requirements.txt
 # Install Node.js dependencies (prettier, mermaid-cli, etc.)
 npm install
 
-# Install ruff (Python linter)
-pip install ruff
-
 # Install the pre-commit hook
-./install-precommit-hook.sh
+./scripts/install-precommit-hook.sh
 ```
 
 **Platform-specific Chrome/Chromium setup:**
@@ -31,22 +50,16 @@ pip install ruff
 
   ```bash
   # Option 1: Use Playwright Chromium (recommended)
-  ./install-precommit-hook.sh --install-playwright
+  ./scripts/install-precommit-hook.sh --install-playwright
 
   # Option 2: Install system Chromium
   sudo apt install chromium-browser  # Ubuntu/Debian
 
   # Option 3: Specify custom Chromium path during installation
-  ./install-precommit-hook.sh
+  ./scripts/install-precommit-hook.sh
   ```
 
 ## Requirements
-
-Install all required Python packages:
-
-```bash
-pip install -r requirements.txt
-```
 
 **Required packages** (from `requirements.txt`):
 
@@ -62,22 +75,15 @@ pip install -r requirements.txt
 - `playwright` - Provides Chromium browser for ARM64 Linux (optional)
 - `puppeteer-core` - Browser automation library used by mermaid-cli
 
-**Individual installation** (if needed):
-
-```bash
-pip install PyYAML check-jsonschema pytest ruff
-npm install prettier @mermaid-js/mermaid-cli playwright puppeteer-core
-
-# For ARM64 Linux specifically, install Playwright Chromium:
-npx playwright install chromium --with-deps
-```
-
 ## Hook Files
 
 - `hooks/pre-commit` - The main git hook script that orchestrates all validations
-- `hooks/validate_riskmap.py` - Python script for component edge validation
-- `hooks/validate_control_risk_references.py` - Python script for control-risk cross-reference validation
-- `install-precommit-hook.sh` - Installs all hooks to your local `.git/hooks/`
+- `hooks/validate_riskmap.py` - Component edge validation and graph generation
+- `hooks/validate_control_risk_references.py` - Control-risk cross-reference validation
+- `hooks/validate_framework_references.py` - Framework reference validation
+- `hooks/yaml_to_markdown.py` - Markdown table generation from YAML
+- `hooks/riskmap_validator/` - Python module with models, validator, graphing, and utilities
+- `install-precommit-hook.sh` - Installs all hooks to your local `.git/hooks/` (supports `--auto` flag for non-interactive install)
 
 ---
 
