@@ -2320,4 +2320,3 @@ body:
                 assert all("label" in opt and "value" not in opt for opt in options), (
                     f"Checkboxes {item['id']} has invalid object structure"
                 )
-

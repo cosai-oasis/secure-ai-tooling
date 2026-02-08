@@ -4,16 +4,16 @@ Generate all three graph types manually using the validation script:
 
 ```bash
 # Validate edges and generate clean component graph without debug comments
-.git/hooks/validate_riskmap.py --to-graph ./docs/component-map.md --force
+python3 scripts/hooks/validate_riskmap.py --to-graph ./docs/component-map.md --force
 
 # Generate component graph with rank debugging information
-.git/hooks/validate_riskmap.py --to-graph ./docs/debug-graph.md --debug --force
+python3 scripts/hooks/validate_riskmap.py --to-graph ./docs/debug-graph.md --debug --force
 
 # Generate control-to-component graph visualization
-.git/hooks/validate_riskmap.py --to-controls-graph ./docs/controls-graph.md --force
+python3 scripts/hooks/validate_riskmap.py --to-controls-graph ./docs/controls-graph.md --force
 
 # Generate controls-to-risk graph visualization
-.git/hooks/validate_riskmap.py --to-risk-graph ./docs/controls-risk-graph.md --force
+python3 scripts/hooks/validate_riskmap.py --to-risk-graph ./docs/controls-risk-graph.md --force
 ```
 
 ## Graph Generation Options
@@ -31,19 +31,19 @@ Test graph generation without affecting git staging:
 
 ```bash
 # Generate component graph to test output
-python3 .git/hooks/validate_riskmap.py --to-graph ./test-graph.md --force
+python3 python3 scripts/hooks/validate_riskmap.py --to-graph ./test-graph.md --force
 
 # Generate component graph with debug information to understand ranking
-python3 .git/hooks/validate_riskmap.py --to-graph ./debug-graph.md --debug --force
+python3 python3 scripts/hooks/validate_riskmap.py --to-graph ./debug-graph.md --debug --force
 
 # Generate control-to-component graph to test relationships
-python3 .git/hooks/validate_riskmap.py --to-controls-graph ./controls-test.md --force
+python3 python3 scripts/hooks/validate_riskmap.py --to-controls-graph ./controls-test.md --force
 
 # Generate controls-to-risk graph to test risk relationships
-python3 .git/hooks/validate_riskmap.py --to-risk-graph ./risk-test.md --force
+python3 python3 scripts/hooks/validate_riskmap.py --to-risk-graph ./risk-test.md --force
 
 # View help for all graph options
-python3 .git/hooks/validate_riskmap.py --help
+python3 python3 scripts/hooks/validate_riskmap.py --help
 ```
 
 ## Common Graph Generation Issues

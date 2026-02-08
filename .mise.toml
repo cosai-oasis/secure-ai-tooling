@@ -1,0 +1,7 @@
+# mise configuration for CoSAI Risk Map development environment.
+# Declares tool versions that mise installs and activates.
+# Versions must stay consistent with scripts/tools/verify-deps.sh thresholds.
+
+[tools]
+python = "3.14"
+node = "22"

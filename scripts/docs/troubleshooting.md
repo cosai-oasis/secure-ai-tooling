@@ -5,7 +5,7 @@
 If you already have git hooks and want to replace them:
 
 ```bash
-./install-precommit-hook.sh --force
+./scripts/install-precommit-hook.sh --force
 ```
 
 ## Installing with Playwright Chromium (ARM64 Linux)
@@ -14,11 +14,11 @@ For ARM64 Linux systems that need Playwright Chromium:
 
 ```bash
 # Automatically install Playwright Chromium during setup
-./install-precommit-hook.sh --install-playwright
+./scripts/install-precommit-hook.sh --install-playwright
 
 # Or install manually then run setup
 npx playwright install chromium
-./install-precommit-hook.sh
+./scripts/install-precommit-hook.sh
 ```
 
 ## Bypassing validation (emergencies only)
@@ -72,7 +72,7 @@ git commit --no-verify -m "emergency commit"
 ❌ Prettier formatting failed for risk-map/yaml/components.yaml
 ```
 
-**Fix**: Check that prettier is installed (`npm install -g prettier`) and the YAML file syntax is valid
+**Fix**: Check that prettier is installed (`npm install`) and the YAML file syntax is valid
 
 ```
 ⚠️ Warning: Could not stage formatted file risk-map/yaml/components.yaml
@@ -106,13 +106,13 @@ git commit --no-verify -m "emergency commit"
 ⚠️ npx command not found - skipping SVG generation
 ```
 
-**Fix**: Install Node.js 18+ and npm, then verify with `npx --version`
+**Fix**: Install Node.js 22+ and npm, then verify with `npx --version`
 
 ```
 ⚠️ Mermaid CLI not available - skipping SVG generation
 ```
 
-**Fix**: Install mermaid-cli: `npm install -g @mermaid-js/mermaid-cli` or `npm install`
+**Fix**: Install mermaid-cli: `npm install` (installs all npm dependencies from package.json)
 
 ```
 ❌ Failed to convert diagram.mmd
@@ -140,7 +140,7 @@ npx playwright install chromium --with-deps
 sudo apt install chromium-browser
 
 # Option 3: Re-run install with automatic Playwright setup
-./install-precommit-hook.sh --install-playwright --force
+./scripts/install-precommit-hook.sh --install-playwright --force
 ```
 
 ```
@@ -160,7 +160,7 @@ sudo apt install -y ca-certificates fonts-liberation libappindicator3-1 \
   libxcomposite1 libxdamage1 libxrandr2 libgbm1 libxss1 libu2f-udev
 
 # Re-configure pre-commit hook
-./install-precommit-hook.sh --force
+./scripts/install-precommit-hook.sh --force
 ```
 
 ```
@@ -178,7 +178,7 @@ uname -m  # Should show aarch64 or arm64
 npx playwright install chromium --with-deps
 
 # Re-run installation to detect Chromium
-./install-precommit-hook.sh --force
+./scripts/install-precommit-hook.sh --force
 ```
 
 ## Common table generation errors
@@ -200,7 +200,7 @@ npx playwright install chromium --with-deps
 pip install -r requirements.txt
 
 # Test manually
-python3 .git/hooks/yaml_to_markdown.py controls --all-formats
+python3 scripts/hooks/yaml_to_markdown.py controls --all-formats
 ```
 
 ```
@@ -214,25 +214,25 @@ python3 .git/hooks/yaml_to_markdown.py controls --all-formats
 Run the component edge validator manually:
 
 ```bash
-python3 .git/hooks/validate_riskmap.py
+python3 scripts/hooks/validate_riskmap.py
 ```
 
 Run the component edge validator even if files aren't staged:
 
 ```bash
-python3 .git/hooks/validate_riskmap.py --force
+python3 scripts/hooks/validate_riskmap.py --force
 ```
 
 Run the control-risk validator manually:
 
 ```bash
-python3 .git/hooks/validate_control_risk_references.py
+python3 scripts/hooks/validate_control_risk_references.py
 ```
 
 Force validation of control-risk references even if files aren't staged:
 
 ```bash
-python3 .git/hooks/validate_control_risk_references.py --force
+python3 scripts/hooks/validate_control_risk_references.py --force
 ```
 
 Run prettier formatting manually:

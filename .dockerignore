@@ -1,0 +1,11 @@
+.git
+node_modules
+.pytest_cache
+.ruff_cache
+.claude
+__pycache__
+*.pyc
+.env
+.env.local
+.DS_Store
+risk-map/svg

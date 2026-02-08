@@ -104,8 +104,10 @@ python scripts/hooks/validate_riskmap.py --to-risk-graph ./verify-risks.md --for
 Run the full pre-commit suite manually to catch issues early:
 
 ```bash
-# Run the full pre-commit suite manually
-.git/hooks/pre-commit --force
+# Run the key validations manually before pushing
+python scripts/hooks/validate_riskmap.py --force
+python scripts/hooks/validate_control_risk_references.py --force
+python scripts/hooks/validate_framework_references.py --force
 ```
 
 ## Collaboration
