@@ -53,6 +53,7 @@ body:
         - label: personaModelProvider
         - label: personaDataProvider
         - label: personaPlatformProvider
+        - label: personaModelServing
         - label: personaAgenticProvider
         - label: personaApplicationDeveloper
         - label: personaGovernance

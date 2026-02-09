@@ -23,6 +23,7 @@
             "personaModelProvider",
             "personaDataProvider",
             "personaPlatformProvider",
+            "personaModelServing",
             "personaAgenticProvider",
             "personaApplicationDeveloper",
             "personaGovernance",

@@ -6,7 +6,7 @@ This guide explains the CoSAI Risk Map persona model, which defines distinct set
 
 ## Overview
 
-The CoSAI Risk Map defines seven standard personas representing distinct activity clusters across the AI system lifecycle. Each persona delineates who is impacted by specific risks and who is responsible for implementing the corresponding security controls. This structure ensures clear accountability while enabling alignment with external standards such as ISO/IEC 22989.
+The CoSAI Risk Map defines eight standard personas representing distinct activity clusters across the AI system lifecycle. Each persona delineates who is impacted by specific risks and who is responsible for implementing the corresponding security controls. This structure ensures clear accountability while enabling alignment with external standards such as ISO/IEC 22989.
 
 ### Why Personas Matter
 
@@ -63,6 +63,24 @@ Actors that provide infrastructure, compute resources, APIs, and platform servic
 
 **Framework Mapping:**
 - ISO 22989: AI Partner (infrastructure provider)
+
+---
+
+### AI Model Serving (`personaModelServing`)
+
+The entity responsible for provisioning, managing, and securing the runtime environment that serves AI and ML model predictions at scale. This persona covers all model types — including classical ML, statistical, optimization, and generative AI models — focusing on the secure execution of predictions, ensuring runtime integrity, confidentiality, and availability of data and outputs. It separates its duties from model training, tuning, or registry storage (Model Provider) and physical infrastructure management (AI Platform Provider), focusing on the secure orchestration and delivery of the model serving application layer.
+
+**Responsibilities:**
+- Manage and secure model serving API endpoints and enforce application access policies
+- Perform runtime input validation and sanitization to prevent injection attacks and data poisoning
+- Execute models within isolated or confidential computing environments to protect runtime data
+- Enforce granular model and data access controls during loading and execution phases
+- Verify model and data integrity at load-time and runtime to prevent execution of tampered artifacts
+- Secure orchestration and routing of serving requests across distributed model instances
+- Monitor, validate, and sanitize model outputs to prevent data leakage and ensure safety
+- Implement runtime privacy-enhancing technologies to protect sensitive input data
+- Provide transparency mechanisms regarding model serving parameters and data usage
+- Facilitate red teaming and adversarial simulation to validate model serving security
 
 ---
 
@@ -173,6 +191,7 @@ When updating existing risks and controls to use the new persona model:
 3. **Consider additional personas** that may apply:
    - Does the control involve data handling? Add `personaDataProvider`
    - Does the control involve infrastructure? Add `personaPlatformProvider`
+   - Does the control involve model serving? Add `personaModelServing`
    - Does the control involve agentic systems? Add `personaAgenticProvider`
    - Does the control involve governance/compliance? Add `personaGovernance`
 
@@ -191,6 +210,7 @@ Personas can be mapped to actors defined in external frameworks. Currently, the 
 | Model Provider | AI Producer |
 | Data Provider | AI Partner (data supplier) |
 | AI Platform Provider | AI Partner (infrastructure provider) |
+| AI Model Serving | (No direct mapping) |
 | Agentic Platform Provider | AI Partner (tooling provider) |
 | Application Developer | AI Consumer (application builder) |
 | AI System Users | AI Consumer (end user) |

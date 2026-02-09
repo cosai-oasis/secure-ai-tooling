@@ -391,6 +391,16 @@ This ensures validation catches attempts to use ISO 22989 in risks/controls (whe
 
 ---
 
+## Addendum: personaModelServing (GH #136)
+
+An 8th persona, `personaModelServing` (AI Model Serving), was added to fill the gap between AI Platform Provider (infrastructure/compute) and Application Developer (application integration). This persona covers the model serving runtime layer — provisioning, managing, and securing the environment that serves AI and ML model predictions at scale. It applies to all model types (classical ML, statistical, optimization, and generative AI), not only GenAI inference.
+
+No ISO 22989 mapping was identified for this persona. No identification questions are defined initially; the persona's scope is sufficiently distinct from its neighbors.
+
+See [guide-personas.md](../guide-personas.md#ai-model-serving-personamodelserving) for the full definition and responsibilities.
+
+---
+
 ## References
 
 ### Standards

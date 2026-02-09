@@ -21,7 +21,7 @@ description:
     <a href="controls.html">controls</a> that mitigate them, based on their
     activities and responsibilities in the AI ecosystem.
   - >
-    CoSAI identifies seven standard personas representing distinct sets of
+    CoSAI identifies eight standard personas representing distinct sets of
     activities across AI system development, deployment, and governance.
     Legacy personas from earlier versions are retained for backward
     compatibility but marked as deprecated.
@@ -80,6 +80,32 @@ personas:
       - API security and rate limiting
       - Compute resource allocation
       - Model hosting and serving
+
+  - id: personaModelServing
+    title: AI Model Serving
+    description:
+      - >
+        The entity responsible for provisioning, managing, and securing the
+        runtime environment that serves AI and ML model predictions at scale.
+        This persona covers all model types — including classical ML,
+        statistical, optimization, and generative AI models — focusing on the
+        secure execution of predictions, ensuring runtime integrity,
+        confidentiality, and availability of data and outputs. It separates its
+        duties from model training, tuning, or registry storage (Model Provider)
+        and physical infrastructure management (AI Platform Provider), focusing
+        on the secure orchestration and delivery of the model serving
+        application layer.
+    responsibilities:
+      - Manage and secure model serving API endpoints and enforce application access policies
+      - Perform runtime input validation and sanitization to prevent injection attacks and data poisoning
+      - Execute models within isolated or confidential computing environments to protect runtime data
+      - Enforce granular model and data access controls during loading and execution phases
+      - Verify model and data integrity at load-time and runtime to prevent execution of tampered artifacts
+      - Secure orchestration and routing of serving requests across distributed model instances
+      - Monitor, validate, and sanitize model outputs to prevent data leakage and ensure safety
+      - Implement runtime privacy-enhancing technologies to protect sensitive input data
+      - Provide transparency mechanisms regarding model serving parameters and data usage
+      - Facilitate red teaming and adversarial simulation to validate model serving security
 
   - id: personaAgenticProvider
     title: Agentic Platform and Framework Providers
