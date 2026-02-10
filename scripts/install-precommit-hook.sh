@@ -37,134 +37,173 @@ configure_chromium_path() {
 
     case "$PLATFORM" in
         "mac"|"windows"|"linux-x64")
-            echo ""
-            echo "🌐 Chrome Configuration"
-            echo "For most users, mermaid-cli can use its bundled Chrome automatically."
-            echo ""
-            echo "Options:"
-            echo "  1) Use automatic Chrome detection (recommended)"
-            echo "  2) Specify custom Chrome/Chromium path"
-            echo ""
-            read -p "Choose option (1-2) [1]: " chrome_choice
-            chrome_choice=${chrome_choice:-1}
+            if [[ "$AUTO_MODE" == "true" ]]; then
+                echo "✅ Using automatic Chrome detection (auto mode)"
+                chromium_path=""
+            else
+                echo ""
+                echo "🌐 Chrome Configuration"
+                echo "For most users, mermaid-cli can use its bundled Chrome automatically."
+                echo ""
+                echo "Options:"
+                echo "  1) Use automatic Chrome detection (recommended)"
+                echo "  2) Specify custom Chrome/Chromium path"
+                echo ""
+                read -p "Choose option (1-2) [1]: " chrome_choice
+                chrome_choice=${chrome_choice:-1}
 
-            case "$chrome_choice" in
-                1)
-                    echo "✅ Using automatic Chrome detection"
-                    chromium_path=""
-                    ;;
-                2)
-                    echo ""
-                    read -p "Enter full path to Chrome/Chromium executable: " custom_path
-                    if [[ -x "$custom_path" ]]; then
-                        chromium_path="$custom_path"
-                        echo "✅ Using custom Chrome at: $custom_path"
-                    else
-                        echo "⚠️  Warning: Path '$custom_path' not found or not executable"
-                        echo "   Falling back to automatic detection"
+                case "$chrome_choice" in
+                    1)
+                        echo "✅ Using automatic Chrome detection"
                         chromium_path=""
-                    fi
-                    ;;
-                *)
-                    echo "Invalid choice. Using automatic detection."
-                    chromium_path=""
-                    ;;
-            esac
+                        ;;
+                    2)
+                        echo ""
+                        read -p "Enter full path to Chrome/Chromium executable: " custom_path
+                        if [[ -x "$custom_path" ]]; then
+                            chromium_path="$custom_path"
+                            echo "✅ Using custom Chrome at: $custom_path"
+                        else
+                            echo "⚠️  Warning: Path '$custom_path' not found or not executable"
+                            echo "   Falling back to automatic detection"
+                            chromium_path=""
+                        fi
+                        ;;
+                    *)
+                        echo "Invalid choice. Using automatic detection."
+                        chromium_path=""
+                        ;;
+                esac
+            fi
             ;;
 
         "linux-arm64")
-            echo ""
-            echo "🚨 ARM64 Linux Detected"
-            echo "Chrome/Chrome-for-testing are not available for ARM64 Linux from Google."
-            echo "You need to provide an alternative Chromium installation."
-            echo ""
-            echo "Options:"
-            echo "  1) Use Playwright's Chromium (recommended)"
-            echo "  2) Use system-installed Chromium"
-            echo "  3) Specify custom Chromium path"
-            echo ""
-            read -p "Choose option (1-3) [1]: " arm_choice
-            arm_choice=${arm_choice:-1}
+            if [[ "$AUTO_MODE" == "true" ]]; then
+                # Non-interactive: use Playwright Chromium (same as option 1)
+                echo "🤖 Auto mode: Using Playwright Chromium for ARM64 Linux"
+                echo "📦 Checking for Playwright Chromium..."
+                if ! npx  --version </dev/null &>/dev/null; then
+                    echo "❌ npx not found. Please install Node.js first."
+                    exit 1
+                fi
 
-            case "$arm_choice" in
-                1)
-                    echo "📦 Checking for Playwright Chromium..."
-                    if ! npx  --version &>/dev/null; then
-                        echo "❌ npx not found. Please install Node.js first."
+                if ! npx playwright -V </dev/null &> /dev/null && [[ "$INSTALL_PLAYWRIGHT" == "true" ]]; then
+                    echo "   Playwright Chromium not found. Installing..."
+                    if ! npx playwright install chromium --with-deps </dev/null; then
+                        echo "❌ Failed to install Playwright Chromium"
+                        echo "   Exiting..."
                         exit 1
                     fi
+                    echo "✅ Playwright Chromium installed ..."
+                fi
 
-                    if ! npx playwright -V &> /dev/null && [[ "$INSTALL_PLAYWRIGHT" == "true" ]]; then
-                        echo "   Playwright Chromium not found. Installing..."
-                        if ! npx playwright install chromium --with-deps; then
-                            echo "❌ Failed to install Playwright Chromium"
-                            echo "   Exiting..."
+                local BROWSER_PATHS="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}"
+                local CHROME_EXEC=$(find "$BROWSER_PATHS" -name "headless_shell" -type f 2>/dev/null | head -1)
+                if [ -z "$CHROME_EXEC" ]; then
+                    CHROME_EXEC=$(find "$BROWSER_PATHS" -name "chrome" -type f 2>/dev/null | head -1)
+                fi
+
+                if [[ -n "$CHROME_EXEC" && -x "$CHROME_EXEC" ]]; then
+                    chromium_path="$CHROME_EXEC"
+                    echo "✅ Found Playwright Chromium at: $CHROME_EXEC"
+                else
+                    echo "   Playwright Chromium not found."
+                    chromium_path=""
+                fi
+            else
+                echo ""
+                echo "🚨 ARM64 Linux Detected"
+                echo "Chrome/Chrome-for-testing are not available for ARM64 Linux from Google."
+                echo "You need to provide an alternative Chromium installation."
+                echo ""
+                echo "Options:"
+                echo "  1) Use Playwright's Chromium (recommended)"
+                echo "  2) Use system-installed Chromium"
+                echo "  3) Specify custom Chromium path"
+                echo ""
+                read -p "Choose option (1-3) [1]: " arm_choice
+                arm_choice=${arm_choice:-1}
+
+                case "$arm_choice" in
+                    1)
+                        echo "📦 Checking for Playwright Chromium..."
+                        if ! npx  --version </dev/null &>/dev/null; then
+                            echo "❌ npx not found. Please install Node.js first."
                             exit 1
                         fi
-                        echo "✅ Playwright Chromium installed ..."
-                    fi
 
-                    # Check if playwright chromium is already installed
-                    local BROWSER_PATHS="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}"
-
-                    local CHROME_EXEC=$(find "$BROWSER_PATHS" -name "headless_shell" -type f 2>/dev/null | head -1)
-
-                    if [ -z "$CHROME_EXEC" ]; then
-                      CHROME_EXEC=$(find "$BROWSER_PATHS" -name "chrome" -type f 2>/dev/null | head -1)
-                    fi
-
-                    local playwright_path=$CHROME_EXEC
-
-                    if [[ -n "$playwright_path" && -x "$playwright_path" ]]; then
-                        chromium_path="$playwright_path"
-                        echo "✅ Found existing Playwright Chromium at: $playwright_path"
-                    else
-                        echo "   Playwright Chromium not found."
-                        echo "   Please install Playwright manually or run:"
-                        echo "   $0 --install-playwright"
-                        chromium_path=""
-                    fi
-                    ;;
-                2)
-                    # Try common system chromium locations
-                    local system_paths=(
-                        "/usr/bin/chromium"
-                        "/usr/bin/chromium-browser"
-                        "/snap/bin/chromium"
-                        "/usr/bin/google-chrome"
-                    )
-
-                    for path in "${system_paths[@]}"; do
-                        if [[ -x "$path" ]]; then
-                            chromium_path="$path"
-                            echo "✅ Found system Chromium at: $path"
-                            break
+                        if ! npx playwright -V </dev/null &> /dev/null && [[ "$INSTALL_PLAYWRIGHT" == "true" ]]; then
+                            echo "   Playwright Chromium not found. Installing..."
+                            if ! npx playwright install chromium --with-deps </dev/null; then
+                                echo "❌ Failed to install Playwright Chromium"
+                                echo "   Exiting..."
+                                exit 1
+                            fi
+                            echo "✅ Playwright Chromium installed ..."
                         fi
-                    done
 
-                    if [[ -z "$chromium_path" ]]; then
-                        echo "⚠️  No system Chromium found in standard locations"
-                        echo "   You may need to install chromium: sudo apt install chromium-browser"
+                        # Check if playwright chromium is already installed
+                        local BROWSER_PATHS="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}"
+
+                        local CHROME_EXEC=$(find "$BROWSER_PATHS" -name "headless_shell" -type f 2>/dev/null | head -1)
+
+                        if [ -z "$CHROME_EXEC" ]; then
+                          CHROME_EXEC=$(find "$BROWSER_PATHS" -name "chrome" -type f 2>/dev/null | head -1)
+                        fi
+
+                        local playwright_path=$CHROME_EXEC
+
+                        if [[ -n "$playwright_path" && -x "$playwright_path" ]]; then
+                            chromium_path="$playwright_path"
+                            echo "✅ Found existing Playwright Chromium at: $playwright_path"
+                        else
+                            echo "   Playwright Chromium not found."
+                            echo "   Please install Playwright manually or run:"
+                            echo "   $0 --install-playwright"
+                            chromium_path=""
+                        fi
+                        ;;
+                    2)
+                        # Try common system chromium locations
+                        local system_paths=(
+                            "/usr/bin/chromium"
+                            "/usr/bin/chromium-browser"
+                            "/snap/bin/chromium"
+                            "/usr/bin/google-chrome"
+                        )
+
+                        for path in "${system_paths[@]}"; do
+                            if [[ -x "$path" ]]; then
+                                chromium_path="$path"
+                                echo "✅ Found system Chromium at: $path"
+                                break
+                            fi
+                        done
+
+                        if [[ -z "$chromium_path" ]]; then
+                            echo "⚠️  No system Chromium found in standard locations"
+                            echo "   You may need to install chromium: sudo apt install chromium-browser"
+                            chromium_path=""
+                        fi
+                        ;;
+                    3)
+                        echo ""
+                        read -p "Enter full path to Chromium executable: " custom_path
+                        if [[ -x "$custom_path" ]]; then
+                            chromium_path="$custom_path"
+                            echo "✅ Using custom Chromium at: $custom_path"
+                        else
+                            echo "❌ Error: Path '$custom_path' not found or not executable"
+                            echo "   SVG generation will likely fail without a valid Chromium path"
+                            chromium_path="$custom_path"  # Keep it anyway, user might fix later
+                        fi
+                        ;;
+                    *)
+                        echo "Invalid choice. Using Playwright Chromium option."
                         chromium_path=""
-                    fi
-                    ;;
-                3)
-                    echo ""
-                    read -p "Enter full path to Chromium executable: " custom_path
-                    if [[ -x "$custom_path" ]]; then
-                        chromium_path="$custom_path"
-                        echo "✅ Using custom Chromium at: $custom_path"
-                    else
-                        echo "❌ Error: Path '$custom_path' not found or not executable"
-                        echo "   SVG generation will likely fail without a valid Chromium path"
-                        chromium_path="$custom_path"  # Keep it anyway, user might fix later
-                    fi
-                    ;;
-                *)
-                    echo "Invalid choice. Using Playwright Chromium option."
-                    chromium_path=""
-                    ;;
-            esac
+                        ;;
+                esac
+            fi
             ;;
 
         "unknown")
@@ -180,6 +219,7 @@ configure_chromium_path() {
 # Parse command line arguments
 FORCE=false
 INSTALL_PLAYWRIGHT=false
+AUTO_MODE=false
 PRECOMMIT_SRC="scripts/hooks/pre-commit"
 VALIDATOR_SRC="scripts/hooks/validate_riskmap.py"
 VALIDATOR_MODULE_SRC="scripts/hooks/riskmap_validator"
@@ -197,10 +237,15 @@ while [[ $# -gt 0 ]]; do
             INSTALL_PLAYWRIGHT=true
             shift
             ;;
+        --auto)
+            AUTO_MODE=true
+            shift
+            ;;
         --help|-h)
-            echo "Usage: $0 [--force] [--install-playwright]"
+            echo "Usage: $0 [--force] [--install-playwright] [--auto]"
             echo "  --force, -f              Overwrite existing hooks"
             echo "  --install-playwright     Automatically install Playwright Chromium for ARM64 Linux"
+            echo "  --auto                   Non-interactive mode: skip all prompts, use sensible defaults"
             echo "  --help, -h               Show this help message"
             echo ""
             echo "This script installs:"

@@ -2,8 +2,8 @@
 """
 Tests for personas.schema.json schema updates
 
-This module tests the expanded persona schema supporting 7 CoSAI personas with:
-- New persona ID enum values (7 new + 2 legacy personas)
+This module tests the expanded persona schema supporting 8 CoSAI personas with:
+- New persona ID enum values (8 new + 2 legacy personas)
 - Optional fields: deprecated, mappings, responsibilities, identificationQuestions
 - Backward compatibility with existing personas.yaml
 

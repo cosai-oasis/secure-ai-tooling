@@ -320,8 +320,9 @@ All metadata fields are validated against their respective schemas:
 
 ```bash
 # Run full validation including schema checks, formatting, and cross-references
-# (Requires pre-commit hook installation via ./scripts/install-pre-commit-hook.sh)
-.git/hooks/pre-commit --force
+python scripts/hooks/validate_riskmap.py --force
+python scripts/hooks/validate_control_risk_references.py --force
+python scripts/hooks/validate_framework_references.py --force
 ```
 
 ### Validation Rules

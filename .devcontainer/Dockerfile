@@ -1,34 +1,62 @@
-FROM mcr.microsoft.com/playwright:v1.56.1-noble
+FROM ubuntu:noble
 
-ARG USERNAME=vscode
-ARG USER_UID=1000
-ARG USER_GID=${USER_UID}
-ARG WORKSPACE=/workspace
+ARG WORKSPACE=/workspaces
 ARG WORKSPACE_REPO=secure-ai-tooling
 
-# Remove ubuntu user if it exists
-RUN userdel -r ubuntu 2>/dev/null || true
-
-# Install essential system packages
-RUN apt-get update && apt-get install -y \
-    sudo \
+# Install system packages: core utilities + Playwright Chromium system dependencies
+# Core: build-essential, bash-completion, vim, curl, wget, git, ca-certificates
+# Note: sudo is provided by the common-utils devcontainer feature, not installed here
+# Playwright deps: 31 packages needed by Chromium on Ubuntu Noble (with t64 suffixes)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     bash-completion \
     vim \
+    curl \
+    wget \
+    git \
+    ca-certificates \
+    libasound2t64 \
+    libatk-bridge2.0-0t64 \
+    libatk1.0-0t64 \
+    libatspi2.0-0t64 \
+    libcairo2 \
+    libcups2t64 \
+    libdbus-1-3 \
+    libdrm2 \
+    libegl1 \
+    libgbm1 \
+    libglib2.0-0t64 \
+    libgtk-3-0t64 \
+    libnspr4 \
+    libnss3 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxkbcommon0 \
+    libxrandr2 \
+    xvfb \
+    fonts-noto-color-emoji \
+    fonts-unifont \
+    libfontconfig1 \
+    libfreetype6 \
+    libharfbuzz0b \
     && rm -rf /var/lib/apt/lists/*
 
-# Create vscode user with different IDs to avoid conflicts
-RUN groupadd --gid ${USER_GID} ${USERNAME} && \
-    useradd --uid ${USER_UID} --gid ${USER_GID} --shell /bin/bash --create-home vscode \
-    && echo vscode ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/vscode \
-    && chmod 0440 /etc/sudoers.d/vscode
+# Install mise binary system-wide (cached in Docker layer).
+# Tool installations (Python, Node) happen per-user in install-deps.sh.
+RUN curl -fsSL https://mise.run | MISE_INSTALL_PATH=/usr/local/bin/mise sh
 
-# Set up workspace with proper permissions
-RUN mkdir -p ${WORKSPACE}/${WORKSPACE_REPO} && chown -R vscode:vscode ${WORKSPACE}
+# Create workspace directory (user creation handled by common-utils feature)
+RUN mkdir -p ${WORKSPACE}/${WORKSPACE_REPO}
 
-# Pre-install Playwright chromium browser as vscode user
-# This is the slowest part of container setup, so we bake it into the image
-USER vscode
-RUN npx playwright@1.56.1 install chromium --with-deps
+# Copy .mise.toml so mise can read tool versions during onCreateCommand
+# (overwritten by workspace mount, but available during build)
+COPY .mise.toml ${WORKSPACE}/${WORKSPACE_REPO}/.mise.toml
 
 WORKDIR ${WORKSPACE}/${WORKSPACE_REPO}

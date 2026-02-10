@@ -6,14 +6,14 @@ The `pre-commit` hook and all individual validation scripts support the `--force
 # Validating unstaged files during development...
 # Note: --force validates all relevant files, not just those staged for commit
 
-# Run all validation steps
-.git/hooks/pre-commit --force
+# Run component edge validation
+python scripts/hooks/validate_riskmap.py --force
 
-# Run component edge validation-only
-.git/hooks/validate_riskmap.py --force
+# Run control-to-risk reference validation
+python scripts/hooks/validate_control_risk_references.py --force
 
-# Run control-to-risk reference validation-only
-.git/hooks/validate_control_risk_references.py --force
+# Run framework reference validation
+python scripts/hooks/validate_framework_references.py --force
 ```
 
 ---
