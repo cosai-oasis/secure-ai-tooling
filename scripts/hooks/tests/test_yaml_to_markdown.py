@@ -1580,3 +1580,810 @@ class TestPersonaCLIIntegration:
         except ValueError as e:
             if "Invalid table format" in str(e):
                 pytest.fail(f"xref formats should be valid for personas: {e}")
+
+
+class TestFlatPersonaXRefGenerators:
+    """
+    Test flat persona cross-reference generators that produce one row per mapping.
+
+    Tests the FlatPersonaControlXRefTableGenerator and FlatPersonaRiskXRefTableGenerator
+    classes which create one table row for each persona-item relationship instead of
+    packing multiple IDs into single cells with <br> separators.
+    """
+
+    def test_flat_xref_controls_one_row_per_mapping(self, tmp_path):
+        """
+        Test FlatPersonaControlXRefTableGenerator creates one row per persona-control mapping.
+
+        Given: Mock controls.yaml where 1 persona has 2 controls referencing it
+        When: FlatPersonaControlXRefTableGenerator.generate() is called
+        Then: Exactly 2 data rows are produced, each with the persona and one control
+        """
+        # Create mock controls.yaml with 2 controls referencing same persona
+        controls_file = tmp_path / "controls.yaml"
+        controls_data = {
+            "controls": [
+                {"id": "ctrl1", "title": "Control 1", "personas": ["persona1"]},
+                {"id": "ctrl2", "title": "Control 2", "personas": ["persona1"]},
+            ]
+        }
+        with open(controls_file, "w") as f:
+            yaml.dump(controls_data, f)
+
+        personas_data = {"personas": [{"id": "persona1", "title": "Test Persona"}]}
+
+        generator = yaml_to_markdown.FlatPersonaControlXRefTableGenerator(input_dir=tmp_path)
+        result = generator.generate(personas_data, "personas")
+
+        # Parse table: skip header (line 0) and separator (line 1), count data rows
+        lines = result.split("\n")
+        data_rows = [line for line in lines[2:] if line.strip()]
+        assert len(data_rows) == 2
+
+        # Each row should contain persona ID, persona title, and one control ID + title
+        assert "persona1" in data_rows[0]
+        assert "Test Persona" in data_rows[0]
+        assert "ctrl1" in data_rows[0] or "ctrl2" in data_rows[0]
+
+        assert "persona1" in data_rows[1]
+        assert "Test Persona" in data_rows[1]
+        assert "ctrl1" in data_rows[1] or "ctrl2" in data_rows[1]
+
+    def test_flat_xref_controls_column_headers(self, tmp_path):
+        """
+        Test FlatPersonaControlXRefTableGenerator uses singular column headers.
+
+        Given: Mock controls.yaml and personas data
+        When: FlatPersonaControlXRefTableGenerator.generate() is called
+        Then: Header contains singular: "Persona ID", "Persona Title", "Control ID", "Control Title"
+        """
+        controls_file = tmp_path / "controls.yaml"
+        with open(controls_file, "w") as f:
+            yaml.dump({"controls": [{"id": "ctrl1", "title": "Control 1", "personas": ["p1"]}]}, f)
+
+        personas_data = {"personas": [{"id": "p1", "title": "Persona 1"}]}
+
+        generator = yaml_to_markdown.FlatPersonaControlXRefTableGenerator(input_dir=tmp_path)
+        result = generator.generate(personas_data, "personas")
+
+        header_line = result.split("\n")[0]
+        assert "Persona ID" in header_line
+        assert "Persona Title" in header_line
+        assert "Control ID" in header_line
+        assert "Control Title" in header_line
+        # Should NOT have plural forms
+        assert "Control IDs" not in header_line
+        assert "Control Titles" not in header_line
+
+    def test_flat_xref_risks_column_headers(self, tmp_path):
+        """
+        Test FlatPersonaRiskXRefTableGenerator uses singular column headers.
+
+        Given: Mock risks.yaml and personas data
+        When: FlatPersonaRiskXRefTableGenerator.generate() is called
+        Then: Header contains singular: "Persona ID", "Persona Title", "Risk ID", "Risk Title"
+        """
+        risks_file = tmp_path / "risks.yaml"
+        with open(risks_file, "w") as f:
+            yaml.dump({"risks": [{"id": "risk1", "title": "Risk 1", "personas": ["p1"]}]}, f)
+
+        personas_data = {"personas": [{"id": "p1", "title": "Persona 1"}]}
+
+        generator = yaml_to_markdown.FlatPersonaRiskXRefTableGenerator(input_dir=tmp_path)
+        result = generator.generate(personas_data, "personas")
+
+        header_line = result.split("\n")[0]
+        assert "Persona ID" in header_line
+        assert "Persona Title" in header_line
+        assert "Risk ID" in header_line
+        assert "Risk Title" in header_line
+        # Should NOT have plural forms
+        assert "Risk IDs" not in header_line
+        assert "Risk Titles" not in header_line
+
+    def test_flat_xref_controls_sorted_by_persona_then_item(self, tmp_path):
+        """
+        Test flat control xref rows are sorted by persona ID first, then control ID.
+
+        Given: 2 personas, 3 controls with varying persona references
+        When: FlatPersonaControlXRefTableGenerator.generate() is called
+        Then: Rows are sorted by persona ID first, then control ID within each persona group
+        """
+        controls_file = tmp_path / "controls.yaml"
+        controls_data = {
+            "controls": [
+                {"id": "ctrlZ", "title": "Control Z", "personas": ["personaB"]},
+                {"id": "ctrlA", "title": "Control A", "personas": ["personaA"]},
+                {"id": "ctrlB", "title": "Control B", "personas": ["personaA", "personaB"]},
+            ]
+        }
+        with open(controls_file, "w") as f:
+            yaml.dump(controls_data, f)
+
+        personas_data = {
+            "personas": [
+                {"id": "personaA", "title": "Persona A"},
+                {"id": "personaB", "title": "Persona B"},
+            ]
+        }
+
+        generator = yaml_to_markdown.FlatPersonaControlXRefTableGenerator(input_dir=tmp_path)
+        result = generator.generate(personas_data, "personas")
+
+        lines = result.split("\n")
+        data_rows = [line for line in lines[2:] if line.strip()]
+
+        # Should have: personaA+ctrlA, personaA+ctrlB, personaB+ctrlB, personaB+ctrlZ
+        # Verify personaA rows come before personaB rows
+        persona_a_rows = [i for i, row in enumerate(data_rows) if "personaA" in row]
+        persona_b_rows = [i for i, row in enumerate(data_rows) if "personaB" in row]
+
+        assert len(persona_a_rows) > 0
+        assert len(persona_b_rows) > 0
+        assert max(persona_a_rows) < min(persona_b_rows), "personaA rows should come before personaB rows"
+
+        # Within personaA, ctrlA should come before ctrlB
+        persona_a_control_order = [row for row in data_rows if "personaA" in row]
+        ctrl_a_idx = next(i for i, row in enumerate(persona_a_control_order) if "ctrlA" in row)
+        ctrl_b_idx = next(i for i, row in enumerate(persona_a_control_order) if "ctrlB" in row)
+        assert ctrl_a_idx < ctrl_b_idx, "ctrlA should appear before ctrlB within personaA group"
+
+    def test_flat_xref_risks_one_row_per_mapping(self, tmp_path):
+        """
+        Test FlatPersonaRiskXRefTableGenerator creates one row per persona-risk mapping.
+
+        Given: Mock risks.yaml where 1 persona has 3 risks referencing it
+        When: FlatPersonaRiskXRefTableGenerator.generate() is called
+        Then: Exactly 3 data rows are produced
+        """
+        risks_file = tmp_path / "risks.yaml"
+        risks_data = {
+            "risks": [
+                {"id": "risk1", "title": "Risk 1", "personas": ["persona1"]},
+                {"id": "risk2", "title": "Risk 2", "personas": ["persona1"]},
+                {"id": "risk3", "title": "Risk 3", "personas": ["persona1"]},
+            ]
+        }
+        with open(risks_file, "w") as f:
+            yaml.dump(risks_data, f)
+
+        personas_data = {"personas": [{"id": "persona1", "title": "Test Persona"}]}
+
+        generator = yaml_to_markdown.FlatPersonaRiskXRefTableGenerator(input_dir=tmp_path)
+        result = generator.generate(personas_data, "personas")
+
+        lines = result.split("\n")
+        data_rows = [line for line in lines[2:] if line.strip()]
+        assert len(data_rows) == 3
+
+    def test_flat_xref_controls_empty_personas(self, tmp_path):
+        """
+        Test flat control xref with empty personas list.
+
+        Given: Empty personas list with empty controls.yaml
+        When: FlatPersonaControlXRefTableGenerator.generate() is called
+        Then: Valid table with headers but no data rows
+        """
+        controls_file = tmp_path / "controls.yaml"
+        with open(controls_file, "w") as f:
+            yaml.dump({"controls": []}, f)
+
+        personas_data = {"personas": []}
+
+        generator = yaml_to_markdown.FlatPersonaControlXRefTableGenerator(input_dir=tmp_path)
+        result = generator.generate(personas_data, "personas")
+
+        assert isinstance(result, str)
+        header_line = result.split("\n")[0]
+        assert "Persona ID" in header_line
+
+        lines = result.split("\n")
+        data_rows = [line for line in lines[2:] if line.strip()]
+        assert len(data_rows) == 0
+
+    def test_flat_xref_controls_no_matching_items(self, tmp_path):
+        """
+        Test flat control xref when persona exists but no controls reference it.
+
+        Given: Persona exists but no controls reference it
+        When: FlatPersonaControlXRefTableGenerator.generate() is called
+        Then: Table has headers but no data rows for that persona
+        """
+        controls_file = tmp_path / "controls.yaml"
+        controls_data = {
+            "controls": [
+                {"id": "ctrl1", "title": "Control 1", "personas": ["otherPersona"]},
+            ]
+        }
+        with open(controls_file, "w") as f:
+            yaml.dump(controls_data, f)
+
+        personas_data = {"personas": [{"id": "persona1", "title": "Test Persona"}]}
+
+        generator = yaml_to_markdown.FlatPersonaControlXRefTableGenerator(input_dir=tmp_path)
+        result = generator.generate(personas_data, "personas")
+
+        lines = result.split("\n")
+        data_rows = [line for line in lines[2:] if line.strip()]
+        # No controls reference persona1, so no data rows
+        assert len(data_rows) == 0
+
+    def test_flat_xref_rejects_non_persona_type(self, tmp_path):
+        """
+        Test flat persona xref generators reject non-personas types.
+
+        Given: Controls data
+        When: FlatPersonaControlXRefTableGenerator.generate() is called with ytype="controls"
+        Then: ValueError is raised with "only works with 'personas'" message
+        """
+        controls_file = tmp_path / "controls.yaml"
+        with open(controls_file, "w") as f:
+            yaml.dump({"controls": []}, f)
+
+        generator = yaml_to_markdown.FlatPersonaControlXRefTableGenerator(input_dir=tmp_path)
+
+        with pytest.raises(ValueError, match="only works with 'personas'"):
+            generator.generate({"controls": []}, "controls")
+
+
+class TestFlatControlXRefGenerators:
+    """
+    Test flat control cross-reference generators that produce one row per mapping.
+
+    Tests the FlatRiskXRefTableGenerator and FlatComponentXRefTableGenerator classes
+    which create one table row for each control-item relationship instead of packing
+    multiple IDs into single cells with <br> separators.
+    """
+
+    def test_flat_xref_risks_one_row_per_control_risk(self, tmp_path):
+        """
+        Test FlatRiskXRefTableGenerator creates one row per control-risk mapping.
+
+        Given: Controls data with 1 control having risks: ["DP", "MST", "PIJ"]
+        When: FlatRiskXRefTableGenerator.generate() is called
+        Then: Exactly 3 data rows are produced, each with control and one risk
+        """
+        # Create mock risks.yaml for title lookups
+        risks_file = tmp_path / "risks.yaml"
+        risks_data = {
+            "risks": [
+                {"id": "DP", "title": "Data Poisoning"},
+                {"id": "MST", "title": "Model Source Tampering"},
+                {"id": "PIJ", "title": "Prompt Injection"},
+            ]
+        }
+        with open(risks_file, "w") as f:
+            yaml.dump(risks_data, f)
+
+        controls_data = {
+            "controls": [
+                {"id": "ctrl1", "title": "Control 1", "risks": ["DP", "MST", "PIJ"]},
+            ]
+        }
+
+        generator = yaml_to_markdown.FlatRiskXRefTableGenerator(input_dir=tmp_path)
+        result = generator.generate(controls_data, "controls")
+
+        lines = result.split("\n")
+        data_rows = [line for line in lines[2:] if line.strip()]
+        assert len(data_rows) == 3
+
+        # Each row should contain control ID+title and one risk ID+title
+        for row in data_rows:
+            assert "ctrl1" in row
+            assert "Control 1" in row
+            # Each row should contain exactly one risk
+            risk_count = sum(1 for risk_id in ["DP", "MST", "PIJ"] if risk_id in row)
+            assert risk_count == 1
+
+    def test_flat_xref_risks_column_headers(self, tmp_path):
+        """
+        Test FlatRiskXRefTableGenerator uses singular column headers.
+
+        Given: Controls data and mock risks.yaml
+        When: FlatRiskXRefTableGenerator.generate() is called
+        Then: Header contains singular: "Control ID", "Control Title", "Risk ID", "Risk Title"
+        """
+        risks_file = tmp_path / "risks.yaml"
+        with open(risks_file, "w") as f:
+            yaml.dump({"risks": [{"id": "DP", "title": "Data Poisoning"}]}, f)
+
+        controls_data = {"controls": [{"id": "ctrl1", "title": "Control 1", "risks": ["DP"]}]}
+
+        generator = yaml_to_markdown.FlatRiskXRefTableGenerator(input_dir=tmp_path)
+        result = generator.generate(controls_data, "controls")
+
+        header_line = result.split("\n")[0]
+        assert "Control ID" in header_line
+        assert "Control Title" in header_line
+        assert "Risk ID" in header_line
+        assert "Risk Title" in header_line
+        # Should NOT have plural forms
+        assert "Risk IDs" not in header_line
+        assert "Risk Titles" not in header_line
+
+    def test_flat_xref_components_column_headers(self, tmp_path):
+        """
+        Test FlatComponentXRefTableGenerator uses singular column headers.
+
+        Given: Controls data and mock components.yaml
+        When: FlatComponentXRefTableGenerator.generate() is called
+        Then: Header contains singular: "Control ID", "Control Title", "Component ID", "Component Title"
+        """
+        components_file = tmp_path / "components.yaml"
+        with open(components_file, "w") as f:
+            yaml.dump({"components": [{"id": "comp1", "title": "Component 1"}]}, f)
+
+        controls_data = {"controls": [{"id": "ctrl1", "title": "Control 1", "components": ["comp1"]}]}
+
+        generator = yaml_to_markdown.FlatComponentXRefTableGenerator(input_dir=tmp_path)
+        result = generator.generate(controls_data, "controls")
+
+        header_line = result.split("\n")[0]
+        assert "Control ID" in header_line
+        assert "Control Title" in header_line
+        assert "Component ID" in header_line
+        assert "Component Title" in header_line
+        # Should NOT have plural forms
+        assert "Component IDs" not in header_line
+        assert "Component Titles" not in header_line
+
+    def test_flat_xref_components_one_row_per_mapping(self, tmp_path):
+        """
+        Test FlatComponentXRefTableGenerator creates one row per control-component mapping.
+
+        Given: Control with components: ["compA", "compB"]
+        When: FlatComponentXRefTableGenerator.generate() is called
+        Then: Exactly 2 data rows are produced
+        """
+        components_file = tmp_path / "components.yaml"
+        components_data = {
+            "components": [
+                {"id": "compA", "title": "Component A"},
+                {"id": "compB", "title": "Component B"},
+            ]
+        }
+        with open(components_file, "w") as f:
+            yaml.dump(components_data, f)
+
+        controls_data = {"controls": [{"id": "ctrl1", "title": "Control 1", "components": ["compA", "compB"]}]}
+
+        generator = yaml_to_markdown.FlatComponentXRefTableGenerator(input_dir=tmp_path)
+        result = generator.generate(controls_data, "controls")
+
+        lines = result.split("\n")
+        data_rows = [line for line in lines[2:] if line.strip()]
+        assert len(data_rows) == 2
+
+    def test_flat_xref_risks_all_special_case(self, tmp_path):
+        """
+        Test FlatRiskXRefTableGenerator handles risks: "all" special case.
+
+        Given: Control with risks: "all"
+        When: FlatRiskXRefTableGenerator.generate() is called
+        Then: Single row with risk ID = "all" and risk title = "All Risks"
+        """
+        risks_file = tmp_path / "risks.yaml"
+        with open(risks_file, "w") as f:
+            yaml.dump({"risks": []}, f)
+
+        controls_data = {"controls": [{"id": "ctrl1", "title": "Control 1", "risks": "all"}]}
+
+        generator = yaml_to_markdown.FlatRiskXRefTableGenerator(input_dir=tmp_path)
+        result = generator.generate(controls_data, "controls")
+
+        lines = result.split("\n")
+        data_rows = [line for line in lines[2:] if line.strip()]
+        assert len(data_rows) == 1
+        assert "all" in data_rows[0]
+        assert "All Risks" in data_rows[0]
+
+    def test_flat_xref_components_all_special_case(self, tmp_path):
+        """
+        Test FlatComponentXRefTableGenerator handles components: "all" special case.
+
+        Given: Control with components: "all"
+        When: FlatComponentXRefTableGenerator.generate() is called
+        Then: Single row with component ID = "all" and component title = "All Components"
+        """
+        components_file = tmp_path / "components.yaml"
+        with open(components_file, "w") as f:
+            yaml.dump({"components": []}, f)
+
+        controls_data = {"controls": [{"id": "ctrl1", "title": "Control 1", "components": "all"}]}
+
+        generator = yaml_to_markdown.FlatComponentXRefTableGenerator(input_dir=tmp_path)
+        result = generator.generate(controls_data, "controls")
+
+        lines = result.split("\n")
+        data_rows = [line for line in lines[2:] if line.strip()]
+        assert len(data_rows) == 1
+        assert "all" in data_rows[0]
+        assert "All Components" in data_rows[0]
+
+    def test_flat_xref_risks_sorted_by_control_then_risk(self, tmp_path):
+        """
+        Test flat risk xref rows are sorted by control ID first, then risk ID.
+
+        Given: 2 controls, each with 2 risks
+        When: FlatRiskXRefTableGenerator.generate() is called
+        Then: Rows are sorted by control ID first, then risk ID within each control
+        """
+        risks_file = tmp_path / "risks.yaml"
+        risks_data = {
+            "risks": [
+                {"id": "DP", "title": "Data Poisoning"},
+                {"id": "MST", "title": "Model Source Tampering"},
+                {"id": "PIJ", "title": "Prompt Injection"},
+                {"id": "XSS", "title": "Cross-Site Scripting"},
+            ]
+        }
+        with open(risks_file, "w") as f:
+            yaml.dump(risks_data, f)
+
+        controls_data = {
+            "controls": [
+                {"id": "ctrlB", "title": "Control B", "risks": ["PIJ", "MST"]},
+                {"id": "ctrlA", "title": "Control A", "risks": ["XSS", "DP"]},
+            ]
+        }
+
+        generator = yaml_to_markdown.FlatRiskXRefTableGenerator(input_dir=tmp_path)
+        result = generator.generate(controls_data, "controls")
+
+        lines = result.split("\n")
+        data_rows = [line for line in lines[2:] if line.strip()]
+
+        # Should be sorted by control ID first: ctrlA rows before ctrlB rows
+        ctrl_a_rows = [i for i, row in enumerate(data_rows) if "ctrlA" in row]
+        ctrl_b_rows = [i for i, row in enumerate(data_rows) if "ctrlB" in row]
+
+        assert len(ctrl_a_rows) == 2
+        assert len(ctrl_b_rows) == 2
+        assert max(ctrl_a_rows) < min(ctrl_b_rows), "ctrlA rows should come before ctrlB rows"
+
+        # Within ctrlA, DP should come before XSS (alphabetical)
+        ctrl_a_data = [row for row in data_rows if "ctrlA" in row]
+        dp_idx = next(i for i, row in enumerate(ctrl_a_data) if "DP" in row)
+        xss_idx = next(i for i, row in enumerate(ctrl_a_data) if "XSS" in row)
+        assert dp_idx < xss_idx, "DP should appear before XSS within ctrlA group"
+
+    def test_flat_xref_risks_rejects_non_controls_type(self, tmp_path):
+        """
+        Test FlatRiskXRefTableGenerator rejects non-controls types.
+
+        Given: Components data
+        When: FlatRiskXRefTableGenerator.generate() is called with ytype="components"
+        Then: ValueError is raised
+        """
+        risks_file = tmp_path / "risks.yaml"
+        with open(risks_file, "w") as f:
+            yaml.dump({"risks": []}, f)
+
+        generator = yaml_to_markdown.FlatRiskXRefTableGenerator(input_dir=tmp_path)
+
+        with pytest.raises(ValueError, match="only works with 'controls'"):
+            generator.generate({"components": []}, "components")
+
+    def test_flat_xref_components_rejects_non_controls_type(self, tmp_path):
+        """
+        Test FlatComponentXRefTableGenerator rejects non-controls types.
+
+        Given: Risks data
+        When: FlatComponentXRefTableGenerator.generate() is called with ytype="risks"
+        Then: ValueError is raised
+        """
+        components_file = tmp_path / "components.yaml"
+        with open(components_file, "w") as f:
+            yaml.dump({"components": []}, f)
+
+        generator = yaml_to_markdown.FlatComponentXRefTableGenerator(input_dir=tmp_path)
+
+        with pytest.raises(ValueError, match="only works with 'controls'"):
+            generator.generate({"risks": []}, "risks")
+
+
+class TestFlatFlag:
+    """
+    Test the --flat flag functionality in CLI and yaml_to_markdown_table function.
+
+    Tests that the --flat flag is properly parsed, validated, and integrated with
+    all xref table generators to produce one-row-per-mapping output.
+    """
+
+    def test_flat_flag_parsed(self):
+        """
+        Test --flat flag is parsed by parse_args.
+
+        Given: CLI arguments with --flat
+        When: parse_args() is called
+        Then: args.flat is True
+        """
+        with patch("sys.argv", ["yaml_to_markdown.py", "personas", "--flat"]):
+            args = yaml_to_markdown.parse_args()
+            assert args.flat is True
+
+    def test_flat_flag_default_false(self):
+        """
+        Test --flat flag defaults to False.
+
+        Given: CLI arguments without --flat
+        When: parse_args() is called
+        Then: args.flat is False
+        """
+        with patch("sys.argv", ["yaml_to_markdown.py", "personas"]):
+            args = yaml_to_markdown.parse_args()
+            assert args.flat is False
+
+    def test_flat_flag_with_persona_xref_controls(self, tmp_path):
+        """
+        Test --flat flag with persona xref-controls format.
+
+        Given: personas.yaml and controls.yaml with persona references
+        When: yaml_to_markdown_table() is called with flat=True and table_format="xref-controls"
+        Then: Output has singular column headers and one row per mapping
+        """
+        personas_file = tmp_path / "personas.yaml"
+        personas_data = {"personas": [{"id": "p1", "title": "Persona 1"}]}
+        with open(personas_file, "w") as f:
+            yaml.dump(personas_data, f)
+
+        controls_file = tmp_path / "controls.yaml"
+        controls_data = {
+            "controls": [
+                {"id": "ctrl1", "title": "Control 1", "personas": ["p1"]},
+                {"id": "ctrl2", "title": "Control 2", "personas": ["p1"]},
+            ]
+        }
+        with open(controls_file, "w") as f:
+            yaml.dump(controls_data, f)
+
+        result = yaml_to_markdown.yaml_to_markdown_table(
+            personas_file, "personas", table_format="xref-controls", flat=True
+        )
+
+        header_line = result.split("\n")[0]
+        assert "Control ID" in header_line  # Singular
+        assert "Control IDs" not in header_line  # Not plural
+
+        lines = result.split("\n")
+        data_rows = [line for line in lines[2:] if line.strip()]
+        assert len(data_rows) == 2  # One row per control
+
+    def test_flat_flag_with_persona_xref_risks(self, tmp_path):
+        """
+        Test --flat flag with persona xref-risks format.
+
+        Given: personas.yaml and risks.yaml with persona references
+        When: yaml_to_markdown_table() is called with flat=True and table_format="xref-risks"
+        Then: Output has singular column headers and one row per mapping
+        """
+        personas_file = tmp_path / "personas.yaml"
+        personas_data = {"personas": [{"id": "p1", "title": "Persona 1"}]}
+        with open(personas_file, "w") as f:
+            yaml.dump(personas_data, f)
+
+        risks_file = tmp_path / "risks.yaml"
+        risks_data = {
+            "risks": [
+                {"id": "risk1", "title": "Risk 1", "personas": ["p1"]},
+                {"id": "risk2", "title": "Risk 2", "personas": ["p1"]},
+                {"id": "risk3", "title": "Risk 3", "personas": ["p1"]},
+            ]
+        }
+        with open(risks_file, "w") as f:
+            yaml.dump(risks_data, f)
+
+        result = yaml_to_markdown.yaml_to_markdown_table(
+            personas_file, "personas", table_format="xref-risks", flat=True
+        )
+
+        header_line = result.split("\n")[0]
+        assert "Risk ID" in header_line  # Singular
+        assert "Risk IDs" not in header_line  # Not plural
+
+        lines = result.split("\n")
+        data_rows = [line for line in lines[2:] if line.strip()]
+        assert len(data_rows) == 3  # One row per risk
+
+    def test_flat_flag_with_control_xref_risks(self, tmp_path):
+        """
+        Test --flat flag with control xref-risks format.
+
+        Given: controls.yaml with risks and mock risks.yaml
+        When: yaml_to_markdown_table() is called with flat=True and table_format="xref-risks"
+        Then: Output has singular column headers and one row per control-risk mapping
+        """
+        controls_file = tmp_path / "controls.yaml"
+        controls_data = {"controls": [{"id": "ctrl1", "title": "Control 1", "risks": ["DP", "MST"]}]}
+        with open(controls_file, "w") as f:
+            yaml.dump(controls_data, f)
+
+        risks_file = tmp_path / "risks.yaml"
+        risks_data = {
+            "risks": [
+                {"id": "DP", "title": "Data Poisoning"},
+                {"id": "MST", "title": "Model Source Tampering"},
+            ]
+        }
+        with open(risks_file, "w") as f:
+            yaml.dump(risks_data, f)
+
+        result = yaml_to_markdown.yaml_to_markdown_table(
+            controls_file, "controls", table_format="xref-risks", flat=True
+        )
+
+        header_line = result.split("\n")[0]
+        assert "Risk ID" in header_line  # Singular
+        assert "Risk IDs" not in header_line  # Not plural
+
+        lines = result.split("\n")
+        data_rows = [line for line in lines[2:] if line.strip()]
+        assert len(data_rows) == 2  # One row per risk
+
+    def test_flat_flag_with_control_xref_components(self, tmp_path):
+        """
+        Test --flat flag with control xref-components format.
+
+        Given: controls.yaml with components and mock components.yaml
+        When: yaml_to_markdown_table() is called with flat=True and table_format="xref-components"
+        Then: Output has singular column headers and one row per control-component mapping
+        """
+        controls_file = tmp_path / "controls.yaml"
+        controls_data = {"controls": [{"id": "ctrl1", "title": "Control 1", "components": ["comp1", "comp2"]}]}
+        with open(controls_file, "w") as f:
+            yaml.dump(controls_data, f)
+
+        components_file = tmp_path / "components.yaml"
+        components_data = {
+            "components": [
+                {"id": "comp1", "title": "Component 1"},
+                {"id": "comp2", "title": "Component 2"},
+            ]
+        }
+        with open(components_file, "w") as f:
+            yaml.dump(components_data, f)
+
+        result = yaml_to_markdown.yaml_to_markdown_table(
+            controls_file, "controls", table_format="xref-components", flat=True
+        )
+
+        header_line = result.split("\n")[0]
+        assert "Component ID" in header_line  # Singular
+        assert "Component IDs" not in header_line  # Not plural
+
+        lines = result.split("\n")
+        data_rows = [line for line in lines[2:] if line.strip()]
+        assert len(data_rows) == 2  # One row per component
+
+    @pytest.mark.skipif(
+        not (get_git_root() / "risk-map" / "yaml" / "personas.yaml").exists(),
+        reason="Real YAML files not available",
+    )
+    def test_flat_xref_controls_against_real_yaml(self):
+        """
+        Test flat persona control xref against real YAML files.
+
+        Given: Real personas.yaml and controls.yaml
+        When: yaml_to_markdown_table() is called with flat=True
+        Then: Row count matches expected count based on persona-control mappings
+        """
+        personas_file = get_git_root() / "risk-map" / "yaml" / "personas.yaml"
+        controls_file = get_git_root() / "risk-map" / "yaml" / "controls.yaml"
+
+        # Generate flat table
+        result = yaml_to_markdown.yaml_to_markdown_table(
+            personas_file, "personas", table_format="xref-controls", flat=True
+        )
+
+        lines = result.split("\n")
+        data_rows = [line for line in lines[2:] if line.strip()]
+        actual_row_count = len(data_rows)
+
+        # Load YAML files to compute expected count
+        with open(personas_file, "r") as f:
+            personas_data = yaml.safe_load(f)
+        with open(controls_file, "r") as f:
+            controls_data = yaml.safe_load(f)
+
+        # Count mappings: for each control, count how many personas it references
+        persona_ids = {p["id"] for p in personas_data.get("personas", [])}
+        expected_count = 0
+        for control in controls_data.get("controls", []):
+            control_personas = set(control.get("personas", []))
+            # Count intersection with actual personas
+            expected_count += len(control_personas & persona_ids)
+
+        assert actual_row_count == expected_count, (
+            f"Expected {expected_count} rows (one per persona-control mapping), got {actual_row_count}"
+        )
+
+    @pytest.mark.skipif(
+        not (get_git_root() / "risk-map" / "yaml" / "personas.yaml").exists(),
+        reason="Real YAML files not available",
+    )
+    def test_flat_xref_risks_against_real_yaml(self):
+        """
+        Test flat persona risk xref against real YAML files.
+
+        Given: Real personas.yaml and risks.yaml
+        When: yaml_to_markdown_table() is called with flat=True
+        Then: Row count matches expected count based on persona-risk mappings
+        """
+        personas_file = get_git_root() / "risk-map" / "yaml" / "personas.yaml"
+        risks_file = get_git_root() / "risk-map" / "yaml" / "risks.yaml"
+
+        # Generate flat table
+        result = yaml_to_markdown.yaml_to_markdown_table(
+            personas_file, "personas", table_format="xref-risks", flat=True
+        )
+
+        lines = result.split("\n")
+        data_rows = [line for line in lines[2:] if line.strip()]
+        actual_row_count = len(data_rows)
+
+        # Load YAML files to compute expected count
+        with open(personas_file, "r") as f:
+            personas_data = yaml.safe_load(f)
+        with open(risks_file, "r") as f:
+            risks_data = yaml.safe_load(f)
+
+        # Count mappings: for each risk, count how many personas it references
+        persona_ids = {p["id"] for p in personas_data.get("personas", [])}
+        expected_count = 0
+        for risk in risks_data.get("risks", []):
+            risk_personas = set(risk.get("personas", []))
+            # Count intersection with actual personas
+            expected_count += len(risk_personas & persona_ids)
+
+        assert actual_row_count == expected_count, (
+            f"Expected {expected_count} rows (one per persona-risk mapping), got {actual_row_count}"
+        )
+
+    def test_flat_flag_ignored_for_non_xref_formats(self, tmp_path):
+        """
+        Test --flat flag is silently ignored for non-xref formats.
+
+        Given: A YAML file with components data
+        When: yaml_to_markdown_table() is called with flat=True and table_format="full"
+        Then: The result is the same as without flat (flag is silently ignored)
+        """
+        yaml_file = tmp_path / "components.yaml"
+        test_data = {"components": [{"id": "comp1", "title": "Comp 1", "category": "test"}]}
+        with open(yaml_file, "w") as f:
+            yaml.dump(test_data, f)
+
+        result_flat = yaml_to_markdown.yaml_to_markdown_table(
+            yaml_file, "components", table_format="full", flat=True
+        )
+        result_normal = yaml_to_markdown.yaml_to_markdown_table(yaml_file, "components", table_format="full")
+
+        assert result_flat == result_normal
+
+    def test_flat_output_has_no_br_tags(self, tmp_path):
+        """
+        Test flat output does not contain <br> tags (one value per cell).
+
+        Given: Controls with multiple risks
+        When: FlatRiskXRefTableGenerator.generate() is called
+        Then: Output rows contain no <br> tags
+        """
+        risks_file = tmp_path / "risks.yaml"
+        risks_data = {
+            "risks": [
+                {"id": "DP", "title": "Data Poisoning"},
+                {"id": "MST", "title": "Model Source Tampering"},
+            ]
+        }
+        with open(risks_file, "w") as f:
+            yaml.dump(risks_data, f)
+
+        controls_data = {"controls": [{"id": "ctrl1", "title": "Control 1", "risks": ["DP", "MST"]}]}
+
+        generator = yaml_to_markdown.FlatRiskXRefTableGenerator(input_dir=tmp_path)
+        result = generator.generate(controls_data, "controls")
+
+        lines = result.split("\n")
+        data_rows = [line for line in lines[2:] if line.strip()]
+        for row in data_rows:
+            assert "<br>" not in row, f"Flat output should not contain <br> tags, found in: {row}"
