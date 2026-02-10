@@ -73,7 +73,7 @@ jobs:
         # Check if PR tables directory exists
         if [ ! -d "${TABLE_DIR}" ]; then
           echo "❌ ERROR: Tables directory '${TABLE_DIR}' does not exist in PR"
-          echo "::error::The risk-map/tables/ directory is missing. Run: mkdir -p risk-map/tables && python3 scripts/hooks/yaml_to_markdown.py --all --all-formats"
+          echo "::error::The risk-map/tables/ directory is missing. Run: mkdir -p risk-map/tables && python3 scripts/hooks/yaml_to_markdown.py --all --all-formats --flat"
           rm -rf ${TEMP_TABLE_DIR}
           exit 1
         fi
@@ -82,7 +82,7 @@ jobs:
         echo ""
         echo "🔨 Generating all tables from current YAML files..."
 
-        if ! python3 ${TABLE_GENERATOR} --all --all-formats --output-dir "${TEMP_TABLE_DIR}" --quiet; then
+        if ! python3 ${TABLE_GENERATOR} --all --all-formats --flat --output-dir "${TEMP_TABLE_DIR}" --quiet; then
           echo "❌ Failed to generate tables from YAML files"
           echo "::error::Table generation failed. Check YAML file syntax and generator script."
           rm -rf ${TEMP_TABLE_DIR}
@@ -114,7 +114,7 @@ jobs:
           # Check if PR version exists
           if [ ! -f "${pr_table}" ]; then
             echo "   ❌ MISSING: File not found in PR"
-            echo "::error file=${pr_table}::Required table file '${table_file}' is missing. Run: python3 scripts/hooks/yaml_to_markdown.py --all --all-formats"
+            echo "::error file=${pr_table}::Required table file '${table_file}' is missing. Run: python3 scripts/hooks/yaml_to_markdown.py --all --all-formats --flat"
             validation_failed=true
             missing_count=$((missing_count + 1))
             missing_files="${missing_files}${table_file}, "
@@ -167,7 +167,7 @@ jobs:
           echo ""
           echo "💡 To fix locally:"
           echo "   cd $(pwd)"
-          echo "   python3 scripts/hooks/yaml_to_markdown.py --all --all-formats"
+          echo "   python3 scripts/hooks/yaml_to_markdown.py --all --all-formats --flat"
           echo "   git add risk-map/tables/*.md"
           echo "   git commit --amend --no-edit"
           echo ""
@@ -244,7 +244,7 @@ jobs:
           echo "Run these commands locally:" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
           echo "# Generate all table files" >> $GITHUB_STEP_SUMMARY
-          echo "python3 scripts/hooks/yaml_to_markdown.py --all --all-formats" >> $GITHUB_STEP_SUMMARY
+          echo "python3 scripts/hooks/yaml_to_markdown.py --all --all-formats --flat" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "# Stage the updated files" >> $GITHUB_STEP_SUMMARY
           echo "git add risk-map/tables/*.md" >> $GITHUB_STEP_SUMMARY
