@@ -587,7 +587,7 @@ if [[ $FORCE_VALIDATE -eq 0 ]]; then
 
                 # Also regenerate xref-components since component data changed
                 echo "   📐 Regenerating controls-xref-components (component data changed)..."
-                if python3 "$TABLE_GENERATOR" controls --format xref-components --flat --quiet; then
+                if python3 "$TABLE_GENERATOR" controls --format xref-components --quiet; then
                     echo "   ✅ Controls xref-components table regenerated"
                     stage_files "risk-map/tables/controls-xref-components.md" "Controls xref-components table" || true
                 else
@@ -609,7 +609,7 @@ if [[ $FORCE_VALIDATE -eq 0 ]]; then
 
                 # Also regenerate xref-risks since risk data changed
                 echo "   📐 Regenerating controls-xref-risks (risk data changed)..."
-                if python3 "$TABLE_GENERATOR" controls --format xref-risks --flat --quiet; then
+                if python3 "$TABLE_GENERATOR" controls --format xref-risks --quiet; then
                     echo "   ✅ Controls xref-risks table regenerated"
                     stage_files "risk-map/tables/controls-xref-risks.md" "Controls xref-risks table" || true
                 else
@@ -619,7 +619,7 @@ if [[ $FORCE_VALIDATE -eq 0 ]]; then
 
                 # Also regenerate personas-xref-risks since risk->persona references changed
                 echo "   📐 Regenerating personas-xref-risks (risk data changed)..."
-                if python3 "$TABLE_GENERATOR" personas --format xref-risks --flat --quiet; then
+                if python3 "$TABLE_GENERATOR" personas --format xref-risks --quiet; then
                     echo "   ✅ Personas xref-risks table regenerated"
                     stage_files "risk-map/tables/personas-xref-risks.md" "Personas xref-risks table" || true
                 else
@@ -631,7 +631,7 @@ if [[ $FORCE_VALIDATE -eq 0 ]]; then
             # Controls: generate all 4 control formats (full, summary, xref-risks, xref-components)
             if echo "$STAGED_FILES" | grep -q "controls.yaml$"; then
                 echo "   📐 Generating all tables for controls..."
-                if python3 "$TABLE_GENERATOR" controls --all-formats --flat --quiet; then
+                if python3 "$TABLE_GENERATOR" controls --all-formats --quiet; then
                     echo "   ✅ All controls tables generated (4 formats)"
                     stage_files "risk-map/tables/controls-*.md" "Controls tables" || true
                 else
@@ -641,7 +641,7 @@ if [[ $FORCE_VALIDATE -eq 0 ]]; then
 
                 # Also regenerate personas-xref-controls since control->persona references changed
                 echo "   📐 Regenerating personas-xref-controls (control data changed)..."
-                if python3 "$TABLE_GENERATOR" personas --format xref-controls --flat --quiet; then
+                if python3 "$TABLE_GENERATOR" personas --format xref-controls --quiet; then
                     echo "   ✅ Personas xref-controls table regenerated"
                     stage_files "risk-map/tables/personas-xref-controls.md" "Personas xref-controls table" || true
                 else
@@ -653,7 +653,7 @@ if [[ $FORCE_VALIDATE -eq 0 ]]; then
             # Personas: generate all 4 persona formats (full, summary, xref-controls, xref-risks)
             if echo "$STAGED_FILES" | grep -q "personas.yaml$"; then
                 echo "   📐 Generating all tables for personas..."
-                if python3 "$TABLE_GENERATOR" personas --all-formats --flat --quiet; then
+                if python3 "$TABLE_GENERATOR" personas --all-formats --quiet; then
                     echo "   ✅ All personas tables generated (4 formats)"
                     stage_files "risk-map/tables/personas-*.md" "Personas tables" || true
                 else

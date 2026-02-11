@@ -3,28 +3,28 @@
 Generate markdown tables from YAML files using the table generator script:
 
 ```bash
-# Generate all formats for a single type (--flat produces one-row-per-mapping xref tables)
+# Generate all formats for a single type
 python3 scripts/hooks/yaml_to_markdown.py components --all-formats
 # Output: components-full.md, components-summary.md
 
-python3 scripts/hooks/yaml_to_markdown.py controls --all-formats --flat
+python3 scripts/hooks/yaml_to_markdown.py controls --all-formats
 # Output: controls-full.md, controls-summary.md, controls-xref-risks.md, controls-xref-components.md
 
 # Generate specific format
 python3 scripts/hooks/yaml_to_markdown.py controls --format summary
-python3 scripts/hooks/yaml_to_markdown.py controls --format xref-risks --flat
+python3 scripts/hooks/yaml_to_markdown.py controls --format xref-risks
 
 # Generate all types, all formats (12 files)
-python3 scripts/hooks/yaml_to_markdown.py --all --all-formats --flat
+python3 scripts/hooks/yaml_to_markdown.py --all --all-formats
 
 # Generate to custom output directory
-python3 scripts/hooks/yaml_to_markdown.py --all --all-formats --flat --output-dir /tmp/tables
+python3 scripts/hooks/yaml_to_markdown.py --all --all-formats --output-dir /tmp/tables
 
 # Custom output file (single type, single format only)
 python3 scripts/hooks/yaml_to_markdown.py components --format full -o custom.md
 
 # Quiet mode
-python3 scripts/hooks/yaml_to_markdown.py --all --all-formats --flat --quiet
+python3 scripts/hooks/yaml_to_markdown.py --all --all-formats --quiet
 ```
 
 ## Table Formats
@@ -37,11 +37,15 @@ python3 scripts/hooks/yaml_to_markdown.py --all --all-formats --flat --quiet
 
 ## Flat XRef Tables
 
-The `--flat` flag produces one row per mapping for any xref format. This is the committed format for all xref tables in the repository. The pre-commit hook and CI workflow both use `--flat` when generating tables.
+Flat xref tables (one row per mapping) are the default for all xref formats. No flag is needed to produce them.
 
-Standard (non-flat) xref tables group multiple IDs into a single cell with `<br>` separators, which causes inconsistent cell widths. Flat tables are easier to parse and produce uniform column widths.
+To opt out and generate the legacy grouped format (multiple IDs packed into single cells with `<br>` separators), use `--no-flat`:
 
-The flag applies to `xref-controls`, `xref-risks`, and `xref-components` formats. It is silently ignored for `full` and `summary` formats.
+```bash
+python3 scripts/hooks/yaml_to_markdown.py controls --format xref-risks --no-flat
+```
+
+The `--no-flat` flag applies to `xref-controls`, `xref-risks`, and `xref-components` formats. It is silently ignored for `full` and `summary` formats.
 
 ## Output Files
 
@@ -58,11 +62,11 @@ Run table generation manually to test:
 # Test component table generation
 python3 scripts/hooks/yaml_to_markdown.py components --all-formats
 
-# Test controls table generation (all 4 formats, flat xref)
-python3 scripts/hooks/yaml_to_markdown.py controls --all-formats --flat
+# Test controls table generation (all 4 formats)
+python3 scripts/hooks/yaml_to_markdown.py controls --all-formats
 
 # Test with verbose output
-python3 scripts/hooks/yaml_to_markdown.py controls --all-formats --flat
+python3 scripts/hooks/yaml_to_markdown.py controls --all-formats
 ```
 
 ---

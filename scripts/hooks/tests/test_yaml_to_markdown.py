@@ -2085,33 +2085,34 @@ class TestFlatControlXRefGenerators:
 
 class TestFlatFlag:
     """
-    Test the --flat flag functionality in CLI and yaml_to_markdown_table function.
+    Test the --no-flat flag functionality in CLI and yaml_to_markdown_table function.
 
-    Tests that the --flat flag is properly parsed, validated, and integrated with
-    all xref table generators to produce one-row-per-mapping output.
+    Flat xref tables (one row per mapping) are the default. The --no-flat flag
+    opts out to the grouped format. Tests validate parsing, default behavior,
+    and integration with all xref table generators.
     """
 
-    def test_flat_flag_parsed(self):
+    def test_flat_flag_default_true(self):
         """
-        Test --flat flag is parsed by parse_args.
+        Test flat defaults to True (flat xref tables are the default).
 
-        Given: CLI arguments with --flat
+        Given: CLI arguments without --no-flat
         When: parse_args() is called
         Then: args.flat is True
         """
-        with patch("sys.argv", ["yaml_to_markdown.py", "personas", "--flat"]):
+        with patch("sys.argv", ["yaml_to_markdown.py", "personas"]):
             args = yaml_to_markdown.parse_args()
             assert args.flat is True
 
-    def test_flat_flag_default_false(self):
+    def test_no_flat_flag_parsed(self):
         """
-        Test --flat flag defaults to False.
+        Test --no-flat flag sets flat=False.
 
-        Given: CLI arguments without --flat
+        Given: CLI arguments with --no-flat
         When: parse_args() is called
         Then: args.flat is False
         """
-        with patch("sys.argv", ["yaml_to_markdown.py", "personas"]):
+        with patch("sys.argv", ["yaml_to_markdown.py", "personas", "--no-flat"]):
             args = yaml_to_markdown.parse_args()
             assert args.flat is False
 

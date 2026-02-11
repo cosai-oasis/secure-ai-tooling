@@ -783,7 +783,7 @@ TABLE_GENERATORS = {
 }
 
 
-def yaml_to_markdown_table(yaml_file, ytype, table_format: str = "full", flat: bool = False):
+def yaml_to_markdown_table(yaml_file, ytype, table_format: str = "full", flat: bool = True):
     """
     Convert YAML data to formatted Markdown table using specified format.
 
@@ -791,7 +791,7 @@ def yaml_to_markdown_table(yaml_file, ytype, table_format: str = "full", flat: b
         yaml_file: Path to YAML input file
         ytype: Type of data to extract (components, controls, risks)
         table_format: Format type (full, summary, xref-risks, xref-components)
-        flat: Generate flat xref tables with one row per mapping (xref formats only)
+        flat: Use flat xref tables with one row per mapping (default True; xref formats only)
 
     Returns:
         Formatted markdown table string
@@ -925,9 +925,10 @@ Exit Codes:
     )
 
     parser.add_argument(
-        "--flat",
-        action="store_true",
-        help="Generate flat xref tables with one row per mapping (xref formats only)",
+        "--no-flat",
+        dest="flat",
+        action="store_false",
+        help="Use grouped xref tables instead of the default flat (one-row-per-mapping) format",
     )
 
     parser.add_argument(
@@ -1010,7 +1011,7 @@ def get_applicable_formats(ytype: str) -> list[str]:
 
 
 def convert_all_formats(
-    ytype: str, input_file: Path = None, output_dir: Path = None, quiet: bool = False, flat: bool = False
+    ytype: str, input_file: Path = None, output_dir: Path = None, quiet: bool = False, flat: bool = True
 ) -> bool:
     """
     Convert a single YAML type to all applicable markdown table formats.
@@ -1020,7 +1021,7 @@ def convert_all_formats(
         input_file: Optional custom input file
         output_dir: Optional custom output directory
         quiet: Whether to suppress output messages
-        flat: Generate flat xref tables with one row per mapping
+        flat: Use flat xref tables with one row per mapping (default True)
 
     Returns:
         True if all conversions successful, False if any failed
@@ -1046,7 +1047,7 @@ def convert_type(
     output_file: Path = None,
     output_dir: Path = None,
     quiet: bool = False,
-    flat: bool = False,
+    flat: bool = True,
 ) -> bool:
     """
     Convert a single YAML type to markdown table.
@@ -1058,7 +1059,7 @@ def convert_type(
         output_file: Optional custom output file (takes precedence over output_dir)
         output_dir: Optional custom output directory
         quiet: Whether to suppress output messages
-        flat: Generate flat xref tables with one row per mapping
+        flat: Use flat xref tables with one row per mapping (default True)
 
     Returns:
         True if successful, False otherwise
