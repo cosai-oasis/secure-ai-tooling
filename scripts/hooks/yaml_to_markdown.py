@@ -457,6 +457,90 @@ class PersonaRiskXRefTableGenerator(PersonaXRefTableGenerator):
     title_column = "Risk Titles"
 
 
+class FlatPersonaXRefTableGenerator(PersonaXRefTableGenerator):
+    """
+    Base class for flat persona cross-reference generators.
+
+    Overrides PersonaXRefTableGenerator.generate() to emit one row per
+    persona-item mapping instead of grouping multiple items per persona.
+    Subclasses configure via class attributes (yaml_file, data_key,
+    id_column, title_column) inherited from PersonaXRefTableGenerator.
+    """
+
+    # Subclasses must define these (singular, not plural)
+    id_column: str = ""  # e.g., "Control ID"
+    title_column: str = ""  # e.g., "Control Title"
+
+    def generate(self, yaml_data: dict, ytype: str) -> str:
+        """
+        Generate flat persona cross-reference table with one row per mapping.
+
+        Args:
+            yaml_data: Parsed YAML data dictionary (must be personas)
+            ytype: Type of data (must be "personas")
+
+        Returns:
+            Formatted markdown table with one row per persona-item mapping
+
+        Raises:
+            ValueError: If ytype is not "personas"
+        """
+        if ytype != "personas":
+            raise ValueError(f"{self.__class__.__name__} only works with 'personas', got '{ytype}'")
+
+        # Load cross-reference YAML and invert persona references
+        xref_data = self._load_yaml(self.yaml_file)
+        persona_items = {}  # persona_id -> [(item_id, item_title), ...]
+
+        for item in xref_data.get(self.data_key, []):
+            for persona_id in item.get("personas", []):
+                if persona_id not in persona_items:
+                    persona_items[persona_id] = []
+                persona_items[persona_id].append((item.get("id", ""), item.get("title", "")))
+
+        # Build flat rows: one row per persona-item mapping
+        rows = []
+        for persona in yaml_data.get("personas", []):
+            pid = persona.get("id", "")
+            ptitle = persona.get("title", "")
+            items_list = sorted(persona_items.get(pid, []), key=lambda x: x[0])
+
+            for item_id, item_title in items_list:
+                rows.append(
+                    {
+                        "Persona ID": pid,
+                        "Persona Title": ptitle,
+                        self.id_column: item_id,
+                        self.title_column: item_title,
+                    }
+                )
+
+        if rows:
+            df = pd.DataFrame(rows).sort_values(["Persona ID", self.id_column])
+        else:
+            df = pd.DataFrame(columns=["Persona ID", "Persona Title", self.id_column, self.title_column])
+
+        return df.to_markdown(index=False)
+
+
+class FlatPersonaControlXRefTableGenerator(FlatPersonaXRefTableGenerator):
+    """Flat persona-to-control xref: one row per persona-control mapping."""
+
+    yaml_file = "controls.yaml"
+    data_key = "controls"
+    id_column = "Control ID"
+    title_column = "Control Title"
+
+
+class FlatPersonaRiskXRefTableGenerator(FlatPersonaXRefTableGenerator):
+    """Flat persona-to-risk xref: one row per persona-risk mapping."""
+
+    yaml_file = "risks.yaml"
+    data_key = "risks"
+    id_column = "Risk ID"
+    title_column = "Risk Title"
+
+
 class RiskXRefTableGenerator(TableGenerator):
     """
     Generates control-to-risk cross-reference tables.
@@ -589,6 +673,107 @@ class ComponentXRefTableGenerator(TableGenerator):
         return df.to_markdown(index=False)
 
 
+class FlatControlXRefTableGenerator(TableGenerator):
+    """
+    Base class for flat control cross-reference generators.
+
+    Creates one table row per control-item mapping instead of packing
+    multiple IDs into single cells with <br> separators. Subclasses
+    configure via class attributes for the specific xref type.
+    """
+
+    # Subclasses must define these
+    xref_yaml_file: str = ""  # e.g., "risks.yaml"
+    xref_data_key: str = ""  # e.g., "risks"
+    control_field: str = ""  # field name in control dict, e.g., "risks"
+    id_column: str = ""  # e.g., "Risk ID"
+    title_column: str = ""  # e.g., "Risk Title"
+    all_title: str = ""  # e.g., "All Risks"
+
+    def generate(self, yaml_data: dict, ytype: str) -> str:
+        """
+        Generate flat control cross-reference table with one row per mapping.
+
+        Args:
+            yaml_data: Parsed YAML data dictionary (must be controls)
+            ytype: Type of data (must be "controls")
+
+        Returns:
+            Formatted markdown table with one row per control-item mapping
+
+        Raises:
+            ValueError: If ytype is not "controls"
+        """
+        if ytype != "controls":
+            raise ValueError(f"{self.__class__.__name__} only works with 'controls', got '{ytype}'")
+
+        # Load xref YAML for title lookup
+        xref_data = self._load_yaml(self.xref_yaml_file)
+        lookup = self._create_id_to_title_lookup(xref_data, self.xref_data_key)
+
+        controls = yaml_data.get("controls", [])
+        rows = []
+
+        for control in controls:
+            control_id = control.get("id", "")
+            control_title = control.get("title", "")
+            item_ids = control.get(self.control_field, [])
+
+            # Handle special case: "all" or ["all"]
+            is_all = item_ids == "all" or (
+                isinstance(item_ids, list) and len(item_ids) == 1 and item_ids[0] == "all"
+            )
+            if is_all:
+                rows.append(
+                    {
+                        "Control ID": control_id,
+                        "Control Title": control_title,
+                        self.id_column: "all",
+                        self.title_column: self.all_title,
+                    }
+                )
+            elif isinstance(item_ids, list):
+                for item_id in sorted(item_ids):
+                    item_title = lookup.get(item_id, f"Unknown ({item_id})")
+                    rows.append(
+                        {
+                            "Control ID": control_id,
+                            "Control Title": control_title,
+                            self.id_column: item_id,
+                            self.title_column: item_title,
+                        }
+                    )
+
+        if rows:
+            df = pd.DataFrame(rows).sort_values(["Control ID", self.id_column])
+        else:
+            df = pd.DataFrame(columns=["Control ID", "Control Title", self.id_column, self.title_column])
+
+        return df.to_markdown(index=False)
+
+
+class FlatRiskXRefTableGenerator(FlatControlXRefTableGenerator):
+    """Flat control-to-risk xref: one row per control-risk mapping."""
+
+    xref_yaml_file = "risks.yaml"
+    xref_data_key = "risks"
+    control_field = "risks"
+    id_column = "Risk ID"
+    title_column = "Risk Title"
+    all_title = "All Risks"
+
+
+class FlatComponentXRefTableGenerator(FlatControlXRefTableGenerator):
+    """Flat control-to-component xref: one row per control-component mapping."""
+
+    xref_yaml_file = "components.yaml"
+    xref_data_key = "components"
+    control_field = "components"
+    id_column = "Component ID"
+    title_column = "Component Title"
+    all_title = "All Components"
+
+
 # Table generator registry
 TABLE_GENERATORS = {
     "full": FullDetailTableGenerator,
@@ -598,7 +783,7 @@ TABLE_GENERATORS = {
 }
 
 
-def yaml_to_markdown_table(yaml_file, ytype, table_format: str = "full"):
+def yaml_to_markdown_table(yaml_file, ytype, table_format: str = "full", flat: bool = True):
     """
     Convert YAML data to formatted Markdown table using specified format.
 
@@ -606,6 +791,7 @@ def yaml_to_markdown_table(yaml_file, ytype, table_format: str = "full"):
         yaml_file: Path to YAML input file
         ytype: Type of data to extract (components, controls, risks)
         table_format: Format type (full, summary, xref-risks, xref-components)
+        flat: Use flat xref tables with one row per mapping (default True; xref formats only)
 
     Returns:
         Formatted markdown table string
@@ -641,6 +827,11 @@ def yaml_to_markdown_table(yaml_file, ytype, table_format: str = "full"):
             "xref-controls": PersonaControlXRefTableGenerator,
             "xref-risks": PersonaRiskXRefTableGenerator,
         }
+        # Use flat generators if flat=True and format is xref
+        if flat:
+            persona_generators["xref-controls"] = FlatPersonaControlXRefTableGenerator
+            persona_generators["xref-risks"] = FlatPersonaRiskXRefTableGenerator
+
         if table_format not in persona_generators:
             valid = ", ".join(persona_generators.keys())
             raise ValueError(
@@ -648,7 +839,13 @@ def yaml_to_markdown_table(yaml_file, ytype, table_format: str = "full"):
             )
         generator_class = persona_generators[table_format]
     else:
-        generator_class = TABLE_GENERATORS[table_format]
+        # Handle flat control xref generators
+        if flat and table_format == "xref-risks":
+            generator_class = FlatRiskXRefTableGenerator
+        elif flat and table_format == "xref-components":
+            generator_class = FlatComponentXRefTableGenerator
+        else:
+            generator_class = TABLE_GENERATORS[table_format]
 
     generator = generator_class(input_dir=input_dir)
 
@@ -725,6 +922,13 @@ Exit Codes:
         "--all-formats",
         action="store_true",
         help="Generate all applicable formats for each type (overrides --format)",
+    )
+
+    parser.add_argument(
+        "--no-flat",
+        dest="flat",
+        action="store_false",
+        help="Use grouped xref tables instead of the default flat (one-row-per-mapping) format",
     )
 
     parser.add_argument(
@@ -806,7 +1010,9 @@ def get_applicable_formats(ytype: str) -> list[str]:
     return base_formats
 
 
-def convert_all_formats(ytype: str, input_file: Path = None, output_dir: Path = None, quiet: bool = False) -> bool:
+def convert_all_formats(
+    ytype: str, input_file: Path = None, output_dir: Path = None, quiet: bool = False, flat: bool = True
+) -> bool:
     """
     Convert a single YAML type to all applicable markdown table formats.
 
@@ -815,6 +1021,7 @@ def convert_all_formats(ytype: str, input_file: Path = None, output_dir: Path = 
         input_file: Optional custom input file
         output_dir: Optional custom output directory
         quiet: Whether to suppress output messages
+        flat: Use flat xref tables with one row per mapping (default True)
 
     Returns:
         True if all conversions successful, False if any failed
@@ -827,7 +1034,7 @@ def convert_all_formats(ytype: str, input_file: Path = None, output_dir: Path = 
 
     all_successful = True
     for table_format in applicable_formats:
-        if not convert_type(ytype, table_format, input_file, None, output_dir, quiet):
+        if not convert_type(ytype, table_format, input_file, None, output_dir, quiet, flat):
             all_successful = False
 
     return all_successful
@@ -840,6 +1047,7 @@ def convert_type(
     output_file: Path = None,
     output_dir: Path = None,
     quiet: bool = False,
+    flat: bool = True,
 ) -> bool:
     """
     Convert a single YAML type to markdown table.
@@ -851,6 +1059,7 @@ def convert_type(
         output_file: Optional custom output file (takes precedence over output_dir)
         output_dir: Optional custom output directory
         quiet: Whether to suppress output messages
+        flat: Use flat xref tables with one row per mapping (default True)
 
     Returns:
         True if successful, False otherwise
@@ -885,7 +1094,7 @@ def convert_type(
             print(f"🔄 Converting {ytype} ({table_format} format): {in_file} → {out_file}")
 
         # Convert and write
-        result = yaml_to_markdown_table(yaml_file=in_file, ytype=ytype, table_format=table_format)
+        result = yaml_to_markdown_table(yaml_file=in_file, ytype=ytype, table_format=table_format, flat=flat)
 
         # Create output directory if needed
         out_file.parent.mkdir(parents=True, exist_ok=True)
@@ -979,13 +1188,13 @@ def main() -> None:
         for ytype in types_to_convert:
             if args.all_formats:
                 # Generate all applicable formats for this type
-                if not convert_all_formats(ytype, args.file, args.output_dir, args.quiet):
+                if not convert_all_formats(ytype, args.file, args.output_dir, args.quiet, args.flat):
                     all_successful = False
             else:
                 # Use custom output only if converting single type with single format
                 output = args.output if len(types_to_convert) == 1 else None
 
-                if not convert_type(ytype, args.format, args.file, output, args.output_dir, args.quiet):
+                if not convert_type(ytype, args.format, args.file, output, args.output_dir, args.quiet, args.flat):
                     all_successful = False
 
             if not args.quiet and ytype != types_to_convert[-1]:
