@@ -1,7 +1,7 @@
 # Artifact Integrity Maturity Model
 ## Progressive Security for AI Artifact Provenance
 
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Status:** Draft  
 **Framework Alignment:** CoSAI-RM, MITRE ATLAS, OWASP LLM Top 10, SLSA, in-toto
 
@@ -288,29 +288,7 @@ compliance:
 
 ## Multi-Party Claim Navigation
 
-When claims come from different parties:
-
-```mermaid
-flowchart TB
-    subgraph parties["Different Signing Parties"]
-        ALICE["Alice (Producer)\nPRODUCED_BY(X)"]
-        BOB["Bob (Consumer)\nINPUT_VERIFIED(X)"]
-        CAROL["Carol (Pipeline)\nDERIVED_FROM(Y←X)"]
-        DAVE["Dave (ML Validator)\nATTESTED(model, Y)"]
-        EVE["Eve (Security)\nATTESTED(infra, Y)"]
-    end
-    
-    subgraph index["Pointer-by-Subject Index"]
-        X["claims['X'] = {\n  PRODUCED_BY (Alice),\n  INPUT_VERIFIED (Bob)\n}"]
-        Y["claims['Y'] = {\n  DERIVED_FROM (Carol),\n  ATTESTED:model (Dave),\n  ATTESTED:infra (Eve)\n}"]
-    end
-    
-    ALICE --> X
-    BOB --> X
-    CAROL --> Y
-    DAVE --> Y
-    EVE --> Y
-```
+When claims about the same artifact come from different signers, verification uses a **pointer-by-subject index** — grouping all claims by `artifact_id`, then verifying each signature independently before checking completeness and consistency. See the [competing claims example](#example-competing-claims-on-a-single-artifact) for a concrete illustration.
 
 ### Verification Algorithm
 
@@ -343,6 +321,57 @@ def verify_multi_party(artifact_id, trust_policy):
 | **QUORUM** | Majority of trusted parties wins | Distributed trust |
 | **PRIORITY** | Higher trust level wins | Hierarchical trust |
 | **TEMPORAL** | Most recent claim wins | Evolving state |
+
+---
+
+## Example: Competing Claims on a Single Artifact
+
+In production, different teams sign claims about the same artifact at different maturity levels, on different schedules, and with varying degrees of completeness. The policy gate must reconcile these **competing claims** before admission.
+
+```mermaid
+flowchart LR
+    subgraph lineage["Lineage (L2)"]
+        DATA["dataset-v3\nL1 GENESIS"] --> MODEL["model-v2.1\nL2 DERIVED_FROM"]
+        CONFIG["config-v2\nL1 GENESIS"] --> MODEL
+    end
+
+    subgraph claims["Competing Claims on model-v2.1"]
+        direction TB
+        C1["✓ ATTESTED(model)\nml-validation-svc · L3"]
+        C2["✓ ATTESTED(data)\ndata-governance-svc · L3"]
+        C3["⚠ ATTESTED(infra)\nsecurity-svc · PENDING"]
+        C4["✓ MEASURED\nauditor-ext-svc · L1"]
+    end
+
+    MODEL --> C1 & C2 & C3 & C4
+
+    subgraph gate["Policy Gate"]
+        DECIDE["Collect → Reconcile → Admit\n────────────────────\nDiamond check: auditor H == pipeline H\nRequired: process ✓ model ✓\nRecommended: data ✓ infra ⚠\n────────────────────\nDecision: ADMIT with WARN"]
+    end
+
+    C1 & C2 & C3 & C4 --> DECIDE
+
+    style lineage fill:#e3f2fd,stroke:#1976d2
+    style claims fill:#f3e5f5,stroke:#7b1fa2
+    style C3 stroke:#e65100,stroke-dasharray:5
+    style gate fill:#fff8e1,stroke:#f9a825
+```
+
+Four independent signers produce claims about `model-v2.1` at different levels:
+
+| Signer | Claim | Level | Status |
+|--------|-------|-------|--------|
+| `ml-platform-svc` | DERIVED_FROM | L2 | ✓ Full lineage from GENESIS |
+| `ml-validation-svc` | ATTESTED(model) | L3 | ✓ Accuracy + fairness |
+| `data-governance-svc` | ATTESTED(data) | L3 | ✓ PII scan + license |
+| `security-svc` | ATTESTED(infra) | L3 | ⚠ Pending |
+| `auditor-ext-svc` | MEASURED | L1 | ✓ Independent hash only |
+
+The policy gate applies two reconciliation patterns:
+
+**Diamond consistency** — The external auditor independently hashes the model without access to the pipeline's manifest. If `H(auditor) ≠ H(pipeline)`, the artifact was modified between measurements — hard FAIL regardless of conflict strategy.
+
+**PRIORITY on completeness** — Required attestations (process, model) must PASS. Recommended attestations (infra) that are pending produce a WARN. The model is admitted at 83% completeness with the gap recorded in the provenance bundle.
 
 ---
 
@@ -392,8 +421,8 @@ checklist:
   - [ ] Verify all input artifact hashes before derivation
   - [ ] Include chain_signature linking to previous
   - [ ] Add derivation_claim with evidence
-  - [ ] Implement DPoP for Class 1-3 data
-  - [ ] Require ticket ID for Class 1-3 operations
+  - [ ] Implement input verification in pipeline tasks (see Airflow example)
+  - [ ] Configure TSA-backed timestamps for production chains
   - [ ] Include L3 anchor points in schema
 ```
 
