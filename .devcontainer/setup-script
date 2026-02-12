@@ -1,16 +1,5 @@
 #!/bin/bash
-set -e
-
-# Redirect system python to the devcontainer feature's python
-echo "Configuring system Python symlinks..."
-sudo ln -sf /usr/local/python/current/bin/python3 /usr/bin/python3
-sudo ln -sf /usr/local/python/current/bin/python /usr/bin/python
-
-# Install act for github workflow testing
-echo "Installing act..."
-wget -q https://raw.githubusercontent.com/nektos/act/master/install.sh -O install.sh
-chmod +x install.sh
-sudo ./install.sh -b /usr/local/bin
-rm ./install.sh
-
-echo "Setup complete"
+# Thin wrapper for backward compatibility.
+# All environment setup is handled by install-deps.sh.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec bash "$SCRIPT_DIR/../scripts/tools/install-deps.sh" "$@"

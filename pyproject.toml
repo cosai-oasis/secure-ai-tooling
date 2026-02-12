@@ -1,3 +1,6 @@
+[tool.pytest.ini_options]
+pythonpath = ["scripts/hooks"]
+
 [tool.coverage.run]
 omit = [
     "*/test_*.py", # Exclude files matching 'test_*.py' pattern anywhere

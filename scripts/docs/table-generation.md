@@ -4,27 +4,27 @@ Generate markdown tables from YAML files using the table generator script:
 
 ```bash
 # Generate all formats for a single type
-python3 .git/hooks/yaml_to_markdown.py components --all-formats
+python3 scripts/hooks/yaml_to_markdown.py components --all-formats
 # Output: components-full.md, components-summary.md
 
-python3 .git/hooks/yaml_to_markdown.py controls --all-formats
+python3 scripts/hooks/yaml_to_markdown.py controls --all-formats
 # Output: controls-full.md, controls-summary.md, controls-xref-risks.md, controls-xref-components.md
 
 # Generate specific format
-python3 .git/hooks/yaml_to_markdown.py controls --format summary
-python3 .git/hooks/yaml_to_markdown.py controls --format xref-risks
+python3 scripts/hooks/yaml_to_markdown.py controls --format summary
+python3 scripts/hooks/yaml_to_markdown.py controls --format xref-risks
 
 # Generate all types, all formats (8 files)
-python3 .git/hooks/yaml_to_markdown.py --all --all-formats
+python3 scripts/hooks/yaml_to_markdown.py --all --all-formats
 
 # Generate to custom output directory
-python3 .git/hooks/yaml_to_markdown.py --all --all-formats --output-dir /tmp/tables
+python3 scripts/hooks/yaml_to_markdown.py --all --all-formats --output-dir /tmp/tables
 
 # Custom output file (single type, single format only)
-python3 .git/hooks/yaml_to_markdown.py components --format full -o custom.md
+python3 scripts/hooks/yaml_to_markdown.py components --format full -o custom.md
 
 # Quiet mode
-python3 .git/hooks/yaml_to_markdown.py --all --all-formats --quiet
+python3 scripts/hooks/yaml_to_markdown.py --all --all-formats --quiet
 ```
 
 ## Table Formats
@@ -46,13 +46,13 @@ Run table generation manually to test:
 
 ```bash
 # Test component table generation
-python3 .git/hooks/yaml_to_markdown.py components --all-formats
+python3 scripts/hooks/yaml_to_markdown.py components --all-formats
 
 # Test controls table generation (all 4 formats)
-python3 .git/hooks/yaml_to_markdown.py controls --all-formats
+python3 scripts/hooks/yaml_to_markdown.py controls --all-formats
 
 # Test with verbose output
-python3 .git/hooks/yaml_to_markdown.py controls --all-formats
+python3 scripts/hooks/yaml_to_markdown.py controls --all-formats
 ```
 
 ---

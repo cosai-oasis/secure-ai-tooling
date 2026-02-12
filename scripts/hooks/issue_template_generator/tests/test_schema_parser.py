@@ -1517,4 +1517,3 @@ class TestSchemaParserPerformance:
 
         assert elapsed < 0.5  # Should be reasonably fast
         assert len(result) == 20  # Found all enums
-

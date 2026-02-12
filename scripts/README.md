@@ -83,7 +83,9 @@ Development tools and utilities for this project.
 - `hooks/validate_issue_templates.py` - Issue template schema validation
 - `generate_issue_templates.py` - Issue template generator from sources
 - `hooks/yaml_to_markdown.py` - Markdown table generation from YAML
-- `install-precommit-hook.sh` - Installation script for git hooks
+- `install-precommit-hook.sh` - Installation script for git hooks (`--auto` for non-interactive)
+- `tools/install-deps.sh` - Idempotent dependency installer for devcontainer and manual setup
+- `tools/verify-deps.sh` - Verifies all required tools are installed and correct versions
 
 **Related Documentation:**
 - [Risk Map Developer Guide](../risk-map/docs/developing.md) - Main contribution guide
