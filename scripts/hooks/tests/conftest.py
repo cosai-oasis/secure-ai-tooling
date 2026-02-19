@@ -138,6 +138,34 @@ def frameworks_schema_path(risk_map_schemas_dir: Path) -> Path:
 
 
 @pytest.fixture(scope="session")
+def personas_yaml_path(risk_map_yaml_dir: Path) -> Path:
+    """
+    Path to personas.yaml file.
+
+    Args:
+        risk_map_yaml_dir: YAML directory path fixture
+
+    Returns:
+        Path: Absolute path to personas.yaml
+    """
+    return risk_map_yaml_dir / "personas.yaml"
+
+
+@pytest.fixture(scope="session")
+def personas_schema_path(risk_map_schemas_dir: Path) -> Path:
+    """
+    Path to personas.schema.json file.
+
+    Args:
+        risk_map_schemas_dir: Schemas directory path fixture
+
+    Returns:
+        Path: Absolute path to personas.schema.json
+    """
+    return risk_map_schemas_dir / "personas.schema.json"
+
+
+@pytest.fixture(scope="session")
 def base_uri(risk_map_schemas_dir: Path) -> str:
     """
     Base URI for schema validation with check-jsonschema.
@@ -221,6 +249,40 @@ def sample_risks():
         "MST": RiskNode(title="Model Source Tampering", category="risks"),
         "MDT": RiskNode(title="Model Deployment Tampering", category="risks"),
         "OrphanRisk": RiskNode(title="Orphaned Risk", category="risks"),
+    }
+
+
+@pytest.fixture
+def sample_personas():
+    """Sample persona data for testing yaml_to_markdown persona generators."""
+    return {
+        "personas": [
+            {
+                "id": "personaTest1",
+                "title": "Test Persona Active",
+                "description": ["An active test persona"],
+                "responsibilities": ["Responsibility 1", "Responsibility 2"],
+                "identificationQuestions": ["Question 1?", "Question 2?"],
+                "mappings": {"iso-22989": ["AI Producer"]},
+            },
+            {
+                "id": "personaTest2",
+                "title": "Test Persona Deprecated",
+                "description": ["A deprecated test persona"],
+                "deprecated": True,
+            },
+        ]
+    }
+
+
+@pytest.fixture
+def sample_personas_minimal():
+    """Minimal persona data for testing xref generators."""
+    return {
+        "personas": [
+            {"id": "personaTest1", "title": "Test Persona 1"},
+            {"id": "personaTest2", "title": "Test Persona 2"},
+        ]
     }
 
 

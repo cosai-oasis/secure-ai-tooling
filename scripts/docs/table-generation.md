@@ -14,7 +14,7 @@ python3 scripts/hooks/yaml_to_markdown.py controls --all-formats
 python3 scripts/hooks/yaml_to_markdown.py controls --format summary
 python3 scripts/hooks/yaml_to_markdown.py controls --format xref-risks
 
-# Generate all types, all formats (8 files)
+# Generate all types, all formats (12 files)
 python3 scripts/hooks/yaml_to_markdown.py --all --all-formats
 
 # Generate to custom output directory
@@ -31,14 +31,28 @@ python3 scripts/hooks/yaml_to_markdown.py --all --all-formats --quiet
 
 - `full` - Complete detail tables with all columns
 - `summary` - Condensed tables (ID, Title, Description, Category)
-- `xref-risks` - Control-to-risk cross-reference (controls only)
+- `xref-risks` - Cross-reference to risks (controls, personas)
 - `xref-components` - Control-to-component cross-reference (controls only)
+- `xref-controls` - Persona-to-control cross-reference (personas only)
+
+## Flat XRef Tables
+
+Flat xref tables (one row per mapping) are the default for all xref formats. No flag is needed to produce them.
+
+To opt out and generate the legacy grouped format (multiple IDs packed into single cells with `<br>` separators), use `--no-flat`:
+
+```bash
+python3 scripts/hooks/yaml_to_markdown.py controls --format xref-risks --no-flat
+```
+
+The `--no-flat` flag applies to `xref-controls`, `xref-risks`, and `xref-components` formats. It is silently ignored for `full` and `summary` formats.
 
 ## Output Files
 
 - Components: `components-full.md`, `components-summary.md` (2 files)
 - Controls: `controls-full.md`, `controls-summary.md`, `controls-xref-risks.md`, `controls-xref-components.md` (4 files)
 - Risks: `risks-full.md`, `risks-summary.md` (2 files)
+- Personas: `personas-full.md`, `personas-summary.md`, `personas-xref-controls.md`, `personas-xref-risks.md` (4 files)
 
 ## Debugging Table Generation
 

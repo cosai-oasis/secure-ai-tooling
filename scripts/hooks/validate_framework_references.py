@@ -6,6 +6,8 @@ This script validates that:
 - All framework IDs used in `mappings` fields exist in frameworks.yaml
 - Framework IDs in YAML data match the enum in frameworks.schema.json
 - Framework definitions are consistent and complete
+- Personas only reference frameworks applicable to personas (applicableTo: ["personas"])
+- Deprecated persona usage is flagged with warnings
 - Identifies any framework references to non-existent frameworks
 
 Only runs when framework-related YAML files are modified in the commit.
@@ -22,11 +24,12 @@ import yaml
 
 
 def get_staged_yaml_files(force_check: bool = False) -> list[Path]:
-    """Get frameworks.yaml, risks.yaml and controls.yaml if any is staged or if forced."""
+    """Get frameworks.yaml, risks.yaml, controls.yaml, and personas.yaml if any is staged or if forced."""
     target_files: list[Path] = [
         Path("risk-map/yaml/frameworks.yaml"),
         Path("risk-map/yaml/risks.yaml"),
         Path("risk-map/yaml/controls.yaml"),
+        Path("risk-map/yaml/personas.yaml"),
     ]
 
     # If force flag is set, return the target files if they exist
@@ -277,6 +280,114 @@ def validate_framework_applicability(
     return errors
 
 
+def extract_persona_framework_references(personas_data: dict[str, Any] | None) -> dict[str, list[str]]:
+    """Extract framework references from personas.yaml mappings field.
+
+    Args:
+        personas_data: Parsed personas.yaml data
+
+    Returns:
+        Dict mapping persona IDs to list of framework IDs they reference
+    """
+    persona_frameworks = {}
+    if not personas_data or "personas" not in personas_data:
+        return persona_frameworks
+
+    for persona in personas_data["personas"]:
+        persona_id = persona.get("id")
+        if not persona_id:
+            continue
+        mappings = persona.get("mappings", {})
+        if mappings and isinstance(mappings, dict):
+            framework_ids = list(mappings.keys())
+            if framework_ids:
+                persona_frameworks[persona_id] = framework_ids
+    return persona_frameworks
+
+
+def validate_persona_framework_applicability(
+    frameworks_data: dict[str, Any],
+    persona_frameworks: dict[str, list[str]],
+) -> list[str]:
+    """Validate personas only reference frameworks applicable to personas.
+
+    Args:
+        frameworks_data: Parsed frameworks.yaml data
+        persona_frameworks: Dict of persona IDs to their framework references
+
+    Returns:
+        List of error messages for any non-applicable framework references
+    """
+    errors = []
+
+    # Build applicability lookup from frameworks data
+    frameworks_applicability = {}
+    if frameworks_data and "frameworks" in frameworks_data:
+        for framework in frameworks_data["frameworks"]:
+            fw_id = framework.get("id")
+            if fw_id:
+                frameworks_applicability[fw_id] = framework.get("applicableTo", [])
+
+    for persona_id, framework_ids in persona_frameworks.items():
+        for framework_id in framework_ids:
+            if framework_id not in frameworks_applicability:
+                errors.append(f"Persona '{persona_id}' references framework '{framework_id}' which does not exist")
+                continue
+            applicable_to = frameworks_applicability[framework_id]
+            if "personas" not in applicable_to:
+                errors.append(
+                    f"Persona '{persona_id}' references framework '{framework_id}' "
+                    f"which is not applicable to personas"
+                )
+    return errors
+
+
+def check_deprecated_persona_usage(
+    personas_data: dict[str, Any] | None,
+    controls_data: dict[str, Any] | None,
+    risks_data: dict[str, Any] | None,
+) -> list[str]:
+    """Warn when deprecated personas are used in controls/risks.
+
+    Args:
+        personas_data: Parsed personas.yaml data
+        controls_data: Parsed controls.yaml data
+        risks_data: Parsed risks.yaml data
+
+    Returns:
+        List of warning messages for deprecated persona usage
+    """
+    warnings = []
+
+    # Build set of deprecated persona IDs
+    deprecated_personas = set()
+    if personas_data and "personas" in personas_data:
+        for persona in personas_data["personas"]:
+            if persona.get("deprecated", False):
+                persona_id = persona.get("id")
+                if persona_id:
+                    deprecated_personas.add(persona_id)
+
+    if not deprecated_personas:
+        return warnings
+
+    # Check controls
+    if controls_data and "controls" in controls_data:
+        for control in controls_data["controls"]:
+            for persona_id in control.get("personas", []):
+                if persona_id in deprecated_personas:
+                    warnings.append(f"Control '{control.get('id')}' uses deprecated persona '{persona_id}'")
+
+    # Check risks
+    if risks_data and "risks" in risks_data:
+        for risk in risks_data["risks"]:
+            for persona_id in risk.get("personas", []):
+                if persona_id in deprecated_personas:
+                    warnings.append(f"Risk '{risk.get('id')}' uses deprecated persona '{persona_id}'")
+
+    return warnings
+
+
 def validate_framework_consistency(frameworks_data: dict[str, Any]) -> list[str]:
     """
     Validate that framework definitions are internally consistent.
@@ -326,13 +437,14 @@ def validate_framework_consistency(frameworks_data: dict[str, Any]) -> list[str]
 
 
 def validate_frameworks(file_paths: list[Path]) -> bool:
-    """Validate framework reference consistency."""
+    """Validate framework reference consistency including persona mappings."""
     print(f"   Validating framework references in: {', '.join(map(str, file_paths))}")
 
     # Load YAML files
     frameworks_yaml_data = load_yaml_file(file_paths[0])  # frameworks.yaml
     risks_yaml_data = load_yaml_file(file_paths[1])  # risks.yaml
     controls_yaml_data = load_yaml_file(file_paths[2])  # controls.yaml
+    personas_yaml_data = load_yaml_file(file_paths[3]) if len(file_paths) > 3 else None  # personas.yaml
 
     if not frameworks_yaml_data:
         print("  ❌ Failing - could not load frameworks.yaml")
@@ -364,16 +476,27 @@ def validate_frameworks(file_paths: list[Path]) -> bool:
             return False
         return True
 
-    # Extract framework references from risks and controls
+    # Extract framework references from risks, controls, and personas
     risk_frameworks = extract_risk_framework_references(risks_yaml_data)
     control_frameworks = extract_control_framework_references(controls_yaml_data)
+    persona_frameworks = extract_persona_framework_references(personas_yaml_data)
 
     # Validate references
     reference_errors = validate_framework_references(valid_framework_ids, risk_frameworks, control_frameworks)
 
-    # Validate applicability
+    # Validate applicability for controls and risks
     applicability_errors = validate_framework_applicability(
         frameworks_applicability, risk_frameworks, control_frameworks
+    )
+
+    # Validate persona framework applicability
+    persona_applicability_errors = validate_persona_framework_applicability(
+        frameworks_yaml_data, persona_frameworks
+    )
+
+    # Check for deprecated persona usage (warnings only, don't fail validation)
+    deprecation_warnings = check_deprecated_persona_usage(
+        personas_yaml_data, controls_yaml_data, risks_yaml_data
     )
 
     # Report results
@@ -397,6 +520,18 @@ def validate_frameworks(file_paths: list[Path]) -> bool:
             print(f"     - {error}")
         success = False
 
+    if persona_applicability_errors:
+        print(f"   ❌ Found {len(persona_applicability_errors)} persona framework applicability errors:")
+        for error in persona_applicability_errors:
+            print(f"     - {error}")
+        success = False
+
+    # Report deprecation warnings (don't fail validation)
+    if deprecation_warnings:
+        print(f"   ⚠️  Found {len(deprecation_warnings)} deprecated persona usage warnings:")
+        for warning in deprecation_warnings:
+            print(f"     - {warning}")
+
     if success:
         print("  ✅ Framework references and applicability are consistent")
         framework_list = ", ".join(sorted(valid_framework_ids))
@@ -405,6 +540,8 @@ def validate_frameworks(file_paths: list[Path]) -> bool:
             print(f"     - Validated {len(risk_frameworks)} risks with framework mappings")
         if control_frameworks:
             print(f"     - Validated {len(control_frameworks)} controls with framework mappings")
+        if persona_frameworks:
+            print(f"     - Validated {len(persona_frameworks)} personas with framework mappings")
 
     return success
 
@@ -445,7 +582,7 @@ def main() -> None:
         print("   No framework-related YAML files modified - skipping validation")
         sys.exit(0)
 
-    print("   Found staged frameworks.yaml, risks.yaml, and/or controls.yaml")
+    print("   Found staged framework-related YAML files (frameworks, risks, controls, personas)")
 
     # Validate framework references
     if not validate_frameworks(yaml_files):
