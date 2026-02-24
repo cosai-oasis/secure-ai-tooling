@@ -9,7 +9,7 @@
 
 ## Abstract
 
-AI artifacts (models, training data, configurations) require cryptographic proof of integrity, lineage, and policy compliance. This standard defines a **progressive maturity model** enabling organizations to start with basic integrity and advance to full attestation-based provenance as operational requirements grow.
+AI artifacts (models, training data, configurations) require [cryptographic proof of integrity](https://in-toto.readthedocs.io/en/latest/command-line-tools/in-toto-verify.html), lineage, [runtime state](https://github.com/Trusera/ai-bom), and policy compliance. This standard defines a **progressive maturity model** enabling organizations to start with basic integrity and advance to full attestation-based provenance as operational requirements grow.
 
 The model addresses three orthogonal concerns: **claims** (what can be proven), **topology** (how artifacts relate), and **verification** (how proofs are validated).
 
