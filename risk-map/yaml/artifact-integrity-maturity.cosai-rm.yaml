@@ -1,13 +1,15 @@
 # Artifact Integrity Maturity Model - CoSAI-RM Schema
-# Version: 1.0.0
+# Version: 1.2.0
 
 metadata:
   name: artifact-integrity-maturity-model
-  version: "1.0.0"
+  version: "1.2.0"
   status: draft
   description: >
     Progressive security model for AI artifact provenance enabling cryptographic
     proof of integrity, lineage, and policy compliance across artifact lifecycles.
+    Persona-scoped accountability ensures each claim is traceable to a designated
+    CoSAI-RM role.
   framework_mappings:
     - cosai-rm
     - mitre-atlas
@@ -16,6 +18,73 @@ metadata:
     - stride
     - slsa
     - in-toto
+
+# ============================================================================
+# PERSONA RESPONSIBILITIES
+# ============================================================================
+
+persona_responsibilities:
+  description: >
+    Maps CoSAI-RM personas to the invariants they must produce or verify.
+    Trust policy binds each signer's subject to claims matching its persona role;
+    out-of-scope signatures are rejected at INV-L1-03.
+
+  personas:
+    - id: personaModelCreator
+      produces: [INV-L1-01, INV-L1-02, INV-L2-01, INV-L2-03]
+      verifies: [INV-L2-02]
+      scope: "Signs model manifests; documents derivation and input references"
+
+    - id: personaDataProvider
+      produces: [INV-L1-01, INV-L1-02, INV-L3-03]
+      verifies: []
+      scope: "Signs data artifact manifests; produces ATTESTED(data)"
+
+    - id: personaPlatformProvider
+      produces: [INV-L1-03, INV-L2-04, INV-L2-05, INV-L3-01, INV-L3-04]
+      verifies: []
+      scope: "Maintains trust store; operates chain infrastructure, TSA; produces ATTESTED(process) and ATTESTED(infra)"
+
+    - id: personaModelProvider
+      produces: [INV-L3-02]
+      verifies: [INV-L2-01]
+      scope: "Distributes signed artifacts with lineage; produces ATTESTED(model)"
+
+    - id: personaModelServing
+      produces: [INV-L3-06]
+      verifies: ["all_prior_levels"]
+      scope: "Enforces admission gate before deployment"
+
+    - id: personaGovernance
+      produces: [INV-L3-05, INV-L3-06]
+      verifies: ["cross_claim_consistency"]
+      scope: "Defines policy rules; evaluates compliance; approves admission"
+
+    - id: personaApplicationDeveloper
+      produces: []
+      verifies: [INV-L1-01, INV-L2-01, INV-L3-05]
+      scope: "Verifies hashes, lineage, and attestation completeness before integration"
+
+    - id: personaAgenticProvider
+      produces: []
+      verifies: [INV-L1-01, INV-L2-01, INV-L3-05]
+      scope: "Runtime attestation checks for dynamically loaded or agent-selected artifacts"
+
+    - id: personaModelConsumer
+      produces: []
+      verifies: [INV-L1-01, INV-L1-03]
+      scope: "Verifies artifact authenticity and reviews policy results before relying on outputs"
+
+    - id: personaEndUser
+      produces: []
+      verifies: []
+      scope: "Receives transparency disclosures from admission decisions"
+
+  identification_heuristic: >
+    If your team signs an artifact, you own its L1 claims. If your team transforms
+    artifacts, you own L2 derivation. If your team attests to quality or compliance,
+    you own L3 attestations for your domain. If your team gates deployment, you own
+    L3 admission.
 
 # ============================================================================
 # INVARIANTS (Floor Claims by Maturity Level)
@@ -30,6 +99,8 @@ invariants:
     formal: "MEASURED <TARGET X> as (hash) SIGNED BY A"
     description: Cryptographic commitment to artifact content
     required: true
+    responsible_personas:
+      produces: ["Creator/Provider of artifact"]
     
   - id: INV-L1-02
     name: Produced By
@@ -38,14 +109,18 @@ invariants:
     formal: "<TARGET X> was PRODUCED BY A"
     description: Ownership/responsibility claim linking artifact to producer
     required: true
+    responsible_personas:
+      produces: [personaModelCreator, personaDataProvider]
     
   - id: INV-L1-03
     name: Signer Verified
     level: 1
-    assertion: "signer.subject ∈ trust_store"
-    formal: "SIGNER A verified against trust_store"
-    description: Signer identity validated against recognized trust store
+    assertion: "signer.subject ∈ trust_store ∧ signer.persona_role permits claim_type"
+    formal: "SIGNER A verified against trust_store AND A.persona permits claim"
+    description: Signer identity validated against trust store with persona scope check
     required: true
+    responsible_personas:
+      produces: [personaPlatformProvider]
     
   - id: INV-L1-04
     name: Timestamped
@@ -55,6 +130,8 @@ invariants:
     description: Signature timestamp within acceptable drift
     required: false  # Optional at L1, Required at L2+
     default_tolerance_seconds: 300
+    responsible_personas:
+      produces: ["Signer", personaPlatformProvider]
     
   # --- Level 2: Chaining and Lineage ---
   - id: INV-L2-01
@@ -64,6 +141,8 @@ invariants:
     formal: "<TARGET Y> was DERIVED FROM <TARGET X> SIGNED BY A"
     description: Basic derivation claim without process details
     required: true
+    responsible_personas:
+      produces: [personaModelCreator]
     
   - id: INV-L2-02
     name: Input Verified
@@ -73,6 +152,9 @@ invariants:
     description: All input artifact hashes validated before derivation
     required: true
     critical: true
+    responsible_personas:
+      verifies: [personaModelCreator]
+      source: [personaDataProvider]
     
   - id: INV-L2-03
     name: Evidence Backed
@@ -81,6 +163,8 @@ invariants:
     formal: "INPUT <X.1> was DERIVED FROM <X> BY <PROCESS> SIGNED BY A"
     description: Full derivation with process reference and evidence
     required: false  # Required for EVIDENCE_BACKED claim type
+    responsible_personas:
+      produces: [personaModelCreator]
     
   - id: INV-L2-04
     name: Chain Linked
@@ -89,6 +173,8 @@ invariants:
     formal: "CHAIN_SIGNATURE links to predecessor"
     description: Cryptographic linkage to predecessor artifact
     required: true
+    responsible_personas:
+      produces: [personaPlatformProvider]
     
   - id: INV-L2-05
     name: Timestamped (Strict)
@@ -99,6 +185,8 @@ invariants:
     required: true  # Now required at L2+
     default_tolerance_seconds: 60
     source: tsa_preferred
+    responsible_personas:
+      produces: [personaPlatformProvider]
     
   # --- Level 3: Attestations and Policy ---
   - id: INV-L3-01
@@ -109,6 +197,8 @@ invariants:
     description: Process attestation with valid signature
     required: true
     predicate_type: "https://slsa.dev/provenance/v1"
+    responsible_personas:
+      produces: [personaPlatformProvider]
     
   - id: INV-L3-02
     name: Attested (Model)
@@ -118,6 +208,8 @@ invariants:
     description: Model attestation when artifact is ML model
     required: conditional
     condition: "artifact.type == 'model'"
+    responsible_personas:
+      produces: [personaModelProvider]
     
   - id: INV-L3-03
     name: Attested (Data)
@@ -127,6 +219,8 @@ invariants:
     description: Data attestation when training data used
     required: conditional
     condition: "lineage.inputs[].role == 'training_data'"
+    responsible_personas:
+      produces: [personaDataProvider]
     
   - id: INV-L3-04
     name: Attested (Infrastructure)
@@ -135,6 +229,8 @@ invariants:
     formal: "ATTESTED(infrastructure) with security controls SIGNED"
     description: Infrastructure security attestation
     required: false  # Recommended
+    responsible_personas:
+      produces: [personaPlatformProvider]
     
   - id: INV-L3-05
     name: Policy Evaluated
@@ -143,6 +239,8 @@ invariants:
     formal: "POLICY_EVALUATED with result"
     description: Policy engine evaluation completed
     required: true
+    responsible_personas:
+      produces: [personaGovernance]
     
   - id: INV-L3-06
     name: Admission Gated
@@ -152,6 +250,8 @@ invariants:
     description: Explicit admission decision for deployment
     required: conditional
     condition: "deploying_to_production"
+    responsible_personas:
+      produces: [personaGovernance, personaModelServing]
 
 # ============================================================================
 # TOPOLOGY (Structural Complexity Options)
@@ -185,11 +285,7 @@ topology:
       name: Tree
       level: 2
       description: Branching OR converging, but not both simultaneously
-      structure: |
-        Divergent:     Convergent:
-            A            A  B  C
-           / \            \ | /
-          B   C             D
+      structure: "Divergent: A → {B, C}  |  Convergent: {A, B, C} → D"
       max_inputs_per_artifact: "unlimited"
       supports_branching: true
       supports_merging: false  # No diamonds
@@ -207,12 +303,7 @@ topology:
       name: DAG (Directed Acyclic Graph)
       level: 3
       description: Full graph with diamond dependencies
-      structure: |
-            A
-           / \
-          B   C
-           \ /
-            D  ← diamond
+      structure: "A → {B, C}, {B, C} → D (diamond)"
       max_inputs_per_artifact: "unlimited"
       supports_branching: true
       supports_merging: true
@@ -250,8 +341,8 @@ components:
     
   - id: COMP-03
     name: Trust Store
-    description: Repository of trusted signer certificates
-    security_role: Validates signer identity (INV-L1-03)
+    description: Repository of trusted signer certificates with persona role bindings
+    security_role: Validates signer identity and persona scope (INV-L1-03)
     
   - id: COMP-04
     name: Lineage Tracker
@@ -265,8 +356,8 @@ components:
     
   - id: COMP-06
     name: Policy Engine
-    description: OPA/Rego-based policy evaluation
-    security_role: Enforces deployment gates (INV-L3-05)
+    description: OPA/Rego-based policy evaluation including persona scope rules
+    security_role: Enforces deployment gates and persona-claim binding (INV-L3-05)
     
   - id: COMP-07
     name: Admission Controller
@@ -357,6 +448,18 @@ risks:
     affected_levels: [2, 3]
     control: "claim_consistency_check"
 
+  - id: RISK-11
+    name: Persona Boundary Violation
+    stride: Elevation of Privilege
+    description: >
+      A persona signs claims outside its designated scope (e.g.,
+      personaModelCreator producing ATTESTED(infra) claims).
+    affected_levels: [1, 2, 3]
+    control: CTRL-13
+    mitigations:
+      - "Trust policy restricts each signer's subject to claims matching its persona role"
+      - "INV-L1-03 rejects out-of-scope signatures"
+
 # ============================================================================
 # CONTROLS
 # ============================================================================
@@ -381,7 +484,7 @@ controls:
     name: Trust Store Lookup
     implements: INV-L1-03
     level: 1
-    description: Verify signer exists in trust store
+    description: Verify signer exists in trust store with valid persona role binding
     refresh_interval: "24h"
     
   - id: CTRL-04
@@ -429,12 +532,13 @@ controls:
     name: Policy Evaluation
     implements: INV-L3-05
     level: 3
-    description: Execute OPA/Rego policy rules
+    description: Execute OPA/Rego policy rules including persona scope rules
     engine: "opa"
     minimum_rules:
       - artifact_integrity
       - lineage_verified
       - attestations_present
+      - persona_scope  # signer role ↔ claim type
       
   - id: CTRL-10
     name: Admission Gate
@@ -457,6 +561,17 @@ controls:
     topology: TOPO-DAG
     description: Verify no circular dependencies in graph
     algorithm: "toposort"
+
+  # Cross-cutting Controls
+  - id: CTRL-13
+    name: Persona Scope Validation
+    implements: RISK-11
+    level: 1  # Enforced at all levels via INV-L1-03
+    description: >
+      Verify signer's persona_role permits the claim_type being signed.
+      Rejects out-of-scope signatures before any further verification.
+    enforcement_point: "trust_store_lookup"
+    policy_binding: "signer.subject → persona_role → allowed_claim_types"
 
 # ============================================================================
 # MATURITY LEVELS (Tiers)
@@ -556,21 +671,25 @@ maturity_levels:
     attestation_categories:
       - category: process
         required: always
+        responsible_persona: personaPlatformProvider
         claims:
           required: [pipeline_version, execution_environment]
           recommended: [slsa_level, reproducibility_score]
       - category: model
         required: when_type_is_model
+        responsible_persona: personaModelProvider
         claims:
           required: [model_architecture, training_framework, performance_metrics]
           recommended: [fairness_metrics, explainability_report]
       - category: data
         required: when_uses_training_data
+        responsible_persona: personaDataProvider
         claims:
           required: [data_source, collection_date_range, record_count, schema_version]
           recommended: [pii_scan_result, bias_analysis]
       - category: infrastructure
         required: recommended
+        responsible_persona: personaPlatformProvider
         claims:
           required: [runtime_environment, security_controls]
           recommended: [vulnerability_scan, sbom]
@@ -589,6 +708,10 @@ validation_sequence:
     - step: 3
       action: "VERIFY signer.subject ∈ trust_store"
       invariant: INV-L1-03
+    - step: "3a"
+      action: "VERIFY signer.persona_role permits claim_type"
+      control: CTRL-13
+      description: "Persona scope check — rejects out-of-role signatures"
     - step: 4
       action: "VERIFY H(artifact_content) == integrity.digest"
       invariant: INV-L1-01
@@ -602,7 +725,7 @@ validation_sequence:
       
   level_2:
     - step: 1-6
-      action: "[All Level 1 verification steps]"
+      action: "[All Level 1 verification steps including 3a persona scope check]"
     - step: 7
       action: "VERIFY lineage.chain_position > 0 OR chain_integrity == 'GENESIS'"
     - step: 8
@@ -637,12 +760,16 @@ validation_sequence:
       action: "IF uses_training_data: VERIFY attestations.data EXISTS"
       invariant: INV-L3-03
     - step: 18
+      action: "FOR EACH attestation: VERIFY attester.persona_role matches attestation category"
+      control: CTRL-13
+      description: "Persona scope check at attestation level"
+    - step: 19
       action: "FOR EACH evaluation IN policy.evaluations: VERIFY result ∈ {PASS, WARN}"
       invariant: INV-L3-05
-    - step: 19
+    - step: 20
       action: "IF deploying: VERIFY admission_status.admitted == true"
       invariant: INV-L3-06
-    - step: 20
+    - step: 21
       action: "RETURN L2_results + {attested: true, policy_passed: true, admitted: true}"
 
 # ============================================================================
@@ -650,6 +777,14 @@ validation_sequence:
 # ============================================================================
 
 framework_mappings:
+  cosai_rm:
+    - id: personas
+      description: "Persona-scoped accountability for all invariants"
+      mapped_to: persona_responsibilities
+    - id: controls
+      description: "Control mappings including persona scope validation"
+      mapped_to: [CTRL-01, CTRL-02, CTRL-03, CTRL-13]
+
   mitre_atlas:
     - id: AML.T0024
       name: Session/Key Compromise
@@ -687,7 +822,7 @@ framework_mappings:
     - category: Denial of Service
       relevance: "Out of scope"
     - category: Elevation of Privilege
-      risks: [RISK-07]
+      risks: [RISK-07, RISK-11]
       
   slsa:
     - level: 1
@@ -738,16 +873,17 @@ framework_mappings:
 multi_party:
   description: >
     When claims come from different parties, navigation uses pointer-by-subject
-    indexing with independent signature verification per signer.
+    indexing with independent signature verification per signer. Each signer's
+    persona role is validated against its claim type before reconciliation.
     
   claim_structure:
     type: "Map<SubjectID, Set<SignedClaim>>"
     example: |
       claims["artifact-Y"] = {
-        SignedClaim(DERIVED_FROM, signer=Carol),
-        SignedClaim(ATTESTED:model, signer=Dave),
-        SignedClaim(ATTESTED:infra, signer=Eve),
-        SignedClaim(POLICY_EVALUATED, signer=Frank)
+        SignedClaim(DERIVED_FROM, signer=Carol, persona=personaModelCreator),
+        SignedClaim(ATTESTED:model, signer=Dave, persona=personaModelProvider),
+        SignedClaim(ATTESTED:infra, signer=Eve, persona=personaPlatformProvider),
+        SignedClaim(POLICY_EVALUATED, signer=Frank, persona=personaGovernance)
       }
       
   verification_algorithm: |
@@ -756,6 +892,7 @@ multi_party:
         for claim in claims:
             verify_signature(claim, claim.signer)
             verify_signer_trusted(claim.signer, trust_policy)
+            verify_persona_scope(claim.signer, claim.claim_type, trust_policy)
         for input_ref in get_input_references(claims):
             verify_multi_party(input_ref.artifact_id, trust_policy)
         assert has_required_claims(claims, artifact.maturity_level)
@@ -771,3 +908,47 @@ multi_party:
         description: Higher trust level wins
       - id: TEMPORAL
         description: Most recent claim wins (with caveats)
+
+  example_competing_claims:
+    artifact: model-v2.1
+    signers:
+      - signer: ml-platform-svc
+        persona: personaModelCreator
+        claim: DERIVED_FROM
+        level: 2
+        status: "✓ Full lineage from GENESIS"
+      - signer: ml-validation-svc
+        persona: personaModelProvider
+        claim: "ATTESTED(model)"
+        level: 3
+        status: "✓ Accuracy + fairness"
+      - signer: data-governance-svc
+        persona: personaDataProvider
+        claim: "ATTESTED(data)"
+        level: 3
+        status: "✓ PII scan + license"
+      - signer: security-svc
+        persona: personaPlatformProvider
+        claim: "ATTESTED(infra)"
+        level: 3
+        status: "⚠ Pending"
+      - signer: auditor-ext-svc
+        persona: personaModelConsumer
+        claim: MEASURED
+        level: 1
+        status: "✓ Independent hash only"
+    reconciliation:
+      - pattern: persona_scope_check
+        description: >
+          Each signer's claim type must match its persona role.
+          Out-of-scope claims are rejected before reconciliation.
+      - pattern: diamond_consistency
+        description: >
+          External auditor (personaModelConsumer) independently hashes
+          the model. H(auditor) ≠ H(pipeline) → hard FAIL.
+      - pattern: priority_on_completeness
+        description: >
+          Required attestations (process, model) must PASS.
+          Pending recommended attestations (infra) produce WARN.
+          Admitted at 83% completeness with gap recorded.
+    gate_operator: personaGovernance
