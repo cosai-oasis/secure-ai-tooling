@@ -171,6 +171,10 @@ Following CoSAI-RM taxonomy:
 **Threat:** A persona performs actions outside its designated scope (e.g., personaAgenticProvider modifying parameters after hash binding, or issuing its own tokens).  
 **Control:** Trust policy restricts each persona to its designated invariants. Validation gateway rejects requests where the acting persona does not match expected role for the operation.
 
+### Risk: Confused Deputy via Delegation (STRIDE: Elevation of Privilege)
+**Threat:** An intermediate agent invokes a tool using delegated credentials but for a purpose outside the original user's intent. The tool validates the token (which is technically valid) but the invocation serves the intermediate agent's goals rather than the user's.
+**Control:** Delegation Chain Integrity (INV-7) - verify the full delegation path is authorized for this specific invocation, with scope narrowing enforced at each hop.
+
 ---
 
 ## Binding Modes
