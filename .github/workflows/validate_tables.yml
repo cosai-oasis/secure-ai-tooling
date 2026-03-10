@@ -50,16 +50,20 @@ jobs:
 
         echo "🔍 Validating markdown tables against YAML sources..."
 
-        # Define expected table files (8 total)
+        # Define expected table files (12 total)
         declare -a TABLE_FILES=(
           "components-full.md"
           "components-summary.md"
-          "risks-full.md"
-          "risks-summary.md"
           "controls-full.md"
           "controls-summary.md"
-          "controls-xref-risks.md"
           "controls-xref-components.md"
+          "controls-xref-risks.md"
+          "personas-full.md"
+          "personas-summary.md"
+          "personas-xref-controls.md"
+          "personas-xref-risks.md"
+          "risks-full.md"
+          "risks-summary.md"
         )
 
         # Setup temporary directory for generated tables
@@ -203,12 +207,16 @@ jobs:
           echo "### Validated Files:" >> $GITHUB_STEP_SUMMARY
           echo "- \`components-full.md\` ✅" >> $GITHUB_STEP_SUMMARY
           echo "- \`components-summary.md\` ✅" >> $GITHUB_STEP_SUMMARY
-          echo "- \`risks-full.md\` ✅" >> $GITHUB_STEP_SUMMARY
-          echo "- \`risks-summary.md\` ✅" >> $GITHUB_STEP_SUMMARY
           echo "- \`controls-full.md\` ✅" >> $GITHUB_STEP_SUMMARY
           echo "- \`controls-summary.md\` ✅" >> $GITHUB_STEP_SUMMARY
-          echo "- \`controls-xref-risks.md\` ✅" >> $GITHUB_STEP_SUMMARY
           echo "- \`controls-xref-components.md\` ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- \`controls-xref-risks.md\` ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- \`personas-full.md\` ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- \`personas-summary.md\` ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- \`personas-xref-controls.md\` ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- \`personas-xref-risks.md\` ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- \`risks-full.md\` ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- \`risks-summary.md\` ✅" >> $GITHUB_STEP_SUMMARY
         else
           echo "## ❌ Status: Failed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

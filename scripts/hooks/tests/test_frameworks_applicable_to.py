@@ -30,6 +30,64 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # ============================================================================
 
 
+class TestFrameworkIdEnumUpdates:
+    """Test that framework ID enum includes iso-22989 for persona mappings."""
+
+    def test_framework_id_enum_includes_iso_22989(self, frameworks_schema_path):
+        """
+        Test that framework ID enum includes iso-22989.
+
+        Given: frameworks.schema.json framework definition
+        When: ID enum values are examined
+        Then: iso-22989 is included in the enum
+        """
+        with open(frameworks_schema_path) as f:
+            schema = json.load(f)
+
+        id_enum = schema["definitions"]["framework"]["properties"]["id"]["enum"]
+
+        assert "iso-22989" in id_enum, "iso-22989 must be in framework ID enum for persona mappings"
+
+    def test_iso_22989_framework_validates(self, tmp_path, frameworks_schema_path, base_uri):
+        """
+        Test that iso-22989 framework definition validates.
+
+        Given: A framework with id: iso-22989
+        When: Schema validation is performed
+        Then: Validation passes
+        """
+        yaml_content = """
+title: Test Frameworks
+description:
+  - Test frameworks for validation
+frameworks:
+  - id: iso-22989
+    name: ISO/IEC 22989
+    fullName: ISO/IEC 22989 Artificial Intelligence Concepts and Terminology
+    description: International standard for AI concepts and terminology
+    baseUri: https://www.iso.org/standard/74296.html
+    applicableTo:
+      - personas
+"""
+        yaml_file = tmp_path / "frameworks.yaml"
+        yaml_file.write_text(yaml_content)
+
+        result = subprocess.run(
+            [
+                "check-jsonschema",
+                "--base-uri",
+                base_uri,
+                "--schemafile",
+                str(frameworks_schema_path),
+                str(yaml_file),
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0, f"iso-22989 framework should validate. Error: {result.stderr}"
+
+
 class TestApplicableToSchemaStructure:
     """Test that applicableTo field exists and has correct schema structure."""
 
@@ -938,7 +996,11 @@ class TestApplicableToIntegration:
 """
 Test Summary
 ============
-Total Tests: 31
+Total Tests: 33
+
+Framework ID Enum Tests (2):
+- framework ID enum includes iso-22989
+- iso-22989 framework definition validates
 
 Schema Structure Tests (7):
 - applicableTo field exists in schema
@@ -988,22 +1050,4 @@ Coverage Areas:
 - Edge cases (duplicates, case sensitivity, multiple frameworks)
 - Integration with actual frameworks.yaml data
 - Real-world framework configurations (mitre-atlas, nist-ai-rmf, stride, owasp-top10-llm)
-
-Expected Initial State (RED phase):
-- All integration tests should FAIL (applicableTo not yet added to schema or YAML)
-- Schema structure tests should FAIL (applicableTo not yet in schema)
-- Valid/invalid case tests should FAIL (schema doesn't have applicableTo field)
-
-After Schema Implementation (GREEN phase):
-- Schema structure tests should PASS
-- Valid case tests should PASS
-- Invalid case tests should PASS
-- Integration tests should PASS after updating frameworks.yaml
-
-Test Quality Metrics:
-- Coverage: 90%+ of schema validation scenarios
-- Clear Given-When-Then structure
-- Comprehensive error condition testing
-- Edge case coverage
-- Integration with actual data
 """

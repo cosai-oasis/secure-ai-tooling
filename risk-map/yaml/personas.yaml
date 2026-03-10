@@ -16,21 +16,197 @@ id: personas
 title: Personas
 description:
   - >
-    The following personas describe who is responsible for enacting the <a href="controls.html">controls</a>
-    that can mitigate each of the <a href="risks.html">risks</a>, based on their
-    use of AI.
+    The following personas identify who is impacted by
+    <a href="risks.html">risks</a> and who is responsible for enacting the
+    <a href="controls.html">controls</a> that mitigate them, based on their
+    activities and responsibilities in the AI ecosystem.
+  - >
+    CoSAI identifies eight standard personas representing distinct sets of
+    activities across AI system development, deployment, and governance.
+    Legacy personas from earlier versions are retained for backward
+    compatibility but marked as deprecated.
+
 personas:
-  - id: personaModelCreator
-    title: Model Creator
+  # ==========================================================================
+  # CURRENT PERSONAS
+  # ==========================================================================
+
+  - id: personaModelProvider
+    title: Model Provider
     description:
+      - >
+        Actors that develop, train, evaluate, and tune AI/ML models
+        (foundation models, specialized models, or domain-adapted models).
+        This includes those that develop models from scratch or significantly
+        modify existing models for distribution.
+    mappings:
+      iso-22989:
+        - AI Producer
+    responsibilities:
+      - Model architecture design and training
+      - Model evaluation and validation
+      - Model documentation and cards
+      - Model versioning and updates
+
+  - id: personaDataProvider
+    title: Data Provider
+    description:
+      - >
+        Actors that supply training data, evaluation datasets,
+        or inference data to model providers or application developers. This includes
+        data aggregators, data marketplaces, and those licensing datasets.
+    mappings:
+      iso-22989:
+        - AI Partner (data supplier)
+    responsibilities:
+      - Data quality assurance
+      - Data provenance tracking
+      - Data licensing and compliance
+      - Data privacy protections
+
+  - id: personaPlatformProvider
+    title: AI Platform Provider
+    description:
+      - >
+        Actors that provide infrastructure, compute resources, APIs, and
+        platform services for AI model hosting, training, or inference. This includes
+        internal infrastructure teams, cloud providers (AWS, Azure, GCP), MLOps
+        platforms, and model API services.
+    mappings:
+      iso-22989:
+        - AI Partner (infrastructure provider)
+    responsibilities:
+      - Infrastructure security and availability
+      - API security and rate limiting
+      - Compute resource allocation
+      - Model hosting and serving
+
+  - id: personaModelServing
+    title: AI Model Serving
+    description:
+      - >
+        The entity responsible for provisioning, managing, and securing the
+        runtime environment that serves AI and ML model predictions at scale.
+        This persona covers all model types — including classical ML,
+        statistical, optimization, and generative AI models — focusing on the
+        secure execution of predictions, ensuring runtime integrity,
+        confidentiality, and availability of data and outputs. It separates its
+        duties from model training, tuning, or registry storage (Model Provider)
+        and physical infrastructure management (AI Platform Provider), focusing
+        on the secure orchestration and delivery of the model serving
+        application layer.
+    responsibilities:
+      - Manage and secure model serving API endpoints and enforce application access policies
+      - Perform runtime input validation and sanitization to prevent injection attacks and data poisoning
+      - Execute models within isolated or confidential computing environments to protect runtime data
+      - Enforce granular model and data access controls during loading and execution phases
+      - Verify model and data integrity at load-time and runtime to prevent execution of tampered artifacts
+      - Secure orchestration and routing of serving requests across distributed model instances
+      - Monitor, validate, and sanitize model outputs to prevent data leakage and ensure safety
+      - Implement runtime privacy-enhancing technologies to protect sensitive input data
+      - Provide transparency mechanisms regarding model serving parameters and data usage
+      - Facilitate red teaming and adversarial simulation to validate model serving security
+
+  - id: personaAgenticProvider
+    title: Agentic Platform and Framework Providers
+    description:
+      - >
+        Actors that provide the development environments,
+        software frameworks, and orchestration runtimes required to implement
+        agentic reasoning, planning, and tool execution.
+      - >
+        Examples include agentic frameworks and libraries (e.g., LangChain,
+        Semantic Kernel), agent-native development environments (e.g., Cursor,
+        GitHub Copilot Workspace), and managed agent orchestration platforms
+        (e.g., Vertex AI Agent Builder, OpenAI Assistants API).
+    mappings:
+      iso-22989:
+        - AI Partner (tooling provider)
+    responsibilities:
+      - Framework security and sandboxing
+      - Tool execution safety controls
+      - State management security
+      - API integration security
+      - Cognitive architecture safety guardrails
+    identificationQuestions:
+      - Is your system responsible for deciding which tool an AI model should use next?
+      - Does your platform manage the state or history of a multi-turn agentic workflow?
+      - Are you providing the glue that connects an LLM to an API?
+      - Are you maintaining a library or SDK that abstracts the complexity of LLM tool-calling?
+      - Does your software define the cognitive architecture (loops, reasoning steps) for an AI system?
+      - Do developers import your package to enable agentic capabilities in their code?
+
+  - id: personaApplicationDeveloper
+    title: Application Developer
+    description:
+      - >
+        Actors that integrate AI models (via APIs or embedded models) into
+        applications, products, or services. They may consume models without
+        modifying them, or perform light customization (prompt engineering, RAG, etc.).
+    mappings:
+      iso-22989:
+        - AI Consumer (application builder)
+    responsibilities:
+      - Application-level security controls
+      - Input validation and sanitization
+      - Output filtering and monitoring
+      - User access controls
+
+  - id: personaGovernance
+    title: AI System Governance
+    description:
+      - >
+        Actors responsible for defining security control objectives,
+        measuring implementations, and enforcing compliance for AI systems across
+        the AI system lifecycle. This includes AI risk officers, compliance teams,
+        and governance boards.
+    responsibilities:
+      - Security control objectives definition
+      - Implementation measurement and monitoring
+      - Compliance enforcement
+      - Risk assessment and management
+      - Incident response coordination
+
+  - id: personaEndUser
+    title: AI System Users
+    description:
+      - >
+        Actors that use AI-powered applications or services
+        without developing or deploying the AI components themselves. Users
+        rely on application developers and providers for AI security controls.
+    mappings:
+      iso-22989:
+        - AI Consumer (end user)
+    responsibilities:
+      - Appropriate use of AI systems
+      - Reporting issues or anomalies
+      - Following usage policies
+      - Data minimization (user inputs)
+
+  # ==========================================================================
+  # LEGACY PERSONAS (Deprecated)
+  # ==========================================================================
+
+  - id: personaModelCreator
+    title: Model Creator (Legacy)
+    description:
+      - >
+        DEPRECATED: This persona has been superseded by more specific personas.
+        Use Model Provider for those that train/tune models, or
+        Application Developer for those integrating models into applications.
       - >
         Organizations that either train and tune foundation models for Generative AI,
         or tune acquired models for more domain-specific tasks.
+    deprecated: true
+
   - id: personaModelConsumer
-    title: Model Consumer
+    title: Model Consumer (Legacy)
     description:
+      - >
+        DEPRECATED: Use Application Developer or AI System Users depending on context.
       - >
         Organizations that build AI applications, features, or products using models,
         but do not create or tune the models themselves. The models may be accessed
         via an API to a managed service, or downloaded and packaged into the application
         or product being produced.
+    deprecated: true

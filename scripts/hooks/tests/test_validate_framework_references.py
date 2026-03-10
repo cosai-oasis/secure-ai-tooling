@@ -442,9 +442,9 @@ class TestGetStagedYamlFiles:
         """
         Test force mode returns all target files when they exist.
 
-        Given: All three target YAML files exist in the file system
+        Given: All four target YAML files exist in the file system
         When: get_staged_yaml_files(force_check=True) is called
-        Then: Returns list of all three target files
+        Then: Returns list of all four target files
         """
         # Import the module to get access to the function
         from validate_framework_references import get_staged_yaml_files
@@ -455,6 +455,7 @@ class TestGetStagedYamlFiles:
         (yaml_dir / "frameworks.yaml").write_text("frameworks: []")
         (yaml_dir / "risks.yaml").write_text("risks: []")
         (yaml_dir / "controls.yaml").write_text("controls: []")
+        (yaml_dir / "personas.yaml").write_text("personas: []")
 
         # Change to temporary directory
         monkeypatch.chdir(tmp_path)
@@ -462,11 +463,12 @@ class TestGetStagedYamlFiles:
         # Call function with force=True
         result = get_staged_yaml_files(force_check=True)
 
-        # Verify all three files are returned
-        assert len(result) == 3
+        # Verify all four files are returned
+        assert len(result) == 4
         assert Path("risk-map/yaml/frameworks.yaml") in result
         assert Path("risk-map/yaml/risks.yaml") in result
         assert Path("risk-map/yaml/controls.yaml") in result
+        assert Path("risk-map/yaml/personas.yaml") in result
 
     def test_force_mode_returns_empty_when_files_missing(self, tmp_path, monkeypatch):
         """
@@ -520,7 +522,7 @@ class TestGetStagedYamlFiles:
 
         Given: frameworks.yaml is in staged files and all target files exist
         When: get_staged_yaml_files(force_check=False) is called
-        Then: Returns all three target files
+        Then: Returns all four target files
         """
         from unittest.mock import MagicMock
 
@@ -532,6 +534,7 @@ class TestGetStagedYamlFiles:
         (yaml_dir / "frameworks.yaml").write_text("frameworks: []")
         (yaml_dir / "risks.yaml").write_text("risks: []")
         (yaml_dir / "controls.yaml").write_text("controls: []")
+        (yaml_dir / "personas.yaml").write_text("personas: []")
 
         monkeypatch.chdir(tmp_path)
 
@@ -551,7 +554,7 @@ class TestGetStagedYamlFiles:
         result = get_staged_yaml_files(force_check=False)
 
         # Should return all target files
-        assert len(result) == 3
+        assert len(result) == 4
 
     def test_git_mode_returns_files_when_risks_staged(self, monkeypatch, tmp_path):
         """
@@ -559,7 +562,7 @@ class TestGetStagedYamlFiles:
 
         Given: risks.yaml is in staged files and all target files exist
         When: get_staged_yaml_files(force_check=False) is called
-        Then: Returns all three target files
+        Then: Returns all four target files
         """
         from unittest.mock import MagicMock
 
@@ -571,6 +574,7 @@ class TestGetStagedYamlFiles:
         (yaml_dir / "frameworks.yaml").write_text("frameworks: []")
         (yaml_dir / "risks.yaml").write_text("risks: []")
         (yaml_dir / "controls.yaml").write_text("controls: []")
+        (yaml_dir / "personas.yaml").write_text("personas: []")
 
         monkeypatch.chdir(tmp_path)
 
@@ -587,7 +591,7 @@ class TestGetStagedYamlFiles:
         monkeypatch.setattr(subprocess, "run", mock_run)
 
         result = get_staged_yaml_files(force_check=False)
-        assert len(result) == 3
+        assert len(result) == 4
 
     def test_git_mode_returns_files_when_controls_staged(self, monkeypatch, tmp_path):
         """
@@ -595,7 +599,7 @@ class TestGetStagedYamlFiles:
 
         Given: controls.yaml is in staged files and all target files exist
         When: get_staged_yaml_files(force_check=False) is called
-        Then: Returns all three target files
+        Then: Returns all four target files
         """
         from unittest.mock import MagicMock
 
@@ -607,6 +611,7 @@ class TestGetStagedYamlFiles:
         (yaml_dir / "frameworks.yaml").write_text("frameworks: []")
         (yaml_dir / "risks.yaml").write_text("risks: []")
         (yaml_dir / "controls.yaml").write_text("controls: []")
+        (yaml_dir / "personas.yaml").write_text("personas: []")
 
         monkeypatch.chdir(tmp_path)
 
@@ -623,7 +628,7 @@ class TestGetStagedYamlFiles:
         monkeypatch.setattr(subprocess, "run", mock_run)
 
         result = get_staged_yaml_files(force_check=False)
-        assert len(result) == 3
+        assert len(result) == 4
 
     def test_git_mode_returns_empty_when_no_target_files_staged(self, monkeypatch):
         """
@@ -1183,10 +1188,13 @@ frameworks:
     fullName: Test Framework
     description: Test description
     baseUri: https://example.com
+    applicableTo:
+      - controls
 """
         )
         (yaml_dir / "risks.yaml").write_text("risks: []")
         (yaml_dir / "controls.yaml").write_text("controls: []")
+        (yaml_dir / "personas.yaml").write_text("personas: []")
 
         monkeypatch.chdir(tmp_path)
         monkeypatch.setattr(sys, "argv", ["script.py", "--force"])
@@ -1223,6 +1231,7 @@ frameworks:
         )
         (yaml_dir / "risks.yaml").write_text("risks: []")
         (yaml_dir / "controls.yaml").write_text("controls: []")
+        (yaml_dir / "personas.yaml").write_text("personas: []")
 
         monkeypatch.chdir(tmp_path)
         monkeypatch.setattr(sys, "argv", ["script.py", "--force"])
@@ -1313,10 +1322,13 @@ frameworks:
     fullName: Test
     description: Test
     baseUri: https://example.com
+    applicableTo:
+      - controls
 """
         )
         (yaml_dir / "risks.yaml").write_text("risks: []")
         (yaml_dir / "controls.yaml").write_text("controls: []")
+        (yaml_dir / "personas.yaml").write_text("personas: []")
 
         monkeypatch.chdir(tmp_path)
         monkeypatch.setattr(sys, "argv", ["script.py", "-f"])
@@ -1342,6 +1354,7 @@ frameworks:
         (yaml_dir / "frameworks.yaml").write_text("frameworks:\n  - id: test\n")
         (yaml_dir / "risks.yaml").write_text("risks: []")
         (yaml_dir / "controls.yaml").write_text("controls: []")
+        (yaml_dir / "personas.yaml").write_text("personas: []")
 
         monkeypatch.chdir(tmp_path)
         monkeypatch.setattr(sys, "argv", ["script.py", "-f"])

@@ -50,6 +50,14 @@ body:
       label: Applicable Personas*
       description: Which personas should implement this control?
       options:
+        - label: personaModelProvider
+        - label: personaDataProvider
+        - label: personaPlatformProvider
+        - label: personaModelServing
+        - label: personaAgenticProvider
+        - label: personaApplicationDeveloper
+        - label: personaGovernance
+        - label: personaEndUser
         - label: personaModelCreator
         - label: personaModelConsumer
 

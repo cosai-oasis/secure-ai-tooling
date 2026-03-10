@@ -2,54 +2,69 @@
 #
 # Framework IDs (keys) must match the id field within each framework definition
 # Framework IDs must be included in the enum in frameworks.schema.json
+#
+# NOTE: Quotes are required on `version` and `lastUpdated` fields to prevent
+# YAML type coercion (e.g., '2025' would become integer 2025, '1.0' would
+# become float 1.0, and dates like '2025-10-15' may be parsed as date objects).
 
 title: Frameworks
 description:
   - >
-    The following sections describe the current external guidance supported for use in 
-    mappings throughout CoSAI-RM. These mappings are leveraged in `controls.yaml` and 
+    The following sections describe the current external guidance supported for use in
+    mappings throughout CoSAI-RM. These mappings are leveraged in `controls.yaml` and
     `risks.yaml`
 frameworks:
   - id: mitre-atlas
-    name: 'MITRE ATLAS'
-    fullName: 'Adversarial Threat Landscape for Artificial-Intelligence Systems'
-    description: 'Knowledge base of adversary tactics and techniques based on real-world attack observations on machine learning systems'
-    baseUri: 'https://atlas.mitre.org'
+    name: MITRE ATLAS
+    fullName: Adversarial Threat Landscape for Artificial-Intelligence Systems
+    description: Knowledge base of adversary tactics and techniques based on real-world attack observations on machine learning systems
+    baseUri: https://atlas.mitre.org
     version: '5.0.1'
     lastUpdated: '2025-10-15'
-    techniqueUriPattern: 'https://atlas.mitre.org/techniques/{id}'
+    techniqueUriPattern: https://atlas.mitre.org/techniques/{id}
     applicableTo:
       - controls
       - risks
 
   - id: nist-ai-rmf
-    name: 'NIST AI RMF'
-    fullName: 'NIST Artificial Intelligence Risk Management Framework'
-    description: 'Framework for managing risks to individuals, organizations, and society associated with artificial intelligence'
-    baseUri: 'https://www.nist.gov/itl/ai-risk-management-framework'
+    name: NIST AI RMF
+    fullName: NIST Artificial Intelligence Risk Management Framework
+    description: Framework for managing risks to individuals, organizations, and society associated with artificial intelligence
+    baseUri: https://www.nist.gov/itl/ai-risk-management-framework
     version: '1.0'
     lastUpdated: '2023-01-26'
-    documentUri: 'https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf'
+    documentUri: https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf
     applicableTo:
       - controls
 
   - id: stride
-    name: 'STRIDE'
-    fullName: 'STRIDE Threat Model'
-    description: 'Microsoft threat modeling framework categorizing security threats'
-    baseUri: 'https://learn.microsoft.com/en-us/azure/security/develop/threat-modeling-tool-threats'
+    name: STRIDE
+    fullName: STRIDE Threat Model
+    description: Microsoft threat modeling framework categorizing security threats
+    baseUri: https://learn.microsoft.com/en-us/azure/security/develop/threat-modeling-tool-threats
     version: null
     lastUpdated: null
     applicableTo:
       - risks
 
   - id: owasp-top10-llm
-    name: 'OWASP Top 10 for LLM'
-    fullName: 'OWASP Top 10 for Large Language Model Applications'
-    description: 'Top 10 critical security risks for applications using Large Language Models'
-    baseUri: 'https://owasp.org/www-project-top-10-for-large-language-model-applications'
+    name: OWASP Top 10 for LLM
+    fullName: OWASP Top 10 for Large Language Model Applications
+    description: Top 10 critical security risks for applications using Large Language Models
+    baseUri: https://owasp.org/www-project-top-10-for-large-language-model-applications
     version: '2025'
     lastUpdated: '2024-11-18'
     applicableTo:
       - controls
       - risks
+
+  - id: iso-22989
+    name: ISO 22989
+    fullName: ISO/IEC 22989 Artificial Intelligence Concepts and Terminology
+    description: International standard defining AI concepts and terminology including roles and responsibilities
+    baseUri: https://www.iso.org/standard/74296.html
+    version: '2022'
+    lastUpdated: '2022-07-01'
+    documentUri: https://www.iso.org/standard/74296.html
+    applicableTo:
+      - personas

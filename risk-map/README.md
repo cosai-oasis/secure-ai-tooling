@@ -17,9 +17,21 @@ The Risk Map is broken down into four key areas:
 * **Components**: The fundamental building blocks of an AI system, from data sources to the final application.
 * **Risks**: The potential security threats that can affect these components, such as Data Poisoning or Model Evasion.
 * **Controls**: The security measures that can be implemented to mitigate these risks.
-* **Personas**: The key roles in the AI ecosystem, namely the `Model Creator` and the `Model Consumer`.
+* **Personas**: Seven standard actors in the AI ecosystem (e.g., `Model Provide`, `Application Developer`, etc) that define who owns a control and who is impacted by a risk.
 
 ## Quickstart
+
+### How to Use
+
+This repository is designed to serve both human practitioners and automated systems.
+
+* **For Human Review (Learn & Assess)**: 
+    * Use the **Markdown Tables** in [`./tables/`](./tables/) to navigate the framework. Start with the `summary` tables for context and move to `full` tables for implementation details.
+* **For Tooling & LLMs (Integrate)**: 
+    * Use the **YAML Data Files** in [(`./yaml/`)](./yaml/)  as structured context for RAG applications, GRC platforms, or automated CI/CD security checks.
+* **For Development (Build)**: 
+    * Leverage the **JSON Schemas** [(`./schemas/`)](./schemas/) to extend the framework for custom organizational needs or to validate new entries.
+    * See [Contributing to the Risk Map](./docs/developing.md) for authoring and validation details.
 
 ### Project Structure
 
@@ -32,6 +44,12 @@ The framework is organized into a set of YAML files for easy reading and JSON sc
         * `controls.yaml`: A list of security controls.
         * `personas.yaml`: Definitions of the primary personas.
         * `self-assessment.yaml`: Security self-assessment questionnaire based on this framework.
+* **Tabular Data Files (`./tables/*.md`)**: Contents of the CoSAI risk map in markdown table format for easy review and reading.
+    * tables/ 
+        * Three formats: 
+            * `*-full.md`: Provides complete details for every entry, including all metadata, mappings, and relationships (e.g., `risks-full.md` includes descriptions, examples, and full mappings)
+            * `*-summary.md`: Provides a concise overview with key identifying information (ID, Title, Description, Category) suitable for quick scanning
+            * `*-xref-*.md`: Provides cross-reference tables (specifically for controls) that link entities together, such as mapping controls to the risks they mitigate (`controls-xref-risks.md`) or the components they protect (`controls-xref-components.md`)
 * **Schema Files (`.schema.json`)**: These files define the structure for the associated YAML files.
     * schemas/
         * `components.schema.json`, `risks.schema.json`, etc.
@@ -42,13 +60,6 @@ The framework is organized into a set of YAML files for easy reading and JSON sc
         * `controls-to-risk-graph.svg`: Control-to-risk mapping visualization
         * `map.svg`: Legacy comprehensive visualization (being phased out in favor of the above focused diagrams)
 
-### How to Use
-
-You can use these files to:
-* **Learn**: Read the `.yaml` files to understand the landscape of AI security risks.
-* **Assess**: Use the framework as a guide for security reviews of your AI projects.
-* **Build**: Leverage the `.schema.json` files to expand the framework to address your organization's risk management and governance needs.
-   * See [Contributing to the Risk Map](./docs/developing.md) for authoring and validation details.
 
 ## Background
 Building and using AI systems involves many potential risks. We created the Securing AI Framework to help manage these risks by tackling several foundational challenges. The industry needed:
@@ -68,7 +79,7 @@ The Securing AI Map structures the AI development lifecycle into four primary gr
 
 The visualization uses a top/bottom division. The bottom half details the model creation lifecycle, typically managed by AI development teams (such as data scientists and ML engineers) and the infrastructure that supports that process (storage, serving). The top half covers the process of building model-based applications. This structure clarifies which risks are most relevant to specific organizational roles and responsibilities.
 
-For clarity, the map is simplified to highlight the most critical componenets for understanding the end-to-end AI workflow and key areas of risk. Some components and processes are grouped together based on common risks and controls. For example, different teams may handle model training versus model finetuning at different points in the development lifecycle, but the risks and safeguards during these processes are generally the same. Certain cross-cutting threats, such as supply chain issues affecting artifact integrity, are not depicted individually as they can impact nearly every stage of the lifecycle.
+For clarity, the map is simplified to highlight the most critical components for understanding the end-to-end AI workflow and key areas of risk. Some components and processes are grouped together based on common risks and controls. For example, different teams may handle model training versus model finetuning at different points in the development lifecycle, but the risks and safeguards during these processes are generally the same. Certain cross-cutting threats, such as supply chain issues affecting artifact integrity, are not depicted individually as they can impact nearly every stage of the lifecycle.
 
 ### Key design decisions and tradeoffs
 

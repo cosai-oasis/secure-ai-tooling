@@ -1106,7 +1106,7 @@ class TestSchemaParserIntegration:
 
         Given: Production controls.schema.json
         When: extract_enum_values() is called for category
-        Then: Returns expected category values
+        Then: Returns list containing core category values
         """
         schema_dir = production_schema_dir
         parser = SchemaParser(schema_dir)
@@ -1114,15 +1114,19 @@ class TestSchemaParserIntegration:
 
         result = parser.extract_enum_values(schema_data, "definitions.category.properties.id")
 
-        expected_categories = [
+        # Verify extraction works and core categories are present
+        # Uses subset check to avoid breaking when new categories are added
+        assert isinstance(result, list), "Result should be a list"
+        assert len(result) >= 6, "Should have at least 6 categories"
+        core_categories = {
             "controlsData",
             "controlsInfrastructure",
             "controlsModel",
             "controlsApplication",
             "controlsAssurance",
             "controlsGovernance",
-        ]
-        assert result == expected_categories
+        }
+        assert core_categories.issubset(set(result)), f"Core categories missing from {result}"
 
     def test_extract_control_id_enum(self, production_schema_dir: Path) -> None:
         """
@@ -1185,7 +1189,7 @@ class TestSchemaParserIntegration:
 
         Given: Production frameworks.schema.json
         When: extract_enum_values() is called for framework.id
-        Then: Returns expected framework IDs
+        Then: Returns list containing core framework IDs
         """
         schema_dir = production_schema_dir
         parser = SchemaParser(schema_dir)
@@ -1193,9 +1197,12 @@ class TestSchemaParserIntegration:
 
         result = parser.extract_enum_values(schema_data, "definitions.framework.properties.id")
 
-        # Updated after removing test framework IDs from schema enum
-        expected_frameworks = ["mitre-atlas", "nist-ai-rmf", "stride", "owasp-top10-llm"]
-        assert result == expected_frameworks
+        # Verify extraction works and core frameworks are present
+        # Uses subset check to avoid breaking when new frameworks are added
+        assert isinstance(result, list), "Result should be a list"
+        assert len(result) >= 4, "Should have at least 4 frameworks"
+        core_frameworks = {"mitre-atlas", "nist-ai-rmf", "stride", "owasp-top10-llm"}
+        assert core_frameworks.issubset(set(result)), f"Core frameworks missing from {result}"
 
     def test_extract_framework_applicable_to_enum(self, production_schema_dir: Path) -> None:
         """
@@ -1203,7 +1210,7 @@ class TestSchemaParserIntegration:
 
         Given: Production frameworks.schema.json
         When: extract_enum_values() is called for applicableTo items
-        Then: Returns expected entity types
+        Then: Returns list containing core entity types
         """
         schema_dir = production_schema_dir
         parser = SchemaParser(schema_dir)
@@ -1211,8 +1218,10 @@ class TestSchemaParserIntegration:
 
         result = parser.extract_enum_values(schema_data, "definitions.framework.properties.applicableTo.items")
 
-        expected_applicable = ["controls", "risks", "components", "personas"]
-        assert result == expected_applicable
+        # Verify extraction works and core entity types are present
+        assert isinstance(result, list), "Result should be a list"
+        core_entity_types = {"controls", "risks", "components", "personas"}
+        assert core_entity_types.issubset(set(result)), f"Core entity types missing from {result}"
 
     def test_load_production_lifecycle_stage_schema(self, production_schema_dir: Path) -> None:
         """
@@ -1237,7 +1246,7 @@ class TestSchemaParserIntegration:
 
         Given: Production lifecycle-stage.schema.json
         When: extract_enum_values() is called
-        Then: Returns expected lifecycle stages
+        Then: Returns list containing core lifecycle stages
         """
         schema_dir = production_schema_dir
         parser = SchemaParser(schema_dir)
@@ -1245,7 +1254,11 @@ class TestSchemaParserIntegration:
 
         result = parser.extract_enum_values(schema_data, "definitions.lifecycleStage.properties.id")
 
-        expected_stages = [
+        # Verify extraction works and core lifecycle stages are present
+        # Uses subset check to avoid breaking when new stages are added
+        assert isinstance(result, list), "Result should be a list"
+        assert len(result) >= 8, "Should have at least 8 lifecycle stages"
+        core_stages = {
             "planning",
             "data-preparation",
             "model-training",
@@ -1254,8 +1267,8 @@ class TestSchemaParserIntegration:
             "deployment",
             "runtime",
             "maintenance",
-        ]
-        assert result == expected_stages
+        }
+        assert core_stages.issubset(set(result)), f"Core lifecycle stages missing from {result}"
 
     def test_extract_all_enums_from_production_controls(self, production_schema_dir: Path) -> None:
         """

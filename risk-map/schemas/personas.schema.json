@@ -19,10 +19,55 @@
       "properties": {
         "id": {
           "type": "string",
-          "enum": ["personaModelCreator", "personaModelConsumer"]
+          "enum": [
+            "personaModelProvider",
+            "personaDataProvider",
+            "personaPlatformProvider",
+            "personaModelServing",
+            "personaAgenticProvider",
+            "personaApplicationDeveloper",
+            "personaGovernance",
+            "personaEndUser",
+            "personaModelCreator",
+            "personaModelConsumer"
+          ]
         },
         "title": { "type": "string" },
-        "description": { "$ref": "riskmap.schema.json#/definitions/utils/text" }
+        "description": { "$ref": "riskmap.schema.json#/definitions/utils/text" },
+        "deprecated": {
+          "type": "boolean",
+          "description": "Indicates if this persona is deprecated and superseded by newer personas",
+          "default": false
+        },
+        "mappings": {
+          "type": "object",
+          "description": "Maps this persona to equivalent actors in external frameworks. Keys must match valid framework IDs defined in frameworks.schema.json.",
+          "propertyNames": {
+            "$ref": "frameworks.schema.json#/definitions/framework/properties/id"
+          },
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "Framework-specific actor identifier"
+            }
+          },
+          "examples": [
+            {
+              "iso-22989": ["AI system provider", "Data provider"]
+            }
+          ]
+        },
+        "responsibilities": {
+          "type": "array",
+          "description": "List of security control responsibilities for this persona",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "identificationQuestions": {
+          "type": "array",
+          "description": "Questions to help identify if this persona applies",
+          "items": { "type": "string", "minLength": 1 }
+        }
       },
       "required": ["id", "title", "description"]
     }

@@ -20,7 +20,7 @@
         "id": {
           "type": "string",
           "description": "Unique framework identifier used in mapping references",
-          "enum": ["mitre-atlas", "nist-ai-rmf", "stride", "owasp-top10-llm"]
+          "enum": ["mitre-atlas", "nist-ai-rmf", "stride", "owasp-top10-llm", "iso-22989"]
         },
         "name": {
           "type": "string",

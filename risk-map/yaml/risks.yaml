@@ -62,6 +62,12 @@ risks:
         model behave maliciously.
     category: risksSupplyChainAndDevelopment
     personas:
+      - personaModelProvider
+      - personaDataProvider
+      - personaModelServing
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelCreator
     controls:
       - controlTrainingDataSanitization
@@ -133,6 +139,8 @@ risks:
         data.
     category: risksSupplyChainAndDevelopment
     personas:
+      - personaModelProvider
+      - personaDataProvider
       - personaModelCreator
     controls:
       - controlTrainingDataSanitization
@@ -183,7 +191,7 @@ risks:
         or unintended behavior.
     longDescription:
       - >
-        Tampering with the model’s source code, dependencies, or weights, either
+        Tampering with the model's source code, dependencies, or weights, either
         by supply chain attacks or insider attacks.
       - >
         Similar to tampering with traditional software code, Model Source Tampering
@@ -193,7 +201,7 @@ risks:
         modifications can affect model behavior. As with traditional code, attacks
         on a dependency can affect the program that relies on that dependency, so the
         risks in this area are transitive, potentially through many layers of a model
-        code’s dependency chain.
+        code's dependency chain.
       - >
         Another method of Model Source Tampering is model architecture backdoors, which
         are <a href="https://arxiv.org/pdf/2402.06957.pdf">backdoors embedded within
@@ -201,6 +209,11 @@ risks:
         survive full retraining of a model.
     category: risksSupplyChainAndDevelopment
     personas:
+      - personaModelProvider
+      - personaPlatformProvider
+      - personaModelServing
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelCreator
     controls:
       - controlIsolatedConfidentialComputing
@@ -275,13 +288,15 @@ risks:
         (PII) without a proper legal basis.
     category: risksSupplyChainAndDevelopment
     personas:
+      - personaModelProvider
+      - personaDataProvider
       - personaModelCreator
     controls:
       - controlTrainingDataManagement
       - controlUserTransparencyAndControls
     examples:
       - >
-        <a href="https://www.theguardian.com/us-news/2022/may/09/clearview-chicago-settlement-aclu" 
+        <a href="https://www.theguardian.com/us-news/2022/may/09/clearview-chicago-settlement-aclu"
         target="_blank" rel="noopener"> Clearview AI collected photos from public websites
         and social media for their facial recognition database.
     tourContent:
@@ -334,6 +349,10 @@ risks:
         proper consent or a legal basis.
     category: risksRuntimeDataSecurity
     personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelCreator
     controls:
       - controlUserDataManagement
@@ -401,6 +420,8 @@ risks:
       - This risk is distinct from the related <a href="#MRE">Model Reverse Engineering</a>.
     category: risksDeploymentAndInfrastructure
     personas:
+      - personaModelProvider
+      - personaModelServing
       - personaModelCreator
       - personaModelConsumer
     controls:
@@ -477,6 +498,10 @@ risks:
         code for PyTorch itself.
     category: risksDeploymentAndInfrastructure
     personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelCreator
       - personaModelConsumer
     controls:
@@ -554,6 +579,10 @@ risks:
         energy consumption can drain batteries and make the model unavailable.
     category: risksRuntimeInputSecurity
     personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelConsumer
     controls:
       - controlApplicationAccessManagement
@@ -618,6 +647,8 @@ risks:
         hardware. See also <a href="#MXF">Model Exfiltration</a>.
     category: risksDeploymentAndInfrastructure
     personas:
+      - personaModelProvider
+      - personaDataProvider
       - personaModelConsumer
     controls:
       - controlApplicationAccessManagement
@@ -696,6 +727,11 @@ risks:
         even when the integrated components are secure.
     category: risksDeploymentAndInfrastructure
     personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelConsumer
     controls:
       - controlAgentPluginPermissions
@@ -778,6 +814,9 @@ risks:
         trigger the intended model behavior.
     category: risksRuntimeInputSecurity
     personas:
+      - personaModelServing
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelCreator
       - personaModelConsumer
     controls:
@@ -788,7 +827,7 @@ risks:
       - >
         An example of indirect Prompt Injection was performed by <a href="https://arxiv.org/abs/2302.12173"
         target="_blank" rel="noopener">planting malicious data inside a resource
-        fed into the LLM’s prompt</a>. In another example, a <a href="https://simonwillison.net/2023/Oct/14/multi-modal-prompt-injection/"
+        fed into the LLM's prompt</a>. In another example, a <a href="https://simonwillison.net/2023/Oct/14/multi-modal-prompt-injection/"
         target="_blank" rel="noopener">multi-modal prompt injection image attacks
         against GPT-4V</a> showed that images can contain text that triggers a Prompt
         Injection attack when the model is asked to describe the image.
@@ -866,6 +905,10 @@ risks:
         but the user won’t see it.
     category: risksRuntimeInputSecurity
     personas:
+      - personaModelServing
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelCreator
       - personaModelConsumer
     controls:
@@ -970,6 +1013,10 @@ risks:
           sharing health history when the agent should be booking a restaurant reservation.
     category: risksRuntimeDataSecurity
     personas:
+      - personaModelProvider
+      - personaDataProvider
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelCreator
       - personaModelConsumer
     controls:
@@ -1060,6 +1107,9 @@ risks:
         sensitive data specifically from training, tuning or prompt data.
     category: risksRuntimeDataSecurity
     personas:
+      - personaModelServing
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelCreator
       - personaModelConsumer
     controls:
@@ -1127,6 +1177,9 @@ risks:
         a phishing email based on specific details about the target.
     category: risksRuntimeOutputSecurity
     personas:
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelConsumer
     controls:
       - controlOutputValidationAndSanitization
@@ -1211,6 +1264,11 @@ risks:
         Components.
     category: risksRuntimeOutputSecurity
     personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelConsumer
     controls:
       - controlAgentPluginPermissions
@@ -1219,7 +1277,7 @@ risks:
       - controlAgentObservability
     examples:
       - >
-        An attack on ChatGPT plugins was described in 
+        An attack on ChatGPT plugins was described in
         <a href="https://embracethered.com/blog/posts/2023/chatgpt-plugin-vulns-chat-with-code/"
         target="_blank" rel="noopener">Plugin Vulnerabilities: Visit a Website and
         Have Your Source Code Stolen</a>.
@@ -1288,6 +1346,10 @@ risks:
         where an attacker can co-locate their workload with a victim's.
     category: risksDeploymentAndInfrastructure
     personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelCreator
       - personaModelConsumer
     controls:
@@ -1360,6 +1422,10 @@ risks:
         provisioning and associated costs.
     category: risksRuntimeInputSecurity
     personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelConsumer
     controls:
       - controlApplicationAccessManagement
@@ -1422,6 +1488,10 @@ risks:
         compromised clients to amplify privacy breaches.
     category: risksSupplyChainAndDevelopment
     personas:
+      - personaModelProvider
+      - personaDataProvider
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelCreator
     controls:
       - controlModelPrivacyEnhancingTechnologies
@@ -1489,6 +1559,10 @@ risks:
         channels, or exploit weak verification processes.
     category: risksDeploymentAndInfrastructure
     personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelCreator
       - personaModelConsumer
     controls:
@@ -1556,6 +1630,9 @@ risks:
         responses while secretly logging data or performing unauthorized actions.
     category: risksRuntimeOutputSecurity
     personas:
+      - personaModelServing
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelCreator
       - personaModelConsumer
     controls:
@@ -1626,6 +1703,10 @@ risks:
         long-lasting impacts on model development and deployment decisions.
     category: risksRuntimeDataSecurity
     personas:
+      - personaModelProvider
+      - personaModelServing
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelCreator
     controls:
       - controlModelAndDataIntegrityManagement
@@ -1690,6 +1771,10 @@ risks:
         extractable through specific decoding methods.
     category: risksRuntimeOutputSecurity
     personas:
+      - personaModelServing
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelCreator
       - personaModelConsumer
     controls:
@@ -1763,6 +1848,10 @@ risks:
         lifecycle.
     category: risksSupplyChainAndDevelopment
     personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelCreator
       - personaModelConsumer
     controls:
@@ -1835,6 +1924,9 @@ risks:
         cached content or use cache behavior to fingerprint other users' activities.
     category: risksRuntimeDataSecurity
     personas:
+      - personaModelServing
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelCreator
       - personaModelConsumer
     controls:
@@ -1900,6 +1992,11 @@ risks:
         metrics used for retrieval ranking.
     category: risksRuntimeOutputSecurity
     personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaEndUser
       - personaModelCreator
       - personaModelConsumer
     controls:

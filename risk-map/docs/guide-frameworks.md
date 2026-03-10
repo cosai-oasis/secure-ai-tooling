@@ -98,9 +98,35 @@ python scripts/hooks/validate_control_risk_references.py --force
 
 ---
 
-## Using Framework Mappings in Risks and Controls
+## Using Framework Mappings
 
-Once frameworks are defined, you can reference them in risk and control definitions using the `mappings` field.
+Once frameworks are defined, you can reference them in risks, controls, and personas using the `mappings` field. Each entity type has specific frameworks that apply to it, controlled by the `applicableTo` field in framework definitions.
+
+### Framework Applicability
+
+Frameworks specify which entity types they apply to:
+
+```yaml
+# In frameworks.yaml
+- id: iso-22989
+  name: ISO 22989
+  # ...
+  applicableTo:
+    - personas  # This framework applies to personas only
+
+- id: mitre-atlas
+  name: MITRE ATLAS
+  # ...
+  applicableTo:
+    - risks
+    - controls  # This framework applies to risks and controls
+```
+
+The validation system enforces that entities only reference frameworks applicable to their type.
+
+---
+
+## Framework Mappings in Risks and Controls
 
 ### Example: Adding Framework Mappings to Risks
 
@@ -140,6 +166,46 @@ controls:
 
 **Note**: Risks and controls also support additional optional metadata fields (`lifecycleStage`, `impactType`, `actorAccess`). See [Metadata Fields Guide](guide-metadata.md) for details
 
+---
+
+## Framework Mappings in Personas
+
+Personas can be mapped to actors defined in external frameworks like ISO 22989. This enables cross-referencing between CoSAI personas and standardized AI ecosystem actors.
+
+### Example: Adding Framework Mappings to Personas
+
+In [`risk-map/yaml/personas.yaml`](../yaml/personas.yaml):
+
+```yaml
+personas:
+  - id: personaModelProvider
+    title: Model Provider
+    description:
+      - >
+        Actors that develop, train, evaluate, and tune AI/ML models...
+    mappings:
+      iso-22989:
+        - AI Producer
+    responsibilities:
+      - Model architecture design and training
+      - Model evaluation and validation
+```
+
+### ISO 22989 Persona Mappings
+
+| CoSAI Persona | ISO 22989 Actor |
+|---------------|-----------------|
+| `personaModelProvider` | AI Producer |
+| `personaDataProvider` | AI Partner (data supplier) |
+| `personaPlatformProvider` | AI Partner (infrastructure provider) |
+| `personaAgenticProvider` | AI Partner (tooling provider) |
+| `personaApplicationDeveloper` | AI Consumer (application builder) |
+| `personaEndUser` | AI Consumer (end user) |
+| `personaGovernance` | (No direct ISO 22989 mapping) |
+
+See [Personas Guide](guide-personas.md) for detailed persona descriptions and responsibilities.
+
+---
 
 ## Examples
 
@@ -538,6 +604,40 @@ for fw_id, counts in sorted(framework_coverage.items()):
 #   nist-ai-rmf: 0 risks, 2 controls
 ```
 
+### Example 8: Query Persona Framework Mappings
+
+Find personas and their ISO 22989 actor mappings:
+
+```python
+import yaml
+
+with open('risk-map/yaml/personas.yaml', 'r') as f:
+    personas_data = yaml.safe_load(f)
+
+with open('risk-map/yaml/frameworks.yaml', 'r') as f:
+    frameworks = {fw['id']: fw for fw in yaml.safe_load(f)['frameworks']}
+
+# List all persona mappings
+print("Persona to Framework Actor Mappings:")
+for persona in personas_data['personas']:
+    if persona.get('deprecated'):
+        continue  # Skip deprecated personas
+
+    mappings = persona.get('mappings', {})
+    if mappings:
+        print(f"\n{persona['title']} ({persona['id']}):")
+        for fw_id, roles in mappings.items():
+            fw_name = frameworks.get(fw_id, {}).get('name', fw_id)
+            print(f"  {fw_name}: {', '.join(roles)}")
+
+# Output:
+#   Model Provider (personaModelProvider):
+#     ISO 22989: AI Producer
+#   Data Provider (personaDataProvider):
+#     ISO 22989: AI Partner (data supplier)
+#   ...
+```
+
 ---
 
 ## URI Construction Guidelines
@@ -566,6 +666,7 @@ When using `techniqueUriPattern`, follow these guidelines:
 
 ## Related Documentation
 
+- [Personas Guide](guide-personas.md) - Complete guide for personas and framework actor mappings
 - [Adding a Risk](guide-risks.md) - Complete guide for adding new risks
 - [Adding a Control](guide-controls.md) - Complete guide for adding new controls
 - [Validation Tools](validation.md) - Schema validation and testing
