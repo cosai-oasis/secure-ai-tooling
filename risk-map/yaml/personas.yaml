@@ -161,7 +161,7 @@ personas:
         modifying them, or perform light customization (prompt engineering, RAG, etc.).
     mappings:
       iso-22989:
-        - AI Consumer (application builder)
+        - AI Customer (application builder)
     responsibilities:
       - Application-level security controls
       - Input validation and sanitization
@@ -192,7 +192,7 @@ personas:
         rely on application developers and providers for AI security controls.
     mappings:
       iso-22989:
-        - AI Consumer (end user)
+        - AI Customer (end user)
     responsibilities:
       - Appropriate use of AI systems
       - Reporting issues or anomalies

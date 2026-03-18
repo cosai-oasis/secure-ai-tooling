@@ -199,8 +199,8 @@ personas:
 | `personaDataProvider` | AI Partner (data supplier) |
 | `personaPlatformProvider` | AI Partner (infrastructure provider) |
 | `personaAgenticProvider` | AI Partner (tooling provider) |
-| `personaApplicationDeveloper` | AI Consumer (application builder) |
-| `personaEndUser` | AI Consumer (end user) |
+| `personaApplicationDeveloper` | AI Customer (application builder) |
+| `personaEndUser` | AI Customer (end user) |
 | `personaGovernance` | (No direct ISO 22989 mapping) |
 
 See [Personas Guide](guide-personas.md) for detailed persona descriptions and responsibilities.

@@ -164,7 +164,7 @@ The agentic AI space is rapidly evolving with unclear boundaries. The identifica
 - Makes decisions about input/output validation
 - Has user-facing security responsibilities
 
-**ISO 22989 mapping:** AI Consumer (application builder)
+**ISO 22989 mapping:** AI Customer (application builder)
 
 **Key differentiation from Model Provider (personaModelProvider):**
 - Uses models without significant modification
@@ -201,7 +201,7 @@ The agentic AI space is rapidly evolving with unclear boundaries. The identifica
 - Source of user inputs that may contain sensitive data
 - First line of defense for detecting anomalies
 
-**ISO 22989 mapping:** AI Consumer (end user)
+**ISO 22989 mapping:** AI Customer (end user)
 
 **Key considerations:**
 - Relies on other personas for security controls

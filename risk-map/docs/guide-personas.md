@@ -141,7 +141,7 @@ Actors that integrate AI models (via APIs or embedded models) into applications,
 - User access controls
 
 **Framework Mapping:**
-- ISO 22989: AI Consumer (application builder)
+- ISO 22989: AI Customer (application builder)
 
 ---
 
@@ -169,7 +169,7 @@ Actors that use AI-powered applications or services without developing or deploy
 - Data minimization (user inputs)
 
 **Framework Mapping:**
-- ISO 22989: AI Consumer (end user)
+- ISO 22989: AI Customer (end user)
 
 **Identification Questions:**
 
@@ -240,8 +240,8 @@ Personas can be mapped to actors defined in external frameworks. Currently, the 
 | AI Platform Provider | AI Partner (infrastructure provider) |
 | AI Model Serving | (No direct mapping) |
 | Agentic Platform Provider | AI Partner (tooling provider) |
-| Application Developer | AI Consumer (application builder) |
-| AI System Users | AI Consumer (end user) |
+| Application Developer | AI Customer (application builder) |
+| AI System Users | AI Customer (end user) |
 | AI System Governance | (No direct mapping) |
 
 ### Adding Framework Mappings
