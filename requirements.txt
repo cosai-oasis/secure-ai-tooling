@@ -1,8 +1,8 @@
-check-jsonschema==0.35.0
+check-jsonschema==0.37.0
 pytest==9.0.2
 pytest-cov==7.0.0
 pytest-timeout==2.4.0
-PyYAML==6.0.2
-ruff==0.13.0
+PyYAML==6.0.3
+ruff==0.15.7
 pandas==3.0.1
-tabulate==0.9.0
+tabulate==0.10.0
