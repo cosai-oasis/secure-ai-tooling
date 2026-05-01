@@ -192,6 +192,28 @@ personas:
       - Input validation and sanitization
       - Output filtering and monitoring
       - User access controls
+    identificationQuestions:
+      - >
+        Do you build or maintain applications, products, or services that embed
+        AI/ML capabilities for end users or downstream systems?
+      - >
+        Do you integrate AI/ML models into applications or services (e.g., via
+        APIs, embedded models, or prompt-engineered workflows)?
+      - >
+        Do you define how user inputs, business logic, or application context
+        are passed to AI models and how model outputs are used, within a
+        specific application rather than a reusable framework?
+      - >
+        Do you implement application-layer controls around AI features for your
+        application's end users, such as authentication, authorization, input
+        validation, output filtering, or user-facing safeguards?
+      - >
+        Do you customize AI features (e.g., prompt design, output handling, or
+        application-specific guardrails) for a specific application use case,
+        consuming an existing model rather than producing one for others?
+      - >
+        Do you deliver AI-powered functionality directly to end users or
+        downstream systems as a finished product or service?
 
   - id: personaGovernance
     title: AI System Governance
