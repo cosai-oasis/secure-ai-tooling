@@ -63,16 +63,17 @@ def test_build_site_data_classifies_guided_and_manual_fallback_personas(
     persona_by_id = {persona["id"]: persona for persona in site_data["personas"]}
 
     assert persona_by_id["personaModelProvider"]["matchMode"] == "guided"
+    assert persona_by_id["personaDataProvider"]["matchMode"] == "guided"
     assert persona_by_id["personaPlatformProvider"]["matchMode"] == "guided"
     assert persona_by_id["personaAgenticProvider"]["matchMode"] == "guided"
     assert persona_by_id["personaEndUser"]["matchMode"] == "guided"
 
     assert set(site_data["manualFallbackPersonaIds"]) == {
         "personaApplicationDeveloper",
-        "personaDataProvider",
         "personaGovernance",
         "personaModelServing",
     }
+    assert persona_by_id["personaDataProvider"]["questionCount"] == 6
     assert persona_by_id["personaModelServing"]["questionCount"] == 0
 
 

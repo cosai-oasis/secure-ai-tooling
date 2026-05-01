@@ -78,6 +78,20 @@ personas:
       - Data provenance tracking
       - Data licensing and compliance
       - Data privacy protections
+    identificationQuestions:
+      - Do you collect, curate, or prepare data for use by others in training, evaluating, or operating AI/ML systems?
+      - Do you supply datasets or data feeds to model providers or application developers, including labeled datasets, synthetic data, or benchmark corpora?
+      - Do you label or annotate data (e.g., classification tags, bounding boxes, or preference judgments) so others can train or evaluate AI/ML systems?
+      - Do you document or verify data provenance, lineage, licensing, or usage restrictions for datasets that others rely on?
+      - >
+        Do you operate a catalog, marketplace, repository, or delivery service
+        through which others can discover or obtain AI-relevant datasets, rather
+        than AI models or software artifacts?
+      - >
+        Do you determine whether specific datasets may be shared or used for AI
+        purposes based on privacy, consent, contractual, or regulatory
+        requirements, as the data owner or supplier rather than as an
+        enterprise-wide governance or compliance function?
 
   - id: personaPlatformProvider
     title: AI Platform Provider
