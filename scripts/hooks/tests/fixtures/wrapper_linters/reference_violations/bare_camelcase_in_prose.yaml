@@ -1,0 +1,5 @@
+risks:
+  - id: riskAlpha
+    title: Alpha Risk
+    shortDescription:
+      - "The riskBeta attack pattern is closely related to this risk."

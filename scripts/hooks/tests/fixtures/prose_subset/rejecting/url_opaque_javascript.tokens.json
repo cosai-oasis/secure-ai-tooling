@@ -1,0 +1,5 @@
+[
+  {"kind": "TEXT", "value": "avoid "},
+  {"kind": "INVALID_URL", "value": "javascript:alert(1)"},
+  {"kind": "TEXT", "value": " in prose"}
+]

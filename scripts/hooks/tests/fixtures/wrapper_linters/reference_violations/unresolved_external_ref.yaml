@@ -1,0 +1,10 @@
+risks:
+  - id: riskAlpha
+    title: Alpha Risk
+    shortDescription:
+      - "See {{ref:nonexistent-ref}} for background."
+    externalReferences:
+      - type: paper
+        id: real-ref
+        title: "A real reference"
+        url: https://example.com/real

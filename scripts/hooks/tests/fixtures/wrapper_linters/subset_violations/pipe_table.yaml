@@ -1,0 +1,5 @@
+risks:
+  - id: riskAlpha
+    title: Alpha Risk
+    shortDescription:
+      - "| Column A | Column B |\n| --- | --- |\n| value1 | value2 |"

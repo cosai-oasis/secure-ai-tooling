@@ -1,0 +1,8 @@
+risks:
+  - id: riskAlpha
+    title: Alpha Risk
+    shortDescription:
+      - "This risk involves **bold text** and *italic text* in valid prose."
+      - "A second paragraph with _underscore italic_ that is also valid."
+    longDescription:
+      - "Extended description with no violations at all."

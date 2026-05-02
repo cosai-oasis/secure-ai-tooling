@@ -1,0 +1,6 @@
+[
+  {"kind": "TEXT", "value": "Examples include ...\n"},
+  {"kind": "INVALID_FOLDED_BULLET", "value": "        - validating expected code and model signatures / hashes at inference-time\n"},
+  {"kind": "INVALID_FOLDED_BULLET", "value": "        - limit and immutably record all modifications to runtime AI system components via oversight processes\n"},
+  {"kind": "INVALID_FOLDED_BULLET", "value": "        - etc"}
+]

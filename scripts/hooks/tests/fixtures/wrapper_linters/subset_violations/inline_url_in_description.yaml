@@ -1,0 +1,5 @@
+risks:
+  - id: riskAlpha
+    title: Alpha Risk
+    shortDescription:
+      - "See https://example.com/attack-paper for details on this attack."

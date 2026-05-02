@@ -1,0 +1,4 @@
+Examples include ...
+        - validating expected code and model signatures / hashes at inference-time
+        - limit and immutably record all modifications to runtime AI system components via oversight processes
+        - etc

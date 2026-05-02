@@ -1,0 +1,6 @@
+controls:
+  - id: controlAlpha
+    title: Alpha Control
+    description:
+      - "This control uses **bold** and *italic* formatting appropriately."
+      - "Plain prose is always acceptable in description fields."

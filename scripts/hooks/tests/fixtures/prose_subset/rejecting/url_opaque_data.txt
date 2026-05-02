@@ -1,0 +1,1 @@
+avoid data:image/png;base64,iVBORw0KGgo... in prose

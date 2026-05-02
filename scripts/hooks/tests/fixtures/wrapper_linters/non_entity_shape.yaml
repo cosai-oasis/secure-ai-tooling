@@ -1,0 +1,13 @@
+# Non-entity YAML fixture for build_id_index defensive-handling test (Item 7).
+# This file has the same top-level structure as mermaid-styles.yaml / frameworks.yaml:
+# a dict with no top-level list of entity entries.  build_id_index must silently
+# skip it without raising TypeError/AttributeError/KeyError.
+styles:
+  node:
+    fill: "#f0f0f0"
+    stroke: "#333"
+  edge:
+    color: "#999"
+risks:
+  defaultColor: "#ff0000"
+  highlightColor: "#ff6600"

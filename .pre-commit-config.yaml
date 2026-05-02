@@ -233,6 +233,30 @@ repos:
         pass_filenames: true
 
   # ---------------------------------------------------------------------------
+  # Prose authoring linters. Both consume the shared _prose_tokens.py tokenizer
+  # and ship warn-only (default; block-mode flip is C2 / sweep-close).
+  # validate-yaml-prose-subset enforces ADR-017 D4 grammar rejections;
+  # validate-prose-references enforces ADR-016 D6 sentinel ID resolution +
+  # bare-camelCase rejection. Diagnostics emit to stderr in the format
+  # `<hook-id>: <file>:<entry-id>:<field>[<index>]: <reason> at <token-snippet>`.
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: validate-yaml-prose-subset
+        name: 'validate: YAML prose authoring subset'
+        language: system
+        entry: python3 scripts/hooks/precommit/validate_yaml_prose_subset.py
+        files: ^risk-map/yaml/(components|controls|risks|personas)\.yaml$
+        pass_filenames: true
+
+      - id: validate-prose-references
+        name: 'validate: YAML prose references (sentinels + IDs)'
+        language: system
+        entry: python3 scripts/hooks/precommit/validate_prose_references.py
+        files: ^risk-map/yaml/(components|controls|risks|personas)\.yaml$
+        pass_filenames: true
+
+  # ---------------------------------------------------------------------------
   # Issue template regeneration. Runs before the validator so freshly
   # regenerated templates are validated in the same commit. Triggers on
   # template sources, any schema, or frameworks.yaml.

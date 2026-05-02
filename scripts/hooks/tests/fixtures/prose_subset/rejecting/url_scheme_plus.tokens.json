@@ -1,0 +1,5 @@
+[
+  {"kind": "TEXT", "value": "see "},
+  {"kind": "INVALID_URL", "value": "git+https://github.com/user/repo"},
+  {"kind": "TEXT", "value": " for more"}
+]

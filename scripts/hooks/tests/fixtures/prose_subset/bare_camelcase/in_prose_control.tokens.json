@@ -1,0 +1,5 @@
+[
+  {"kind": "TEXT", "value": "apply "},
+  {"kind": "INVALID_CAMELCASE_ID", "value": "controlInputValidation"},
+  {"kind": "TEXT", "value": " to mitigate this"}
+]

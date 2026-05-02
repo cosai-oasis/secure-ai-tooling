@@ -1,0 +1,7 @@
+[
+  {"kind": "TEXT", "value": "see "},
+  {"kind": "INVALID_HTML", "value": "<a href=\"https://example.com\">"},
+  {"kind": "TEXT", "value": "example"},
+  {"kind": "INVALID_HTML", "value": "</a>"},
+  {"kind": "TEXT", "value": " for more"}
+]

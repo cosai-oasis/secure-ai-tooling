@@ -1,0 +1,5 @@
+[
+  {"kind": "TEXT", "value": "avoid "},
+  {"kind": "INVALID_URL", "value": "data:image/png;base64,iVBORw0KGgo..."},
+  {"kind": "TEXT", "value": " in prose"}
+]

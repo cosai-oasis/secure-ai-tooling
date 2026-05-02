@@ -1,0 +1,5 @@
+[
+  {"kind": "TEXT", "value": "see "},
+  {"kind": "INVALID_URL", "value": "ftp://example.com/file"},
+  {"kind": "TEXT", "value": " for more"}
+]

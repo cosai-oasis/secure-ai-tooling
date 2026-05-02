@@ -1,0 +1,7 @@
+[
+  {"kind": "TEXT", "value": "plain text, "},
+  {"kind": "BOLD", "value": "**bold**"},
+  {"kind": "TEXT", "value": ", and "},
+  {"kind": "ITALIC", "value": "*italic*"},
+  {"kind": "TEXT", "value": " together"}
+]

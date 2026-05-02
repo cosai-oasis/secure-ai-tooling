@@ -1,0 +1,5 @@
+[
+  {"kind": "TEXT", "value": "use "},
+  {"kind": "INVALID_CODE", "value": "`code`"},
+  {"kind": "TEXT", "value": " here"}
+]

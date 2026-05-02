@@ -1,0 +1,5 @@
+[
+  {"kind": "TEXT", "value": "see "},
+  {"kind": "INVALID_URL", "value": "ssh://user@host:22/path"},
+  {"kind": "TEXT", "value": " for more"}
+]

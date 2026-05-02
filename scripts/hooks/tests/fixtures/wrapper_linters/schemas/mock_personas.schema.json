@@ -1,0 +1,30 @@
+{
+  "$id": "mock_personas.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Mock personas schema for wrapper-linter tests",
+  "type": "object",
+  "properties": {
+    "personas": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/persona" }
+    }
+  },
+  "definitions": {
+    "persona": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": [
+            "personaAlpha",
+            "personaBeta"
+          ]
+        },
+        "title": { "type": "string" },
+        "description": {
+          "$ref": "riskmap.schema.json#/definitions/utils/text"
+        }
+      }
+    }
+  }
+}

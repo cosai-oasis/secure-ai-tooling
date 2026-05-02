@@ -1,0 +1,5 @@
+[
+  {"kind": "TEXT", "value": "see "},
+  {"kind": "INVALID_URL", "value": "myscheme.2://something"},
+  {"kind": "TEXT", "value": " for more"}
+]

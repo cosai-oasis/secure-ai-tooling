@@ -1,0 +1,1 @@
+contact mailto:user@example.com?subject=Hello for info

@@ -1,0 +1,4 @@
+AI Systems: AI systems can leak sensitive data sourced from three primary sources:
+          - data provided by the user
+          - data used in model training and deployment including system prompts
+          - data accessed or produced via tool call responses and external system usage

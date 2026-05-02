@@ -1,0 +1,5 @@
+[
+  {"kind": "TEXT", "value": "Plain text. See "},
+  {"kind": "SENTINEL_INTRA", "value": "{{riskPromptInjection}}"},
+  {"kind": "TEXT", "value": " for more."}
+]

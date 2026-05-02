@@ -1,0 +1,5 @@
+[
+  {"kind": "TEXT", "value": "contact "},
+  {"kind": "INVALID_URL", "value": "mailto:user@example.com"},
+  {"kind": "TEXT", "value": " for info"}
+]

@@ -1,0 +1,5 @@
+risks:
+  - id: riskAlpha
+    title: Alpha Risk
+    shortDescription:
+      - "The riskBeta is related. See https://example.com and {{riskUnknown}} for context."

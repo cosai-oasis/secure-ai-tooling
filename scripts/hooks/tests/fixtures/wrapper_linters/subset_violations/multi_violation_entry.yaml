@@ -1,0 +1,7 @@
+risks:
+  - id: riskAlpha
+    title: Alpha Risk
+    shortDescription:
+      - "See https://example.com for details."
+      - "See <a href=\"https://example.com\">link</a> too."
+      - "## Background heading here"

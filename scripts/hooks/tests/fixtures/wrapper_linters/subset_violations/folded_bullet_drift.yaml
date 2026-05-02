@@ -1,0 +1,5 @@
+controls:
+  - id: controlAlpha
+    title: Alpha Control
+    description:
+      - "This control covers several techniques:\n  - technique one\n  - technique two"

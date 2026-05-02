@@ -81,7 +81,11 @@ A new local hook lands under `.pre-commit-config.yaml` per [ADR-013](013-site-pr
 - **Rejection format:** stderr line per offending paragraph: `validate-yaml-prose-subset: <file>:<entry-id>:<field>[<index>]: <reason> at <token-snippet>`. Exit non-zero on any rejection.
 - **Rule list (block-mode end state):**
   1. Accept `**bold**` (one nesting level), `*italic*`, `_italic_`, and the sentinel forms decided in [ADR-016](016-reference-strategy.md).
-  2. **Reject any prose containing `http://`, `https://`, or `]` followed by `(`.** The first two catch raw URLs and autolink-style mentions; the `](` pair catches markdown link syntax. This is the unconditional inline-URL block.
+  2. **Reject any prose carrying a URI scheme inline.** The rule is categorical, not an enumeration. The tokenizer applies two patterns:
+     - **Primary — scheme-with-authority:** `\b[a-z][a-z0-9+.\-]*://\S+` (RFC-3986 form). Catches `http://`, `https://`, `ftp://`, `file://`, `gs://`, `s3://`, `ssh://`, and any future scheme that follows the authority-bearing shape. Plus the markdown-link suffix `]` followed by `(`, which catches `[text](url)` regardless of the URL's scheme.
+     - **Secondary — opaque-data schemes:** a named list for colon-only schemes that lack `//` authority and would escape the primary regex. At minimum: `mailto:`, `javascript:`, `data:`, `tel:`. RFC-3986 permits the `scheme:opaque-data` form for any scheme; the named list captures the schemes browsers actively render as clickable actions or execute (contact-exposure for `mailto:`/`tel:`; XSS-class defense-in-depth for `javascript:`/`data:`). Adding to the named list is a tokenizer change with a one-line ADR amendment, not an architectural revisit.
+
+     The categorical shape exists by design. A 3-form enumeration (`http://`, `https://`, `](`) relies on a detection step the codebase does not have: the wrapper linters add no URL handling beyond the tokenizer, schemas validate structured-field shape rather than free prose content, and generators read prose verbatim. A non-enumerated scheme (`mailto:`, `gs://`, `javascript:`, etc.) would pass both linters as plain TEXT and ship to published artifacts. The categorical regex closes that gap uniformly and removes the per-scheme adjudication the prior enumeration would force on contributors and reviewers.
   3. Reject raw HTML tags (any `<` followed by an alphabetic character or `/`).
   4. Reject markdown headings, list markers, code, images, blockquotes, and tables per the D2 table.
   5. Reject bare camelCase identifiers outside sentinels (delegated to [ADR-016](016-reference-strategy.md)'s reference linter, which shares the tokenizer per D5).
@@ -121,7 +125,7 @@ Both surfaces are pointers to the same rules; the ADR is the decision, the doc i
 | D1 `*italic*` and `_italic_` allowed | `validate-yaml-prose-subset` (accept) | Machine-enforced (new) |
 | D1 sentinel forms allowed (grammar) | `validate-yaml-prose-subset` (accept token shape) | Machine-enforced (new) |
 | D1 sentinel ID resolves to enum or `externalReferences` | `validate_prose_references.py` ([ADR-016](016-reference-strategy.md)) | Machine-enforced (new, ADR-016) |
-| D2 inline URLs blocked unconditionally (`http://`, `https://`, `](`) | `validate-yaml-prose-subset` (block) | Machine-enforced (new) |
+| D2 inline URLs blocked unconditionally (categorical: any scheme-with-authority via `\b[a-z][a-z0-9+.\-]*://\S+`, opaque-data schemes via named list `mailto:`/`javascript:`/`data:`/`tel:`, plus `](` for markdown links) | `validate-yaml-prose-subset` (block) | Machine-enforced (new) |
 | D2 raw HTML tags blocked | `validate-yaml-prose-subset` (block) | Machine-enforced (new) |
 | D2 markdown headings / lists / code / images / blockquotes / tables blocked | `validate-yaml-prose-subset` (block) | Machine-enforced (new) |
 | D2 bare camelCase identifiers blocked | `validate_prose_references.py` ([ADR-016](016-reference-strategy.md)) | Machine-enforced (new, ADR-016) |

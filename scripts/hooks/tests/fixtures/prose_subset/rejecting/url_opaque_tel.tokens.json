@@ -1,0 +1,5 @@
+[
+  {"kind": "TEXT", "value": "call "},
+  {"kind": "INVALID_URL", "value": "tel:+1-555-0100"},
+  {"kind": "TEXT", "value": " for support"}
+]

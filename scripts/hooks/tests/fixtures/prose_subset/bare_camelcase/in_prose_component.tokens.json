@@ -1,0 +1,5 @@
+[
+  {"kind": "TEXT", "value": "affects "},
+  {"kind": "INVALID_CAMELCASE_ID", "value": "componentModelServing"},
+  {"kind": "TEXT", "value": " in production"}
+]

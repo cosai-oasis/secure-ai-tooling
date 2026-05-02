@@ -1,0 +1,5 @@
+[
+  {"kind": "TEXT", "value": "see "},
+  {"kind": "INVALID_URL", "value": "http://example.com"},
+  {"kind": "TEXT", "value": " for more"}
+]

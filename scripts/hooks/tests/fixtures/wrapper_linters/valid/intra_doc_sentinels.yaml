@@ -1,0 +1,8 @@
+risks:
+  - id: riskAlpha
+    title: Alpha Risk
+    shortDescription:
+      - "This risk is related to {{riskBeta}} which covers a similar threat vector."
+      - "See also {{controlAlpha}} for mitigations."
+    longDescription:
+      - "Mention of {{riskGamma}} in longer prose is valid when the sentinel is well-formed."

@@ -1,0 +1,43 @@
+{
+  "$id": "mock_risks.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Mock risks schema for wrapper-linter tests",
+  "type": "object",
+  "properties": {
+    "risks": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/risk" }
+    }
+  },
+  "definitions": {
+    "risk": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": [
+            "riskAlpha",
+            "riskBeta",
+            "riskGamma",
+            "riskDelta"
+          ]
+        },
+        "title": { "type": "string" },
+        "shortDescription": {
+          "$ref": "riskmap.schema.json#/definitions/utils/text"
+        },
+        "longDescription": {
+          "$ref": "riskmap.schema.json#/definitions/utils/text"
+        },
+        "tourContent": {
+          "type": "object",
+          "properties": {
+            "introduced": { "$ref": "riskmap.schema.json#/definitions/utils/text" },
+            "exposed":    { "$ref": "riskmap.schema.json#/definitions/utils/text" },
+            "mitigated":  { "$ref": "riskmap.schema.json#/definitions/utils/text" }
+          }
+        }
+      }
+    }
+  }
+}

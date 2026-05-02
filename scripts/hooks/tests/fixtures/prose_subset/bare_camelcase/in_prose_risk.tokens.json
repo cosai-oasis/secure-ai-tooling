@@ -1,0 +1,5 @@
+[
+  {"kind": "TEXT", "value": "see "},
+  {"kind": "INVALID_CAMELCASE_ID", "value": "riskFoo"},
+  {"kind": "TEXT", "value": " for details"}
+]

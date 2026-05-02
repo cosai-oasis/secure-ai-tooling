@@ -1,0 +1,1 @@
+see git+https://github.com/user/repo for more

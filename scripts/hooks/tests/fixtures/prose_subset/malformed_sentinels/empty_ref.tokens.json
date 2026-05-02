@@ -1,0 +1,4 @@
+[
+  {"kind": "INVALID_SENTINEL", "value": "{{ref:}}"},
+  {"kind": "TEXT", "value": " is malformed"}
+]

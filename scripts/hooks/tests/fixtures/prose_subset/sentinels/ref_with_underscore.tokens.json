@@ -1,0 +1,5 @@
+[
+  {"kind": "TEXT", "value": "see "},
+  {"kind": "SENTINEL_REF", "value": "{{ref:owasp_llm_2024}}"},
+  {"kind": "TEXT", "value": " for guidance"}
+]

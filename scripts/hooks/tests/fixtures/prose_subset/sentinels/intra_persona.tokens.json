@@ -1,0 +1,4 @@
+[
+  {"kind": "TEXT", "value": "responsibility of "},
+  {"kind": "SENTINEL_INTRA", "value": "{{personaModelCreator}}"}
+]

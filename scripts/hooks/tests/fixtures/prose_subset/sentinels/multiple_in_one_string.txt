@@ -1,0 +1,1 @@
+{{riskPromptInjection}} is mitigated by {{controlInputValidationAndSanitization}} per {{ref:nist-ai-rmf-1.0}}

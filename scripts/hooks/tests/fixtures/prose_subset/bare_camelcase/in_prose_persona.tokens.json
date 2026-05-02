@@ -1,0 +1,5 @@
+[
+  {"kind": "TEXT", "value": "relevant to "},
+  {"kind": "INVALID_CAMELCASE_ID", "value": "personaModelCreator"},
+  {"kind": "TEXT", "value": " role"}
+]

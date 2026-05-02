@@ -1,0 +1,12 @@
+risks:
+  - id: riskAlpha
+    title: "Alpha risk with nested tourContent violation"
+    shortDescription:
+      - "Clean prose in the top-level field."
+    tourContent:
+      introduced:
+        - "This stage <a href=\"#riskBeta\">links</a> to another risk."
+      exposed:
+        - "Clean exposed text."
+      mitigated:
+        - "Clean mitigated text."

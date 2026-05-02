@@ -1,0 +1,5 @@
+[
+  {"kind": "INVALID_TABLE", "value": "| col1 | col2 |\n"},
+  {"kind": "INVALID_TABLE", "value": "|------|------|\n"},
+  {"kind": "INVALID_TABLE", "value": "| a    | b    |"}
+]

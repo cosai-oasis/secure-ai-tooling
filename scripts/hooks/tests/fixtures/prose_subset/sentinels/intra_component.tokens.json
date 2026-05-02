@@ -1,0 +1,4 @@
+[
+  {"kind": "TEXT", "value": "relates to "},
+  {"kind": "SENTINEL_INTRA", "value": "{{componentModelServing}}"}
+]

@@ -1,0 +1,7 @@
+[
+  {"kind": "SENTINEL_INTRA", "value": "{{riskPromptInjection}}"},
+  {"kind": "TEXT", "value": " is mitigated by "},
+  {"kind": "SENTINEL_INTRA", "value": "{{controlInputValidationAndSanitization}}"},
+  {"kind": "TEXT", "value": " per "},
+  {"kind": "SENTINEL_REF", "value": "{{ref:nist-ai-rmf-1.0}}"}
+]

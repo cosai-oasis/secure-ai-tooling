@@ -1,0 +1,5 @@
+risks:
+  - id: riskAlpha
+    title: Alpha Risk
+    shortDescription:
+      - "This risk relates to {{riskDoesNotExist}} which is not a known risk ID."

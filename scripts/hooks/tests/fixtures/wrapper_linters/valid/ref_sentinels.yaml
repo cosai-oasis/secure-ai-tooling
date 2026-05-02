@@ -1,0 +1,15 @@
+risks:
+  - id: riskAlpha
+    title: Alpha Risk
+    shortDescription:
+      - "See the foundational paper ({{ref:smith-2023}}) for background."
+      - "The CWE entry {{ref:cwe-89}} covers the SQL injection pattern."
+    externalReferences:
+      - type: paper
+        id: smith-2023
+        title: "Smith 2023 foundational paper"
+        url: https://example.com/smith-2023
+      - type: cwe
+        id: cwe-89
+        title: "Improper Neutralization of Special Elements"
+        url: https://cwe.mitre.org/data/definitions/89.html

@@ -1,0 +1,6 @@
+[
+  {"kind": "TEXT", "value": "AI Systems: AI systems can leak sensitive data sourced from three primary sources:\n"},
+  {"kind": "INVALID_FOLDED_BULLET", "value": "          - data provided by the user\n"},
+  {"kind": "INVALID_FOLDED_BULLET", "value": "          - data used in model training and deployment including system prompts\n"},
+  {"kind": "INVALID_FOLDED_BULLET", "value": "          - data accessed or produced via tool call responses and external system usage"}
+]

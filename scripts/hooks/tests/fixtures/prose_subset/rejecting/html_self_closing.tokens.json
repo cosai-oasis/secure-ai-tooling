@@ -1,0 +1,5 @@
+[
+  {"kind": "TEXT", "value": "line one"},
+  {"kind": "INVALID_HTML", "value": "<br/>"},
+  {"kind": "TEXT", "value": "line two"}
+]

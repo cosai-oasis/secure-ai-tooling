@@ -1,0 +1,5 @@
+[
+  {"kind": "TEXT", "value": "some text"},
+  {"kind": "INVALID_HTML", "value": "</p>"},
+  {"kind": "TEXT", "value": " and more"}
+]

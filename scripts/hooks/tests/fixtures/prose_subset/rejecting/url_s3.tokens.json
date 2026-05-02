@@ -1,0 +1,5 @@
+[
+  {"kind": "TEXT", "value": "see "},
+  {"kind": "INVALID_URL", "value": "s3://bucket/key.tar.gz"},
+  {"kind": "TEXT", "value": " for more"}
+]
