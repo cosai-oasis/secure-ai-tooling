@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "prettier": "^3.8.3",
-    "@mermaid-js/mermaid-cli": "^11.12.0"
+    "@mermaid-js/mermaid-cli": "^11.14.0"
   },
   "overrides": {
     "chevrotain": {
