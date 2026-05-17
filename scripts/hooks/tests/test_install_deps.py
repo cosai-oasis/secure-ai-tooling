@@ -22,7 +22,7 @@ Group 2 -- Dry-Run Output (7):
 5.  TestDryRunMiseSkip - mise present -> shows [SKIP]
 6.  TestDryRunPythonInstall - python missing -> shows mise install python
 7.  TestDryRunNodeInstall - node missing -> shows mise install node
-8.  TestDryRunPipInstall - pip packages missing -> shows pip install
+8.  TestDryRunUvSync - Python environment step -> shows uv sync
 9.  TestDryRunNpmInstall - npm packages missing -> shows npm install
 10. TestDryRunActInstall - act missing -> shows dry-run act install
 
@@ -38,12 +38,12 @@ Group 3c -- mise install from config (1):
 
 Group 4 -- Error Handling (4):
 17. TestMiseInstallFailure - mise install fails -> [FAIL], continues
-18. TestPipInstallFailure - pip install fails -> [FAIL], continues
+18. TestUvSyncFailure - uv sync fails -> [FAIL], continues
 19. TestNpmInstallFailure - npm install fails -> [FAIL], continues
 20. TestVerificationFailure - verify-deps.sh fails -> exit non-zero
 
-Group 4b -- mise reshim after pip (1):
-21. TestMiseReshimAfterPip - mise reshim after pip install
+Group 4b -- mise reshim after uv sync (1):
+21. TestMiseReshimAfterUvSync - mise reshim after uv sync
 
 Group 5 -- Output Formatting (2):
 22. TestOutputColors - ANSI color codes present for tags
@@ -59,7 +59,7 @@ Group 7 -- PATH Persistence (4):
 28. TestPathPersistenceContent - correct export line format
 
 Group 8 -- Non-Interactive Execution (2):
-29. TestNonInteractiveCommands - pip --no-input, npm --no-audit flags
+29. TestNonInteractiveCommands - uv lock/stdin handling, npm --no-audit flags
 30. TestNonInteractiveSudo - act install uses sudo -n
 
 Group 9 -- Pre-commit Hook Installation (3):
@@ -72,11 +72,11 @@ Installation Order Tested:
 1. mise (curl https://mise.run | sh)
 2. Python >= 3.14 (mise install python@<version from .mise.toml>)
 3. Node.js >= 22 (mise install node@<version from .mise.toml>)
-4. pip packages (pip install -r requirements.txt)
+4. Python project environment (uv sync --locked)
 5. npm packages (npm install)
 6. act (curl nektos/act install script)
 7. Playwright Chromium (npx playwright install chromium)
-8. Pre-commit hooks (python3 -m pre_commit install --overwrite)
+8. Pre-commit hooks (uv run --locked --no-sync pre-commit install --overwrite)
 9. Verification (verify-deps.sh as final gate)
 
 Testing Approach:
@@ -103,7 +103,8 @@ def create_full_stub_env(tmp_path, overrides=None):
     Build a fully stubbed environment where all tools appear present and correct.
 
     Creates executable stubs for every tool install-deps.sh checks, a fake
-    REPO_ROOT with requirements.txt, package.json, and a passing verify-deps.sh.
+    REPO_ROOT with pyproject.toml, uv.lock, package.json, and a passing
+    verify-deps.sh.
 
     Args:
         tmp_path: pytest tmp_path fixture for file isolation.
@@ -126,16 +127,21 @@ def create_full_stub_env(tmp_path, overrides=None):
     # Fake repo root with necessary files
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
-    (repo_root / "requirements.txt").write_text(
-        "check-jsonschema==0.35.0\npytest==9.0.2\nPyYAML==6.0.2\nruff==0.13.0\n"
+    (repo_root / "pyproject.toml").write_text(
+        '[project]\n'
+        'name = "secure-ai-tooling-test"\n'
+        'version = "1.0.0"\n'
+        'requires-python = ">=3.14"\n'
+        'dependencies = ["check-jsonschema==0.37.2", "pytest==9.0.3", "PyYAML==6.0.3", "ruff==0.15.12"]\n'
     )
+    (repo_root / "uv.lock").write_text("version = 1\nrevision = 3\nrequires-python = \">=3.14\"\n")
     (repo_root / "package.json").write_text(
         '{"dependencies": {"prettier": "^3.8.1", "@mermaid-js/mermaid-cli": "^11.12.0"}}\n'
     )
     # Create node_modules to simulate npm packages already installed.
     # Tests that need to trigger npm install should remove this directory.
     (repo_root / "node_modules").mkdir()
-    (repo_root / ".mise.toml").write_text('[tools]\npython = "3.14"\nnode = "22"\n')
+    (repo_root / ".mise.toml").write_text('[tools]\npython = "3.14"\nnode = "22"\nuv = "0.11.14"\n')
 
     # Create fake verify-deps.sh in the repo structure
     tools_dir = repo_root / "scripts" / "tools"
@@ -172,11 +178,23 @@ def create_full_stub_env(tmp_path, overrides=None):
             "#!/bin/bash\n"
             'if [[ "$1" == "--version" ]]; then\n'
             '    echo "Python 3.14.0"\n'
-            'elif [[ "$1" == "-m" && "$2" == "pip" && "$3" == "show" ]]; then\n'
-            '    echo "Name: $4"\n'
-            '    echo "Version: 1.0.0"\n'
+            "else\n"
             "    exit 0\n"
-            'elif [[ "$1" == "-m" && "$2" == "pip" && "$3" == "install" ]]; then\n'
+            "fi\n"
+        ),
+        "uv": (
+            "#!/bin/bash\n"
+            'echo "$@" >> "$HOME/uv-invocations.log"\n'
+            'if [[ "$1" == "--version" ]]; then\n'
+            '    echo "uv 0.11.14"\n'
+            "    exit 0\n"
+            'elif [[ "$1" == "sync" ]]; then\n'
+            "    exit 0\n"
+            'elif [[ "$1" == "run" ]]; then\n'
+            "    exit 0\n"
+            'elif [[ "$1" == "pip" && "$2" == "show" ]]; then\n'
+            '    echo "Name: ${@: -1}"\n'
+            '    echo "Version: 1.0.0"\n'
             "    exit 0\n"
             "else\n"
             "    exit 0\n"
@@ -218,18 +236,6 @@ def create_full_stub_env(tmp_path, overrides=None):
             "    exit 0\n"
             "fi\n"
         ),
-        "pip": (
-            "#!/bin/bash\n"
-            'if [[ "$1" == "install" ]]; then\n'
-            "    exit 0\n"
-            'elif [[ "$1" == "show" ]]; then\n'
-            '    echo "Name: $2"\n'
-            '    echo "Version: 1.0.0"\n'
-            "    exit 0\n"
-            "else\n"
-            "    exit 0\n"
-            "fi\n"
-        ),
         "git": ('#!/bin/bash\necho "git version 2.45.0"\n'),
         "act": (
             "#!/bin/bash\n"
@@ -249,7 +255,7 @@ def create_full_stub_env(tmp_path, overrides=None):
     # Apply overrides: None removes the tool, string replaces the stub.
     # `verify-deps` is handled separately above. The `install-precommit-hook`
     # key is accepted but ignored for backward compatibility — #211 removed
-    # the bash installer; install-deps.sh now invokes `python3 -m pre_commit`
+    # the bash installer; install-deps.sh now invokes `uv run pre-commit`
     # directly, and the failure-mode test overrides `python3` instead.
     for tool, content in overrides.items():
         if tool in ("verify-deps", "install-precommit-hook"):
@@ -282,7 +288,7 @@ def create_full_stub_env(tmp_path, overrides=None):
     env["PATH"] = str(stub_bin)
     env["HOME"] = str(tmp_path / "home")
     env["PLAYWRIGHT_BROWSERS_PATH"] = str(playwright_cache)
-    # Override REPO_ROOT so the script finds fake requirements.txt etc.
+    # Override REPO_ROOT so the script finds fake pyproject.toml etc.
     env["INSTALL_DEPS_REPO_ROOT"] = str(repo_root)
 
     # Create HOME directory
@@ -293,6 +299,7 @@ def create_full_stub_env(tmp_path, overrides=None):
         "stub_bin": stub_bin,
         "repo_root": repo_root,
         "mise_log": tmp_path / "home" / "mise-invocations.log",
+        "uv_log": tmp_path / "home" / "uv-invocations.log",
     }
 
 
@@ -628,36 +635,22 @@ class TestDryRunNodeInstall:
         )
 
 
-class TestDryRunPipInstall:
+class TestDryRunUvSync:
     """
-    Test dry-run output when pip packages are missing.
+    Test dry-run output for the uv-managed Python environment.
 
-    When pip packages from requirements.txt are not installed, the script
-    should output a [DRY-RUN] message about pip install -r requirements.txt.
+    The script should output a [DRY-RUN] message about uv sync.
     """
 
-    def test_pip_packages_missing_shows_dry_run_install(self, tmp_path):
+    def test_python_environment_shows_dry_run_uv_sync(self, tmp_path):
         """
-        Test that missing pip packages trigger dry-run pip install message.
+        Test that the Python environment step triggers a dry-run uv sync message.
 
-        Given: An environment where pip packages are not installed
+        Given: An environment where uv and project metadata are present
         When: Running install-deps.sh --dry-run
-        Then: Output contains [DRY-RUN] referencing pip install
+        Then: Output contains [DRY-RUN] referencing uv sync
         """
-        # python3 stub that reports packages as missing
-        python_stub_missing_pkgs = (
-            "#!/bin/bash\n"
-            'if [[ "$1" == "--version" ]]; then\n'
-            '    echo "Python 3.14.0"\n'
-            'elif [[ "$1" == "-m" && "$2" == "pip" && "$3" == "show" ]]; then\n'
-            "    exit 1\n"
-            'elif [[ "$1" == "-m" && "$2" == "pip" && "$3" == "install" ]]; then\n'
-            "    exit 0\n"
-            "else\n"
-            "    exit 0\n"
-            "fi\n"
-        )
-        env_info = create_full_stub_env(tmp_path, overrides={"python3": python_stub_missing_pkgs})
+        env_info = create_full_stub_env(tmp_path)
         result = subprocess.run(
             [str(SCRIPT_PATH), "--dry-run"],
             capture_output=True,
@@ -667,10 +660,10 @@ class TestDryRunPipInstall:
         )
         combined_output = result.stdout + result.stderr
         assert "DRY-RUN" in combined_output, (
-            f"Output should contain [DRY-RUN] when pip packages are missing.\nOutput:\n{combined_output}"
+            f"Output should contain [DRY-RUN] for the uv sync step.\nOutput:\n{combined_output}"
         )
-        assert "pip" in combined_output.lower() or "requirements" in combined_output.lower(), (
-            f"Dry-run output should reference pip install or requirements.txt.\nOutput:\n{combined_output}"
+        assert "uv sync --locked" in combined_output.lower(), (
+            f"Dry-run output should reference uv sync --locked.\nOutput:\n{combined_output}"
         )
 
 
@@ -1167,37 +1160,37 @@ class TestMiseInstallFailure:
         )
 
 
-class TestPipInstallFailure:
+class TestUvSyncFailure:
     """
-    Test behavior when pip install fails.
+    Test behavior when uv sync fails.
 
-    When pip install -r requirements.txt fails, the script should emit [FAIL]
-    and continue with remaining installations.
+    When uv sync --locked fails, the script should emit [FAIL] and continue
+    with remaining installations.
     """
 
-    def test_pip_install_failure_shows_fail_and_continues(self, tmp_path):
+    def test_uv_sync_failure_shows_fail_and_continues(self, tmp_path):
         """
-        Test that failing pip install emits [FAIL] and continues.
+        Test that failing uv sync emits [FAIL] and continues.
 
-        Given: An environment where pip install fails
+        Given: An environment where uv sync fails
         When: Running install-deps.sh
-        Then: Output contains [FAIL] for pip packages
+        Then: Output contains [FAIL] for uv sync
         And: Script continues to subsequent installation steps
         """
-        # python3 stub that fails on pip install
-        python_pip_fail = (
+        uv_sync_fail = (
             "#!/bin/bash\n"
-            'if [[ "$1" == "--version" ]]; then\n'
-            '    echo "Python 3.14.0"\n'
-            'elif [[ "$1" == "-m" && "$2" == "pip" && "$3" == "show" ]]; then\n'
+            'if [[ "$1" == "sync" ]]; then\n'
             "    exit 1\n"
-            'elif [[ "$1" == "-m" && "$2" == "pip" && "$3" == "install" ]]; then\n'
-            "    exit 1\n"
+            'elif [[ "$1" == "--version" ]]; then\n'
+            '    echo "uv 0.11.14"\n'
+            "    exit 0\n"
+            'elif [[ "$1" == "run" ]]; then\n'
+            "    exit 0\n"
             "else\n"
             "    exit 0\n"
             "fi\n"
         )
-        env_info = create_full_stub_env(tmp_path, overrides={"python3": python_pip_fail})
+        env_info = create_full_stub_env(tmp_path, overrides={"uv": uv_sync_fail})
         result = subprocess.run(
             [str(SCRIPT_PATH)],
             capture_output=True,
@@ -1207,13 +1200,13 @@ class TestPipInstallFailure:
         )
         combined_output = result.stdout + result.stderr
         assert "FAIL" in combined_output, (
-            f"Output should contain [FAIL] when pip install fails.\nOutput:\n{combined_output}"
+            f"Output should contain [FAIL] when uv sync fails.\nOutput:\n{combined_output}"
         )
         # Verify script did not abort early -- it should mention npm or act
-        # (subsequent steps after pip)
+        # (subsequent steps after uv sync)
         lower_output = combined_output.lower()
         assert "npm" in lower_output or "act" in lower_output or "node" in lower_output, (
-            f"Script should continue after pip failure and mention subsequent steps.\nOutput:\n{combined_output}"
+            f"Script should continue after uv failure and mention subsequent steps.\nOutput:\n{combined_output}"
         )
 
 
@@ -1302,40 +1295,27 @@ class TestVerificationFailure:
 
 
 # =============================================================================
-# Group 4b -- mise reshim after pip
+# Group 4b -- mise reshim after uv sync
 # =============================================================================
 
 
-class TestMiseReshimAfterPip:
+class TestMiseReshimAfterUvSync:
     """
-    Test that mise reshim is called after pip install.
+    Test that mise reshim is called after uv sync.
 
-    After pip installs packages (ruff, check-jsonschema), mise shims must be
-    regenerated so the new binaries are visible before verify-deps.sh runs.
+    After uv sync creates or updates the project environment, mise shims should
+    be regenerated before verify-deps.sh runs.
     """
 
-    def test_mise_reshim_called_after_pip_install(self, tmp_path):
+    def test_mise_reshim_called_after_uv_sync(self, tmp_path):
         """
-        Test that 'mise reshim' is called after pip install completes.
+        Test that 'mise reshim' is called after uv sync completes.
 
-        Given: An environment where pip packages are missing (triggering pip install)
+        Given: An environment where uv sync succeeds
         When: Running install-deps.sh (non-dry-run)
-        Then: mise invocation log contains "reshim" after pip install would have run
+        Then: mise invocation log contains "reshim" after uv sync would have run
         """
-        # python3 stub that reports packages missing (triggers pip install path)
-        python_stub_missing_pkgs = (
-            "#!/bin/bash\n"
-            'if [[ "$1" == "--version" ]]; then\n'
-            '    echo "Python 3.14.0"\n'
-            'elif [[ "$1" == "-m" && "$2" == "pip" && "$3" == "show" ]]; then\n'
-            "    exit 1\n"
-            'elif [[ "$1" == "-m" && "$2" == "pip" && "$3" == "install" ]]; then\n'
-            "    exit 0\n"
-            "else\n"
-            "    exit 0\n"
-            "fi\n"
-        )
-        env_info = create_full_stub_env(tmp_path, overrides={"python3": python_stub_missing_pkgs})
+        env_info = create_full_stub_env(tmp_path)
         subprocess.run(
             [str(SCRIPT_PATH)],
             capture_output=True,
@@ -1346,11 +1326,11 @@ class TestMiseReshimAfterPip:
         mise_log = env_info["mise_log"]
         assert mise_log.exists(), "mise invocation log should exist after running install-deps.sh"
         log_lines = mise_log.read_text().strip().splitlines()
-        # reshim should appear at least twice: once after mise install, once after pip
+        # reshim should appear at least twice: once after mise install, once after uv sync
         reshim_lines = [line for line in log_lines if line == "reshim"]
         assert len(reshim_lines) >= 2, (
             f"mise log should contain at least 2 'reshim' calls "
-            f"(after mise install and after pip install).\n"
+            f"(after mise install and after uv sync).\n"
             f"Found {len(reshim_lines)} reshim call(s).\n"
             f"Log lines: {log_lines}"
         )
@@ -1552,7 +1532,7 @@ class TestFullInstallDryRun:
 
         Given: A fully stubbed environment with all tools present
         When: Running install-deps.sh --dry-run
-        Then: Output references mise, python, node, pip, npm, act, chromium
+        Then: Output references mise, python, node, uv, npm, act, chromium
         """
         env_info = create_full_stub_env(tmp_path)
         result = subprocess.run(
@@ -1564,7 +1544,7 @@ class TestFullInstallDryRun:
         )
         combined_output = (result.stdout + result.stderr).lower()
 
-        expected_tools = ["mise", "python", "node", "pip", "npm", "act", "chromium"]
+        expected_tools = ["mise", "python", "node", "uv", "npm", "act", "chromium"]
         missing_mentions = [tool for tool in expected_tools if tool not in combined_output]
         assert len(missing_mentions) == 0, (
             f"Dry-run output should mention all tool categories.\n"
@@ -1790,25 +1770,25 @@ class TestNonInteractiveCommands:
     are present on commands that can prompt for stdin.
     """
 
-    def test_pip_install_uses_no_input_flag(self):
+    def test_uv_sync_uses_locked_and_stdin_redirect(self):
         """
-        The pip install command in install-deps.sh must use --no-input.
+        The uv sync command in install-deps.sh must use the lockfile and avoid stdin prompts.
 
         Given: The install-deps.sh source code
-        When: Examining pip install lines
-        Then: The line contains '--no-input'
+        When: Examining uv sync lines
+        Then: The line contains '--locked' and redirects stdin from /dev/null
         """
         content = SCRIPT_PATH.read_text()
-        # Find lines containing 'pip install' (the actual install, not dry-run messages)
-        pip_install_lines = [
+        # Find lines containing 'uv sync' (the actual sync, not dry-run/fail messages)
+        uv_sync_lines = [
             line.strip()
             for line in content.splitlines()
-            if "pip install" in line and "dry_run_msg" not in line and "fail_msg" not in line
+            if "uv sync" in line and "dry_run_msg" not in line and "fail_msg" not in line
         ]
-        assert len(pip_install_lines) > 0, "Script should contain at least one 'pip install' command line."
-        has_no_input = any("--no-input" in line for line in pip_install_lines)
-        assert has_no_input, (
-            f"pip install command should include '--no-input' flag.\nFound pip install lines: {pip_install_lines}"
+        assert len(uv_sync_lines) > 0, "Script should contain at least one 'uv sync' command line."
+        has_locked_redirect = any("--locked" in line and "< /dev/null" in line for line in uv_sync_lines)
+        assert has_locked_redirect, (
+            f"uv sync command should include '--locked' and '< /dev/null'.\nFound uv sync lines: {uv_sync_lines}"
         )
 
     def test_npm_install_uses_non_interactive_flags(self):
@@ -1958,9 +1938,9 @@ class TestPrecommitHookInstallOutcome:
 
     def test_precommit_hook_pass_when_script_succeeds(self, tmp_path):
         """
-        When `python3 -m pre_commit install` succeeds, output contains [PASS].
+        When `uv run --locked --no-sync pre-commit install` succeeds, output contains [PASS].
 
-        Given: A stubbed environment whose python3 exits 0 on any argv
+        Given: A stubbed environment whose uv exits 0 on run
         When: Running install-deps.sh (non-dry-run)
         Then: Output contains [PASS] referencing pre-commit or hooks
         """
@@ -1982,29 +1962,32 @@ class TestPrecommitHookInstallOutcome:
             f"Output should contain [PASS] for pre-commit hooks when script succeeds.\nOutput:\n{combined_output}"
         )
 
-    def test_precommit_hook_fail_when_pre_commit_module_missing(self, tmp_path):
+    def test_precommit_hook_fail_when_uv_run_pre_commit_fails(self, tmp_path):
         """
-        When `python3 -m pre_commit install` fails, output contains [FAIL].
+        When `uv run --locked --no-sync pre-commit install` fails, output contains [FAIL].
 
-        Given: A stubbed environment whose python3 returns non-zero on -m pre_commit
+        Given: A stubbed environment whose uv returns non-zero for pre-commit install
         When: Running install-deps.sh (non-dry-run)
         Then: Output contains [FAIL] referencing pre-commit or hook
 
         This replaces the prior "install-precommit-hook.sh missing" test (#211 deleted
-        that bash installer; install-deps.sh now invokes the framework module directly).
+        that bash installer; install-deps.sh now invokes the framework through uv).
         """
-        # Stub python3 so `python3 -m pre_commit ...` exits non-zero, but other
-        # invocations (-c, --version) still succeed for earlier steps.
-        failing_python = (
+        failing_uv = (
             "#!/bin/bash\n"
-            'if [[ "$1" == "-m" && "$2" == "pre_commit" ]]; then\n'
-            '    echo "ModuleNotFoundError: No module named pre_commit" >&2\n'
+            'if [[ "$1" == "run" && "$*" == *"pre-commit install"* ]]; then\n'
+            '    echo "pre-commit install failed" >&2\n'
             "    exit 1\n"
-            'elif [[ "$1" == "-c" || "$1" == "--version" ]]; then\n'
-            '    echo "Python 3.13.0"\n'
+            'elif [[ "$1" == "--version" ]]; then\n'
+            '    echo "uv 0.11.14"\n'
+            "    exit 0\n"
+            'elif [[ "$1" == "sync" || "$1" == "run" ]]; then\n'
+            "    exit 0\n"
+            "else\n"
+            "    exit 0\n"
             "fi\n"
         )
-        env_info = create_full_stub_env(tmp_path, overrides={"python3": failing_python})
+        env_info = create_full_stub_env(tmp_path, overrides={"uv": failing_uv})
         result = subprocess.run(
             [str(SCRIPT_PATH)],
             capture_output=True,
@@ -2040,7 +2023,7 @@ Group 2 -- Dry-Run Output (7 classes, 7 methods):
 - TestDryRunMiseSkip (1): mise present -> SKIP
 - TestDryRunPythonInstall (1): python missing -> DRY-RUN mise install python
 - TestDryRunNodeInstall (1): node missing -> DRY-RUN mise install node
-- TestDryRunPipInstall (1): pip packages missing -> DRY-RUN pip install
+- TestDryRunUvSync (1): Python environment step -> DRY-RUN uv sync
 - TestDryRunNpmInstall (1): npm packages missing -> DRY-RUN npm install
 - TestDryRunActInstall (1): act missing -> DRY-RUN act install
 
@@ -2059,12 +2042,12 @@ Group 3c -- mise install from config (1 class, 2 methods):
 
 Group 4 -- Error Handling (4 classes, 4 methods):
 - TestMiseInstallFailure (1): curl fails -> FAIL, continues
-- TestPipInstallFailure (1): pip install fails -> FAIL, continues
+- TestUvSyncFailure (1): uv sync fails -> FAIL, continues
 - TestNpmInstallFailure (1): npm install fails -> FAIL, continues
 - TestVerificationFailure (1): verify-deps.sh fails -> exit non-zero
 
-Group 4b -- mise reshim after pip (1 class, 1 method):
-- TestMiseReshimAfterPip (1): reshim called after pip install
+Group 4b -- mise reshim after uv sync (1 class, 1 method):
+- TestMiseReshimAfterUvSync (1): reshim called after uv sync
 
 Group 5 -- Output Formatting (2 classes, 5 methods):
 - TestOutputColors (3): ANSI codes present, green for PASS/SKIP, red for FAIL
@@ -2080,7 +2063,7 @@ Group 7 -- PATH Persistence (4 classes, 6 methods):
 - TestPathPersistenceContent (1): correct export PATH line format
 
 Group 8 -- Non-Interactive Execution (2 classes, 3 methods):
-- TestNonInteractiveCommands (2): pip --no-input, npm --no-audit flags
+- TestNonInteractiveCommands (2): uv lock/stdin handling, npm --no-audit flags
 - TestNonInteractiveSudo (1): act install uses sudo -n
 
 Group 9 -- Pre-commit Hook Installation (3 classes, 5 methods):

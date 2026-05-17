@@ -4,10 +4,10 @@ Structural validation tests for the pre-commit framework integration (#211).
 
 Replaces the prior test suite for the deleted bash installer
 (scripts/install-precommit-hook.sh). The framework migration moved hook
-installation to `python3 -m pre_commit install` and hook configuration to
-.pre-commit-config.yaml, so these tests assert that:
+installation to `uv run --locked --no-sync pre-commit install` and hook
+configuration to .pre-commit-config.yaml, so these tests assert that:
 
-  - `pre-commit` is a pinned dependency in requirements.txt
+  - `pre-commit` is a pinned dependency in pyproject.toml
   - .pre-commit-config.yaml is present at the repo root and parses as YAML
   - all expected hook ids are declared
   - each local hook has the spec-required entry, files regex, and pass_filenames
@@ -19,6 +19,7 @@ scripts/hooks/tests/precommit_parity.sh.
 """
 
 import re
+import tomllib
 from pathlib import Path
 
 import yaml
@@ -27,7 +28,7 @@ import yaml
 REPO_ROOT = Path(__file__).parent.parent.parent.parent
 
 CONFIG_PATH = REPO_ROOT / ".pre-commit-config.yaml"
-REQUIREMENTS_PATH = REPO_ROOT / "requirements.txt"
+PYPROJECT_PATH = REPO_ROOT / "pyproject.toml"
 INSTALL_DEPS_PATH = REPO_ROOT / "scripts" / "tools" / "install-deps.sh"
 
 
@@ -55,21 +56,22 @@ def _hooks_by_id(hook_id: str) -> list[dict]:
 # ===========================================================================
 
 
-class TestRequirementsPinning:
-    """The pre-commit Python package must be pinned in requirements.txt."""
+class TestPyprojectPinning:
+    """The pre-commit Python package must be pinned in pyproject.toml."""
 
-    def test_requirements_txt_exists(self):
-        assert REQUIREMENTS_PATH.exists(), f"requirements.txt missing at {REQUIREMENTS_PATH}"
+    def test_pyproject_toml_exists(self):
+        assert PYPROJECT_PATH.exists(), f"pyproject.toml missing at {PYPROJECT_PATH}"
 
     def test_pre_commit_is_pinned(self):
         """
-        Given: requirements.txt
+        Given: pyproject.toml
         When: searching for the pre-commit dependency
         Then: a `pre-commit==<version>` line is present (exact pin, not range)
         """
-        content = REQUIREMENTS_PATH.read_text(encoding="utf-8")
-        match = re.search(r"^pre-commit==(\S+)$", content, re.MULTILINE)
-        assert match, "pre-commit must be pinned with `==` in requirements.txt"
+        with open(PYPROJECT_PATH, "rb") as f:
+            config = tomllib.load(f)
+        dependencies = config.get("project", {}).get("dependencies", [])
+        assert "pre-commit==4.6.0" in dependencies, "pre-commit must be pinned with `==` in pyproject.toml"
 
 
 # ===========================================================================
@@ -202,6 +204,25 @@ class TestWrapperHookContracts:
             assert hook.get("pass_filenames") is pass_filenames, (
                 f"Hook `{hook_id}` pass_filenames must be {pass_filenames}; got: {hook.get('pass_filenames')!r}"
             )
+
+
+class TestLocalPythonHooksUseUv:
+    """Local Python hooks should resolve through the locked uv environment."""
+
+    def test_local_python_entries_use_uv_run(self):
+        """
+        Given: .pre-commit-config.yaml local hooks
+        When: checking hooks that invoke repository Python scripts
+        Then: each entry starts with the locked uv run prefix
+        """
+        for hook in _all_hooks():
+            entry = hook.get("entry", "")
+            if hook.get("language") == "system" and "scripts/" in entry and (
+                entry.endswith(".py") or ".py " in entry
+            ):
+                assert entry.startswith("uv run --locked --no-sync python "), (
+                    f"Hook `{hook.get('id')}` should use uv run for repository Python scripts; got: {entry!r}"
+                )
 
 
 # ===========================================================================
@@ -843,15 +864,15 @@ class TestInstallDepsIntegration:
         """
         Given: scripts/tools/install-deps.sh
         When: searching Step 8 for the pre-commit install invocation
-        Then: a `pre_commit install` invocation is present (module form)
+        Then: a `pre-commit install` invocation is present through uv
         """
         content = INSTALL_DEPS_PATH.read_text(encoding="utf-8")
         # Step 8 header must exist
         assert re.search(r"step_msg 8", content), "install-deps.sh Step 8 header missing"
-        # The install invocation must use the python3 module form so it works
-        # regardless of whether pre-commit's CLI shim is on PATH.
-        assert re.search(r"python3 -m pre_commit install", content), (
-            "install-deps.sh must invoke `python3 -m pre_commit install`"
+        # The install invocation must use uv so it resolves from the project
+        # environment rather than whichever Python is globally active.
+        assert re.search(r"uv run --locked --no-sync pre-commit install", content), (
+            "install-deps.sh must invoke `uv run --locked --no-sync pre-commit install`"
         )
 
     def test_step_8_does_not_reference_legacy_installer(self):

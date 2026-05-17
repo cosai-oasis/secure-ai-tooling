@@ -1,8 +1,8 @@
 # Pre-commit framework configuration for the CoSAI Risk Map.
 #
-# Run manually:    pre-commit run --all-files
-# Install hook:    pre-commit install
-# Update versions: pre-commit autoupdate
+# Run manually:    uv run --locked --no-sync pre-commit run --all-files
+# Install hook:    uv run --locked --no-sync pre-commit install
+# Update versions: uv run --locked --no-sync pre-commit autoupdate
 #
 # Hook execution order matches the prior bash hook (scripts/hooks/pre-commit):
 #   1. Schema validation (check-jsonschema, per yaml/schema pair)
@@ -152,7 +152,7 @@ repos:
       - id: validate-all-yaml-on-master-schema-change
         name: 'schema: validate all yaml (riskmap.schema.json changed)'
         language: system
-        entry: python3 scripts/hooks/precommit/validate_all_schemas.py
+        entry: uv run --locked --no-sync python scripts/hooks/precommit/validate_all_schemas.py
         files: ^risk-map/schemas/riskmap\.schema\.json$
         pass_filenames: false
 
@@ -166,14 +166,14 @@ repos:
       - id: prettier-yaml
         name: 'prettier: risk-map/yaml/'
         language: system
-        entry: python3 scripts/hooks/precommit/prettier_yaml.py
+        entry: uv run --locked --no-sync python scripts/hooks/precommit/prettier_yaml.py
         files: ^risk-map/yaml/.*\.ya?ml$
         pass_filenames: true
 
       - id: prettier-site-assets
         name: 'prettier: site/ assets'
         language: system
-        entry: python3 scripts/hooks/precommit/prettier_site_assets.py
+        entry: uv run --locked --no-sync python scripts/hooks/precommit/prettier_site_assets.py
         files: ^site/.*\.(mjs|css|html|md)$
         pass_filenames: true
         require_serial: true
@@ -181,7 +181,7 @@ repos:
       - id: validate-persona-site-build
         name: 'validate: persona-site builder'
         language: system
-        entry: python3 scripts/hooks/precommit/validate_persona_site_build.py
+        entry: uv run --locked --no-sync python scripts/hooks/precommit/validate_persona_site_build.py
         files: ^(risk-map/yaml/(personas|risks|controls)\.yaml|risk-map/schemas/(risks|persona-site-data)\.schema\.json|scripts/build_persona_site_data\.py)$
         pass_filenames: false
 
@@ -207,41 +207,41 @@ repos:
       - id: validate-component-edges
         name: 'risk-map: component edge consistency'
         language: system
-        entry: python3 scripts/hooks/validate_riskmap.py
+        entry: uv run --locked --no-sync python scripts/hooks/validate_riskmap.py
         files: ^risk-map/yaml/(components|controls|risks)\.yaml$
         pass_filenames: false
 
       - id: validate-control-risk-references
         name: 'risk-map: control-to-risk reference consistency'
         language: system
-        entry: python3 scripts/hooks/validate_control_risk_references.py
+        entry: uv run --locked --no-sync python scripts/hooks/validate_control_risk_references.py
         files: ^risk-map/yaml/(controls|risks)\.yaml$
         pass_filenames: false
 
       - id: validate-framework-references
         name: 'risk-map: framework reference consistency'
         language: system
-        entry: python3 scripts/hooks/validate_framework_references.py
+        entry: uv run --locked --no-sync python scripts/hooks/validate_framework_references.py
         files: ^risk-map/yaml/(controls|frameworks|personas|risks)\.yaml$
         pass_filenames: false
 
       - id: validate-lifecycle-stage
         name: 'risk-map: lifecycle stage order uniqueness'
         language: system
-        entry: python3 scripts/hooks/validate_riskmap.py --mode lifecycle
+        entry: uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --mode lifecycle
         files: ^risk-map/yaml/lifecycle-stage\.yaml$
         pass_filenames: false
 
       - id: validate-workflow-uses-pinning
         name: 'github-actions: enforce SHA-pinned uses references'
         language: system
-        entry: python3 scripts/hooks/precommit/validate_workflow_uses_pinning.py
+        entry: uv run --locked --no-sync python scripts/hooks/precommit/validate_workflow_uses_pinning.py
         files: ^\.github/workflows/.*\.yml$
         pass_filenames: true
 
       - id: validate-identification-questions
         name: 'validate: identification-questions structural rules'
-        entry: python3 scripts/hooks/precommit/validate_identification_questions.py
+        entry: uv run --locked --no-sync python scripts/hooks/precommit/validate_identification_questions.py
         language: system
         files: ^risk-map/yaml/personas\.yaml$
         pass_filenames: true
@@ -259,14 +259,14 @@ repos:
       - id: validate-yaml-prose-subset
         name: 'validate: YAML prose authoring subset'
         language: system
-        entry: python3 scripts/hooks/precommit/validate_yaml_prose_subset.py
+        entry: uv run --locked --no-sync python scripts/hooks/precommit/validate_yaml_prose_subset.py
         files: ^risk-map/yaml/(components|controls|risks|personas)\.yaml$
         pass_filenames: true
 
       - id: validate-prose-references
         name: 'validate: YAML prose references (sentinels + IDs)'
         language: system
-        entry: python3 scripts/hooks/precommit/validate_prose_references.py
+        entry: uv run --locked --no-sync python scripts/hooks/precommit/validate_prose_references.py
         files: ^risk-map/yaml/(components|controls|risks|personas)\.yaml$
         pass_filenames: true
 
@@ -280,7 +280,7 @@ repos:
       - id: regenerate-issue-templates
         name: 'generate: GitHub issue templates'
         language: system
-        entry: python3 scripts/hooks/precommit/regenerate_issue_templates.py
+        entry: uv run --locked --no-sync python scripts/hooks/precommit/regenerate_issue_templates.py
         files: ^(scripts/TEMPLATES/.*\.yml|risk-map/schemas/.*\.schema\.json|risk-map/yaml/frameworks\.yaml)$
         # pass_filenames: false so the framework calls the wrapper exactly once.
         # With true + many matching files (e.g., all schemas staged or running
@@ -294,7 +294,7 @@ repos:
       - id: validate-issue-templates
         name: 'validate: GitHub issue templates'
         language: system
-        entry: python3 scripts/hooks/validate_issue_templates.py
+        entry: uv run --locked --no-sync python scripts/hooks/validate_issue_templates.py
         files: ^(\.github/ISSUE_TEMPLATE/.*\.yml|scripts/TEMPLATES/.*\.yml)$
         pass_filenames: false
 
@@ -312,7 +312,7 @@ repos:
       - id: regenerate-graphs
         name: 'generate: Mermaid graphs (component, control, risk)'
         language: system
-        entry: python3 scripts/hooks/precommit/regenerate_graphs.py
+        entry: uv run --locked --no-sync python scripts/hooks/precommit/regenerate_graphs.py
         files: ^risk-map/yaml/(components|controls|risks)\.yaml$
         pass_filenames: true
         require_serial: true
@@ -320,7 +320,7 @@ repos:
       - id: regenerate-tables
         name: 'generate: Markdown tables (yaml-to-md, xref refresh)'
         language: system
-        entry: python3 scripts/hooks/precommit/regenerate_tables.py
+        entry: uv run --locked --no-sync python scripts/hooks/precommit/regenerate_tables.py
         files: ^risk-map/yaml/(components|controls|risks|personas)\.yaml$
         pass_filenames: true
         require_serial: true
@@ -328,7 +328,7 @@ repos:
       - id: regenerate-svgs
         name: 'generate: Mermaid SVGs from .mmd/.mermaid'
         language: system
-        entry: python3 scripts/hooks/precommit/regenerate_svgs.py
+        entry: uv run --locked --no-sync python scripts/hooks/precommit/regenerate_svgs.py
         files: ^risk-map/diagrams/.*\.(mmd|mermaid)$
         pass_filenames: true
         require_serial: true

@@ -180,16 +180,16 @@ For testing or verification, you can manually generate templates:
 
 ```bash
 # Generate all templates
-python scripts/generate_issue_templates.py
+uv run --locked --no-sync python scripts/generate_issue_templates.py
 
 # Dry-run (show diffs without modifying)
-python scripts/generate_issue_templates.py --dry-run
+uv run --locked --no-sync python scripts/generate_issue_templates.py --dry-run
 
 # Generate specific template
-python scripts/generate_issue_templates.py --template new_control
+uv run --locked --no-sync python scripts/generate_issue_templates.py --template new_control
 
 # Validate synchronization
-python scripts/generate_issue_templates.py --validate
+uv run --locked --no-sync python scripts/generate_issue_templates.py --validate
 ```
 
 ---
@@ -210,13 +210,13 @@ Validates issue templates against GitHub schemas and `dependabot.yml` against th
 
 ```bash
 # Validate all config files (manual use)
-python scripts/hooks/validate_issue_templates.py --force
+uv run --locked --no-sync python scripts/hooks/validate_issue_templates.py --force
 
 # Validate staged files only (pre-commit)
-python scripts/hooks/validate_issue_templates.py
+uv run --locked --no-sync python scripts/hooks/validate_issue_templates.py
 
 # Quiet mode (errors only)
-python scripts/hooks/validate_issue_templates.py --force --quiet
+uv run --locked --no-sync python scripts/hooks/validate_issue_templates.py --force --quiet
 ```
 
 ### Pre-Commit Hook Integration
@@ -231,7 +231,7 @@ The validator and generator are integrated as framework hooks. The `regenerate-i
 
 ```bash
 # Before committing template changes
-python scripts/hooks/validate_issue_templates.py --force
+uv run --locked --no-sync python scripts/hooks/validate_issue_templates.py --force
 
 # Should output:
 # ✅ All GitHub config files passed validation

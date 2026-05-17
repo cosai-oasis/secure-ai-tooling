@@ -21,7 +21,7 @@ This helps maintain project visibility and enables better collaboration.
 ### 2. Always run manual validation during development
 
 ```bash
-python scripts/hooks/validate_riskmap.py --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --force
 ```
 
 ### 3. Preview your changes visually
@@ -30,13 +30,13 @@ Generate graphs to see the impact of your changes:
 
 ```bash
 # Generate component relationship graph
-python scripts/hooks/validate_riskmap.py --to-graph ./preview-graph.md --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-graph ./preview-graph.md --force
 
 # Generate control-to-component relationship graph
-python scripts/hooks/validate_riskmap.py --to-controls-graph ./preview-controls.md --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-controls-graph ./preview-controls.md --force
 
 # Generate controls-to-risk relationship graph
-python scripts/hooks/validate_riskmap.py --to-risk-graph ./preview-risks.md --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-risk-graph ./preview-risks.md --force
 ```
 
 ### 4. Format files before committing
@@ -84,7 +84,7 @@ When you commit changes to `components.yaml`, the updated graph is automatically
 When graph generation produces unexpected results:
 
 ```bash
-python scripts/hooks/validate_riskmap.py --to-graph ./debug-graph.md --debug --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-graph ./debug-graph.md --debug --force
 ```
 
 ### 12. Use control graphs to validate mappings
@@ -93,10 +93,10 @@ When adding or modifying controls, generate control graphs to verify your mappin
 
 ```bash
 # Generate control graph to verify your control mappings
-python scripts/hooks/validate_riskmap.py --to-controls-graph ./verify-controls.md --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-controls-graph ./verify-controls.md --force
 
 # Generate risk graph to verify control-risk relationships
-python scripts/hooks/validate_riskmap.py --to-risk-graph ./verify-risks.md --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-risk-graph ./verify-risks.md --force
 ```
 
 ### 13. Run all validations locally before pushing
@@ -105,9 +105,9 @@ Run the full pre-commit suite manually to catch issues early:
 
 ```bash
 # Run the key validations manually before pushing
-python scripts/hooks/validate_riskmap.py --force
-python scripts/hooks/validate_control_risk_references.py --force
-python scripts/hooks/validate_framework_references.py --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --force
+uv run --locked --no-sync python scripts/hooks/validate_control_risk_references.py --force
+uv run --locked --no-sync python scripts/hooks/validate_framework_references.py --force
 ```
 
 ## Collaboration

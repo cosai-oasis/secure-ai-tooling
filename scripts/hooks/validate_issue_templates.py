@@ -185,7 +185,7 @@ def validate_with_schema(file_path: Path, schema: str, quiet: bool = False) -> b
     except FileNotFoundError:
         # check-jsonschema not installed
         print("   ❌ check-jsonschema not found")
-        print("      Install with: pip install check-jsonschema")
+        print("      Install with: uv sync --locked")
         return False
 
     except subprocess.TimeoutExpired:

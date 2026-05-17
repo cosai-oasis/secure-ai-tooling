@@ -100,16 +100,16 @@ Before committing, validate that your changes are consistent:
 
 ```bash
 # Manual validation (recommended during development)
-python scripts/hooks/validate_riskmap.py --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --force
 
 # Optional: Generate component graph to visualize your changes
-python scripts/hooks/validate_riskmap.py --to-graph ./preview-graph.md --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-graph ./preview-graph.md --force
 
 # Optional: Generate control-to-component graph to visualize control relationships
-python scripts/hooks/validate_riskmap.py --to-controls-graph ./preview-controls.md --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-controls-graph ./preview-controls.md --force
 
 # Optional: Generate controls-to-risk graph to visualize risk relationships
-python scripts/hooks/validate_riskmap.py --to-risk-graph ./preview-risks.md --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-risk-graph ./preview-risks.md --force
 
 # Format YAML files (auto-runs in pre-commit but useful for preview)
 npx prettier --write risk-map/yaml/components.yaml

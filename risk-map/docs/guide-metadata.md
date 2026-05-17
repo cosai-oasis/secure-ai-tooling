@@ -320,9 +320,9 @@ All metadata fields are validated against their respective schemas:
 
 ```bash
 # Run full validation including schema checks, formatting, and cross-references
-python scripts/hooks/validate_riskmap.py --force
-python scripts/hooks/validate_control_risk_references.py --force
-python scripts/hooks/validate_framework_references.py --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --force
+uv run --locked --no-sync python scripts/hooks/validate_control_risk_references.py --force
+uv run --locked --no-sync python scripts/hooks/validate_framework_references.py --force
 ```
 
 ### Validation Rules

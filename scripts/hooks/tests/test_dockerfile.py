@@ -21,8 +21,8 @@ Total Test Methods: 26
 6. TestDockerfileNoDirectRuntimeInstalls (3): no direct Python install,
    no direct Node.js install, no playwright install
 7. TestDockerfileMise (2): mise binary install, copies .mise.toml
-8. TestDockerfileBuildTimeToolInstall (6): mise trust, mise install,
-   mise reshim, mise use -g python, mise use -g node, ENV HOME
+8. TestDockerfileBuildTimeToolInstall (7): mise trust, mise install,
+   mise reshim, mise use -g python, mise use -g node, mise use -g uv, ENV HOME
 
 Testing Approach:
 =================
@@ -328,7 +328,7 @@ class TestDockerfileNoDirectRuntimeInstalls:
     """
     Validate that the Dockerfile does NOT install runtime tools via direct commands.
 
-    Python and Node.js are installed via bare `mise install` (which reads
+    Python, Node.js, and uv are installed via bare `mise install` (which reads
     versions from .mise.toml), NOT via direct `mise install python`,
     `apt-get install python3`, `nvm install`, etc. This ensures tool
     versions are managed centrally in .mise.toml.
@@ -444,9 +444,9 @@ class TestDockerfileMise:
 
 class TestDockerfileBuildTimeToolInstall:
     """
-    Validate build-time Python/Node.js installation via mise.
+    Validate build-time Python/Node.js/uv installation via mise.
 
-    Python and Node.js are installed during Docker build so binaries and
+    Python, Node.js, and uv are installed during Docker build so binaries and
     shims exist when the container starts. This eliminates the race condition
     where VS Code's Python extension activates before onCreateCommand
     installs Python via install-deps.sh.
@@ -517,6 +517,19 @@ class TestDockerfileBuildTimeToolInstall:
             "Dockerfile should run 'mise use -g node' for global fallback config"
         )
 
+    def test_mise_use_global_uv(self, dockerfile_content):
+        """
+        Given: The Dockerfile content
+        When: Checking for mise use -g uv command
+        Then: mise use -g uv is called for global fallback
+
+        Sets a global default uv version in ~/.config/mise/config.toml so uv
+        shims resolve from any working directory.
+        """
+        assert "mise use -g uv" in dockerfile_content, (
+            "Dockerfile should run 'mise use -g uv' for global fallback config"
+        )
+
     def test_env_home_set(self, dockerfile_content):
         """
         Given: The Dockerfile content
@@ -547,8 +560,8 @@ Total Test Methods: 26
 6. TestDockerfileNoDirectRuntimeInstalls (3): no direct Python install,
    no direct Node.js install, no playwright install
 7. TestDockerfileMise (2): mise binary install, copies .mise.toml
-8. TestDockerfileBuildTimeToolInstall (6): mise trust, mise install,
-   mise reshim, mise use -g python, mise use -g node, ENV HOME
+8. TestDockerfileBuildTimeToolInstall (7): mise trust, mise install,
+   mise reshim, mise use -g python, mise use -g node, mise use -g uv, ENV HOME
 
 Coverage Areas:
 - Base image selection (ubuntu:noble, no Playwright)

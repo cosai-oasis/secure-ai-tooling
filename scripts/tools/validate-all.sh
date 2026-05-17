@@ -68,13 +68,18 @@ fail_msg() { echo -e "${RED}[FAIL]${RESET} $1"; }
 
 FAILURES=0
 
+if ! command -v uv &>/dev/null; then
+    fail_msg "uv not found; run ./scripts/tools/install-deps.sh first"
+    exit 1
+fi
+
 # Each validator accepts --force to run against the full tree. Output is
 # routed straight to the user's terminal so error messages retain their
 # original formatting. The order below matches the framework config's
 # validator ordering for consistency with commit-time feedback.
 
 banner "Schema meta-validation"
-if check-jsonschema --check-metaschema risk-map/schemas/*.schema.json; then
+if uv run --locked --no-sync check-jsonschema --check-metaschema risk-map/schemas/*.schema.json; then
     pass_msg "Schema files are structurally valid JSON Schema"
 else
     fail_msg "One or more schema files are invalid JSON Schema"
@@ -82,7 +87,7 @@ else
 fi
 
 banner "Component edge validation"
-if python3 scripts/hooks/validate_riskmap.py --force; then
+if uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --force; then
     pass_msg "Component edges"
 else
     fail_msg "Component edge validation reported errors"
@@ -90,7 +95,7 @@ else
 fi
 
 banner "Control-to-risk reference validation"
-if python3 scripts/hooks/validate_control_risk_references.py --force; then
+if uv run --locked --no-sync python scripts/hooks/validate_control_risk_references.py --force; then
     pass_msg "Control-to-risk references"
 else
     fail_msg "Control-to-risk reference validation reported errors"
@@ -98,7 +103,7 @@ else
 fi
 
 banner "Framework reference validation"
-if python3 scripts/hooks/validate_framework_references.py --force; then
+if uv run --locked --no-sync python scripts/hooks/validate_framework_references.py --force; then
     pass_msg "Framework references"
 else
     fail_msg "Framework reference validation reported errors"
@@ -106,7 +111,7 @@ else
 fi
 
 banner "Issue template validation"
-if python3 scripts/hooks/validate_issue_templates.py --force; then
+if uv run --locked --no-sync python scripts/hooks/validate_issue_templates.py --force; then
     pass_msg "Issue templates"
 else
     fail_msg "Issue template validation reported errors"

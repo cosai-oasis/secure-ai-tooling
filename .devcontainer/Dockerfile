@@ -67,7 +67,7 @@ WORKDIR ${WORKSPACE}/${WORKSPACE_REPO}
 ARG USERNAME=vscode
 RUN useradd -m -d /home/${USERNAME} -s /bin/bash ${USERNAME} 2>/dev/null || true
 
-# Install Python and Node.js via mise during Docker build so binaries and
+# Install Python, Node.js, and uv via mise during Docker build so binaries and
 # shims exist when the container starts. This eliminates the race condition
 # where VS Code's Python extension activates before onCreateCommand installs
 # Python via install-deps.sh.
@@ -79,5 +79,6 @@ RUN mise trust .mise.toml && \
     mise install && \
     mise reshim && \
     mise use -g python@$(mise current python | cut -d. -f1-2) && \
-    mise use -g node@$(mise current node | cut -d. -f1)
+    mise use -g node@$(mise current node | cut -d. -f1) && \
+    mise use -g uv@$(mise current uv)
 USER root

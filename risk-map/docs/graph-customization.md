@@ -228,10 +228,10 @@ graphTypes:
 
    ```bash
    # Generate component graph with your styling
-   python3 scripts/hooks/validate_riskmap.py --to-graph test-component.md --force
+   uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-graph test-component.md --force
 
    # Generate control graph with your styling
-   python3 scripts/hooks/validate_riskmap.py --to-controls-graph test-control.md --force
+   uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-controls-graph test-control.md --force
    ```
 
 4. **View the results** by opening the generated Markdown files in a compatible viewer (see Visualizing Graphs below).
@@ -273,7 +273,7 @@ The generated Mermaid graphs use the **Elk layout engine** for automatic positio
 
 ```bash
 # Generate both .md and .mermaid formats for easier viewing
-python scripts/hooks/validate_riskmap.py --to-graph ./test.md --mermaid-format --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-graph ./test.md --mermaid-format --force
 
 # This creates:
 # - test.md (markdown with code block)

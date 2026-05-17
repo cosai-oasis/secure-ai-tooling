@@ -331,10 +331,10 @@ Run validation to ensure your changes are correct:
 check-jsonschema --base-uri file://$(pwd)/risk-map/schemas/ --schemafile risk-map/schemas/personas.schema.json risk-map/yaml/personas.yaml
 
 # Framework reference validation
-python3 scripts/hooks/validate_framework_references.py --force
+uv run --locked --no-sync python scripts/hooks/validate_framework_references.py --force
 
 # Full validation suite
-python3 scripts/hooks/validate_riskmap.py --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --force
 ```
 
 Follow the [General Content Contribution Workflow](workflow.md) to create your pull request.

@@ -15,7 +15,8 @@ on:
       - 'scripts/hooks/tests/test_build_persona_site_data.py'
       - 'README.md'
       - 'risk-map/README.md'
-      - 'requirements.txt'
+      - 'pyproject.toml'
+      - 'uv.lock'
   push:
     branches: [main]
     paths:
@@ -30,7 +31,8 @@ on:
       - 'scripts/hooks/tests/test_build_persona_site_data.py'
       - 'README.md'
       - 'risk-map/README.md'
-      - 'requirements.txt'
+      - 'pyproject.toml'
+      - 'uv.lock'
   workflow_dispatch:
 
 permissions:
@@ -54,7 +56,12 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: '3.14'
-          cache: 'pip'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: '0.11.14'
+          enable-cache: true
 
       - name: Set up Node
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -62,10 +69,10 @@ jobs:
           node-version: '22.x'
 
       - name: Install Python dependencies
-        run: pip install -r requirements.txt
+        run: uv sync --locked
 
       - name: Run persona site data tests
-        run: pytest scripts/hooks/tests/test_build_persona_site_data.py
+        run: uv run --locked --no-sync pytest scripts/hooks/tests/test_build_persona_site_data.py
 
       - name: Run persona site logic tests
         run: node --test site/tests/*.test.mjs
@@ -76,7 +83,7 @@ jobs:
           rm -rf _site
           mkdir -p _site
           rsync -a --exclude='.DS_Store' --exclude='.gitignore' site/ _site/
-          python3 scripts/build_persona_site_data.py --site-dir _site
+          uv run --locked --no-sync python scripts/build_persona_site_data.py --site-dir _site
           test -f _site/generated/persona-site-data.json
 
       - name: Configure GitHub Pages

@@ -7,19 +7,19 @@ template sources with dynamic content from JSON schemas and frameworks.yaml.
 
 Usage:
     # Generate all templates
-    python scripts/generate_issue_templates.py
+    uv run --locked --no-sync python scripts/generate_issue_templates.py
 
     # Dry-run (show diffs without writing)
-    python scripts/generate_issue_templates.py --dry-run
+    uv run --locked --no-sync python scripts/generate_issue_templates.py --dry-run
 
     # Generate specific template
-    python scripts/generate_issue_templates.py --template new_control
+    uv run --locked --no-sync python scripts/generate_issue_templates.py --template new_control
 
     # Validate only (no generation)
-    python scripts/generate_issue_templates.py --validate
+    uv run --locked --no-sync python scripts/generate_issue_templates.py --validate
 
     # Verbose output
-    python scripts/generate_issue_templates.py --verbose
+    uv run --locked --no-sync python scripts/generate_issue_templates.py --verbose
 """
 
 import argparse
@@ -81,19 +81,19 @@ def main() -> int:
         epilog="""
 Examples:
   # Generate all templates
-  python scripts/generate_issue_templates.py
+  uv run --locked --no-sync python scripts/generate_issue_templates.py
 
   # Show what would change (dry-run)
-  python scripts/generate_issue_templates.py --dry-run
+  uv run --locked --no-sync python scripts/generate_issue_templates.py --dry-run
 
   # Generate single template
-  python scripts/generate_issue_templates.py --template new_control
+  uv run --locked --no-sync python scripts/generate_issue_templates.py --template new_control
 
   # Validate templates only
-  python scripts/generate_issue_templates.py --validate
+  uv run --locked --no-sync python scripts/generate_issue_templates.py --validate
 
   # Verbose output
-  python scripts/generate_issue_templates.py --verbose
+  uv run --locked --no-sync python scripts/generate_issue_templates.py --verbose
         """,
     )
 

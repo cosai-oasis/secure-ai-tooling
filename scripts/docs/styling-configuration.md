@@ -102,7 +102,7 @@ To customize graph styling:
 2. **Validate Changes**: The pre-commit hooks automatically validate syntax and schema
 3. **Test Changes**: Use `--force` mode to test with unstaged changes:
    ```bash
-   python3 scripts/hooks/validate_riskmap.py --to-graph test.md --force
+   uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-graph test.md --force
    ```
 
 ## Common Customizations

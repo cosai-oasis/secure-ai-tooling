@@ -29,6 +29,9 @@ Coverage Target: 100% of .mise.toml configuration requirements
    - tools.node key exists
    - Node.js version is "22"
    - Node.js version satisfies >= 22 requirement
+5. TestMiseConfigUv - uv version specification
+   - tools.uv key exists
+   - uv version is pinned
 
 5. TestMiseConfigConsistency - Cross-file version agreement
    - Python version matches verify-deps.sh threshold (>= 3.14)
@@ -51,10 +54,10 @@ the Python provider.
 """
 
 import re
+import tomllib
 from pathlib import Path
 
 import pytest
-import tomllib
 
 # Path constants matching existing test patterns (test_verify_deps.py)
 REPO_ROOT = Path(__file__).parent.parent.parent.parent
@@ -233,6 +236,45 @@ class TestMiseConfigNode:
         # Handle dotted versions (e.g., "22.1") and plain major (e.g., "22")
         major = int(node_version.split(".")[0])
         assert major >= 22, f"Node.js version {node_version} does not satisfy >= 22 requirement"
+
+
+class TestMiseConfigUv:
+    """
+    Test uv version specification in .mise.toml.
+
+    Validates that uv is declared as a mise-managed tool so install-deps.sh can
+    synchronize the project-local .venv without relying on a system uv.
+    """
+
+    @pytest.fixture()
+    def tools(self):
+        """Load and return the [tools] section from .mise.toml."""
+        with open(MISE_CONFIG_PATH, "rb") as f:
+            config = tomllib.load(f)
+        return config.get("tools", {})
+
+    def test_uv_key_exists(self, tools):
+        """
+        Test that tools.uv key exists in .mise.toml.
+
+        Given: A valid .mise.toml with a [tools] section
+        When: Checking for the uv key
+        Then: The uv key exists under [tools]
+        """
+        assert "uv" in tools, ".mise.toml [tools] section is missing the 'uv' key"
+
+    def test_uv_version_is_pinned(self, tools):
+        """
+        Test that uv version is pinned to an exact version.
+
+        Given: A .mise.toml with tools.uv defined
+        When: Reading the uv version value
+        Then: Value is an exact semantic version, not latest or a range
+        """
+        uv_version = str(tools.get("uv", ""))
+        assert re.fullmatch(r"\d+\.\d+\.\d+", uv_version), (
+            f"Expected tools.uv to be an exact version, got '{uv_version}'"
+        )
 
 
 class TestMiseConfigConsistency:

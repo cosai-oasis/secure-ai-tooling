@@ -641,7 +641,7 @@ function renderApp() {
       steps: [
         "Source of truth: framework YAML transformed into static JSON",
         "Privacy posture: answers stay in this browser session only",
-        "Local preview hint: run `python3 scripts/build_persona_site_data.py` if this never advances",
+        "Local preview hint: run `uv run --locked --no-sync python scripts/build_persona_site_data.py` if this never advances",
       ],
     });
     return;
@@ -704,7 +704,7 @@ async function loadSiteData() {
     renderApp();
   } catch (error) {
     state.errorMessage =
-      "Run `python3 scripts/build_persona_site_data.py` from the repository root before previewing the site locally.";
+      "Run `uv run --locked --no-sync python scripts/build_persona_site_data.py` from the repository root before previewing the site locally.";
     state.loading = false;
     renderApp();
     console.error(error);

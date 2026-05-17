@@ -13,6 +13,7 @@
 **Runtime tools** (installed automatically by `install-deps.sh`, or install manually):
 
 - Python 3.14 or higher
+- uv 0.11.14
 - Node.js 22+ and npm
 - Chrome/Chromium browser (for SVG generation from Mermaid diagrams)
 
@@ -48,14 +49,14 @@ Verify the environment:
 If you prefer to install dependencies individually:
 
 ```bash
-# Install required Python packages (includes pre-commit framework)
-pip install -r requirements.txt
+# Install required Python packages into the project .venv (includes pre-commit framework)
+uv sync --locked
 
 # Install Node.js dependencies (prettier, mermaid-cli, etc.)
-npm install
+npm ci
 
 # Install the pre-commit framework hook into .git/hooks/pre-commit
-pre-commit install
+uv run --locked --no-sync pre-commit install
 ```
 
 **Platform-specific Chrome/Chromium setup:**
@@ -74,7 +75,7 @@ For Linux ARM64 contributors, ensure Playwright Chromium is installed
 
 ## Requirements
 
-**Required packages** (from `requirements.txt`):
+**Required packages** (from `pyproject.toml`, locked by `uv.lock`):
 
 - `PyYAML` - YAML file parsing and manipulation
 - `check-jsonschema` - JSON schema validation for YAML files
@@ -91,7 +92,7 @@ For Linux ARM64 contributors, ensure Playwright Chromium is installed
 ## Hook Files
 
 Hooks are configured declaratively in `.pre-commit-config.yaml` at the repo
-root and installed via `pre-commit install`. Validators and generators live
+root and installed via `uv run --locked --no-sync pre-commit install`. Validators and generators live
 under `scripts/hooks/`:
 
 - `hooks/precommit/` - Wrapper scripts invoked by the framework (graphs,

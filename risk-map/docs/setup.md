@@ -17,15 +17,15 @@ The repository includes a VS Code Dev Container configuration that provides a pr
 1. **Open the repository in VS Code**
 2. **Reopen in Container**: When prompted (or use Command Palette: "Dev Containers: Reopen in Container")
 3. **Wait for container build**: The first build creates the base image, then `install-deps.sh` runs automatically to install all runtime tools via mise
-4. **Pre-commit hooks are installed automatically** as part of the container setup (via `install-deps.sh` Step 8, which invokes `pre-commit install` against `.pre-commit-config.yaml`). To re-install manually if needed:
+4. **Pre-commit hooks are installed automatically** as part of the container setup (via `install-deps.sh` Step 8, which invokes `uv run --locked --no-sync pre-commit install` against `.pre-commit-config.yaml`). To re-install manually if needed:
 
    ```bash
-   pre-commit install --overwrite
+   uv run --locked --no-sync pre-commit install --overwrite
    ```
 
 The Dev Container automatically provides:
 
-- Python 3.14 with all requirements.txt dependencies (via mise)
+- Python 3.14 with all `pyproject.toml` dependencies synchronized by uv (via mise)
 - Node.js 22 with npm packages (prettier, mermaid-cli) (via mise)
 - Playwright Chromium browser for SVG generation
 - act tool for local GitHub Actions testing

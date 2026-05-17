@@ -144,41 +144,31 @@ extract_minor() {
 }
 
 # find_chromium_recursive: search for chrome/headless_shell in a directory tree
-# Uses bash builtins only (globstar) instead of find command.
+# Uses bash builtins only instead of find command, so restricted PATH test
+# environments still exercise the same branch.
 # Sets CHROMIUM_FOUND=true if found.
 find_chromium_recursive() {
     local base_dir="$1"
-    # Enable globstar for recursive globbing
-    local prev_globstar
-    prev_globstar="$(shopt -p globstar 2>/dev/null || true)"
-    shopt -s globstar 2>/dev/null || true
+    local f basename
 
-    for f in "$base_dir"/**/*; do
-        if [[ -f "$f" ]]; then
-            local basename="${f##*/}"
+    for f in "$base_dir"/*; do
+        [[ -e "$f" ]] || continue
+
+        if [[ -d "$f" ]]; then
+            find_chromium_recursive "$f"
+            if [[ "$CHROMIUM_FOUND" == "true" ]]; then
+                return 0
+            fi
+        elif [[ -f "$f" ]]; then
+            basename="${f##*/}"
             if [[ "$basename" == "chrome" || "$basename" == "headless_shell" ]]; then
                 CHROMIUM_FOUND=true
-                eval "$prev_globstar" 2>/dev/null || true
                 return 0
             fi
         fi
     done
 
-    eval "$prev_globstar" 2>/dev/null || true
     return 1
-}
-
-# strip_version_specifiers: remove version specifiers from a package line
-# Handles ==, >=, <=, ~=, !=, >, < and strips whitespace using bash only
-# Usage: strip_version_specifiers "PyYAML>=6.0.2" -> "PyYAML"
-strip_version_specifiers() {
-    local line="$1"
-    # Remove everything from the first version specifier char onward
-    local package="${line%%[>=<~!]*}"
-    # Trim leading/trailing whitespace using bash parameter expansion
-    package="${package#"${package%%[![:space:]]*}"}"
-    package="${package%"${package##*[![:space:]]}"}"
-    echo "$package"
 }
 
 # =============================================================================
@@ -246,6 +236,7 @@ MISE_CONFIG="$REPO_ROOT/.mise.toml"
 # replace hardcoded version strings throughout this script.
 MISE_PYTHON_VERSION=""
 MISE_NODE_VERSION=""
+MISE_UV_VERSION=""
 if [[ -f "$MISE_CONFIG" ]]; then
     while IFS= read -r _line; do
         # Match: python = "3.14"
@@ -257,6 +248,11 @@ if [[ -f "$MISE_CONFIG" ]]; then
         if [[ "$_line" == node\ =\ * ]]; then
             _val="${_line#*\"}"
             MISE_NODE_VERSION="${_val%%\"*}"
+        fi
+        # Match: uv = "0.11.14"
+        if [[ "$_line" == uv\ =\ * ]]; then
+            _val="${_line#*\"}"
+            MISE_UV_VERSION="${_val%%\"*}"
         fi
     done < "$MISE_CONFIG"
 fi
@@ -299,6 +295,10 @@ if command -v mise &>/dev/null && [[ -f "$MISE_CONFIG" ]]; then
             _node_full=$(mise current node 2>/dev/null)
             _node_major="${_node_full%%.*}"
             mise use -g "node@$_node_major" 2>/dev/null || true
+            _uv_full=$(mise current uv 2>/dev/null)
+            if [[ -n "$_uv_full" ]]; then
+                mise use -g "uv@$_uv_full" 2>/dev/null || true
+            fi
         fi
     fi
 fi
@@ -377,50 +377,32 @@ if [[ "$NODE_INSTALLED" == "false" ]]; then
 fi
 
 # =============================================================================
-# Step 4: pip packages
+# Step 4: Python project environment
 # =============================================================================
-step_msg 4 "pip packages"
-info_msg "Checking pip packages..."
-PIP_NEEDS_INSTALL=false
+step_msg 4 "Python project environment"
+info_msg "Checking uv-managed Python environment..."
 
-if command -v python3 &>/dev/null && [[ -f "$REPO_ROOT/requirements.txt" ]]; then
-    # Check if any package from requirements.txt is missing
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        # Strip version specifiers and whitespace using bash builtins
-        package=$(strip_version_specifiers "$line")
-        # Skip empty lines and comments
-        if [[ -z "$package" || "$package" == \#* ]]; then
-            continue
-        fi
-        if ! python3 -m pip show "$package" &>/dev/null; then
-            PIP_NEEDS_INSTALL=true
-            break
-        fi
-    done < "$REPO_ROOT/requirements.txt"
-
-    if [[ "$PIP_NEEDS_INSTALL" == "true" ]]; then
-        if [[ "$DRY_RUN" == "true" ]]; then
-            dry_run_msg "Would run: pip install -r $REPO_ROOT/requirements.txt"
-        else
-            python3 -m pip install --no-input -r "$REPO_ROOT/requirements.txt" < /dev/null
-            if [[ $? -ne 0 ]]; then
-                fail_msg "pip install -r requirements.txt failed"
-            else
-                pass_msg "pip packages installed"
-                # Regenerate mise shims so pip-installed binaries (ruff, check-jsonschema) are available
-                if command -v mise &>/dev/null; then
-                    mise reshim 2>/dev/null || true
-                fi
-            fi
-        fi
+if command -v uv &>/dev/null && [[ -f "$REPO_ROOT/pyproject.toml" && -f "$REPO_ROOT/uv.lock" ]]; then
+    if [[ "$DRY_RUN" == "true" ]]; then
+        dry_run_msg "Would run: uv sync --locked (in $REPO_ROOT)"
     else
-        skip_msg "pip packages already installed"
+        if (cd "$REPO_ROOT" && uv sync --locked < /dev/null); then
+            pass_msg "uv project environment synchronized"
+            # Regenerate mise shims so uv-installed entry points remain discoverable.
+            if command -v mise &>/dev/null; then
+                mise reshim 2>/dev/null || true
+            fi
+        else
+            fail_msg "uv sync --locked failed"
+        fi
     fi
 else
-    if ! command -v python3 &>/dev/null; then
-        fail_msg "Cannot install pip packages: python3 not available"
-    elif [[ ! -f "$REPO_ROOT/requirements.txt" ]]; then
-        fail_msg "Cannot install pip packages: requirements.txt not found at $REPO_ROOT/requirements.txt"
+    if ! command -v uv &>/dev/null; then
+        fail_msg "Cannot synchronize Python environment: uv not available"
+    elif [[ ! -f "$REPO_ROOT/pyproject.toml" ]]; then
+        fail_msg "Cannot synchronize Python environment: pyproject.toml not found at $REPO_ROOT/pyproject.toml"
+    elif [[ ! -f "$REPO_ROOT/uv.lock" ]]; then
+        fail_msg "Cannot synchronize Python environment: uv.lock not found at $REPO_ROOT/uv.lock"
     fi
 fi
 
@@ -519,8 +501,8 @@ fi
 step_msg 8 "Pre-commit hooks"
 info_msg "Installing pre-commit framework hook..."
 
-# `pre-commit install` writes a shim into .git/hooks/pre-commit that delegates
-# to the framework runtime, which reads .pre-commit-config.yaml at the repo
+# The framework install command writes a shim into .git/hooks/pre-commit that
+# delegates to the runtime, which reads .pre-commit-config.yaml at the repo
 # root. Devcontainers can fail `git rev-parse --show-toplevel` due to volume
 # ownership mismatch — mark the repo as safe up front.
 if command -v git &>/dev/null; then
@@ -529,14 +511,14 @@ if command -v git &>/dev/null; then
 fi
 
 if [[ "$DRY_RUN" == "true" ]]; then
-    dry_run_msg "Would run: python3 -m pre_commit install --overwrite (in $REPO_ROOT)"
+    dry_run_msg "Would run: uv run --locked --no-sync pre-commit install --overwrite (in $REPO_ROOT)"
 else
-    if (cd "$REPO_ROOT" && python3 -m pre_commit install --overwrite); then
+    if (cd "$REPO_ROOT" && uv run --locked --no-sync pre-commit install --overwrite); then
         pass_msg "Pre-commit framework hook installed"
         # regenerate_svgs.py self-discovers Playwright Chromium on ARM64 Linux;
         # CHROMIUM_PATH env override is honored if set.
     else
-        fail_msg "pre-commit install failed (is the pre-commit package present?)"
+        fail_msg "pre-commit install failed (is the uv project environment synchronized?)"
     fi
 fi
 

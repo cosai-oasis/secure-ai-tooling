@@ -48,13 +48,13 @@ The commit is blocked if any hook returns non-zero.
 
 ```bash
 # Against the working tree (does NOT require staged files):
-pre-commit run --all-files
+uv run --locked --no-sync pre-commit run --all-files
 
 # Against only staged files (same as what git commit does):
-pre-commit run
+uv run --locked --no-sync pre-commit run
 ```
 
-Note: `pre-commit run --all-files` will also run the generators, which may
+Note: `uv run --locked --no-sync pre-commit run --all-files` will also run the generators, which may
 modify derivatives in your working tree. To validate without regeneration,
 use `scripts/tools/validate-all.sh` (see [Manual Validation](manual-validation.md)).
 

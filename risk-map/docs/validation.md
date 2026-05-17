@@ -8,19 +8,19 @@ You can run edge validation and graph generation manually at any time:
 
 ```bash
 # Validate only if components.yaml is staged for commit
-python scripts/hooks/validate_riskmap.py
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py
 
 # Force validation regardless of git status
-python scripts/hooks/validate_riskmap.py --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --force
 
 # Generate component graph visualization
-python scripts/hooks/validate_riskmap.py --to-graph ./my-graph.md --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-graph ./my-graph.md --force
 
 # Generate component graph with debug annotations
-python scripts/hooks/validate_riskmap.py --to-graph ./debug-graph.md --debug --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-graph ./debug-graph.md --debug --force
 
 # Generate control-to-component relationship graph
-python scripts/hooks/validate_riskmap.py --to-controls-graph ./controls-graph.md --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-controls-graph ./controls-graph.md --force
 ```
 
 The validation script checks for:
@@ -51,16 +51,16 @@ Beyond automatic generation, you can manually generate both types of graphs usin
 
 ```bash
 # Generate component relationship graph
-python scripts/hooks/validate_riskmap.py --to-graph ./components.md --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-graph ./components.md --force
 
 # Generate control-to-component graph
-python scripts/hooks/validate_riskmap.py --to-controls-graph ./controls-graph.md --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-controls-graph ./controls-graph.md --force
 
 # Generate control-to-risk relationship graph
-python scripts/hooks/validate_riskmap.py --to-risk-graph ./risk-graph.md --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-risk-graph ./risk-graph.md --force
 
 # Generate all three graph types
-python scripts/hooks/validate_riskmap.py --to-graph ./components.md --to-controls-graph ./controls.md --to-risk-graph ./risk.md --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-graph ./components.md --to-controls-graph ./controls.md --to-risk-graph ./risk.md --force
 ```
 
 ## Markdown Table Documentation
@@ -84,18 +84,18 @@ The `regenerate-tables` framework hook (`scripts/hooks/precommit/regenerate_tabl
 
 ```bash
 # Generate all formats for one type
-python3 scripts/hooks/yaml_to_markdown.py components --all-formats
-python3 scripts/hooks/yaml_to_markdown.py controls --all-formats
+uv run --locked --no-sync python scripts/hooks/yaml_to_markdown.py components --all-formats
+uv run --locked --no-sync python scripts/hooks/yaml_to_markdown.py controls --all-formats
 
 # Generate all types and formats (8 files total)
-python3 scripts/hooks/yaml_to_markdown.py --all --all-formats
+uv run --locked --no-sync python scripts/hooks/yaml_to_markdown.py --all --all-formats
 
 # Generate to custom output directory
-python3 scripts/hooks/yaml_to_markdown.py --all --all-formats --output-dir /tmp/tables
+uv run --locked --no-sync python scripts/hooks/yaml_to_markdown.py --all --all-formats --output-dir /tmp/tables
 
 # Generate specific format
-python3 scripts/hooks/yaml_to_markdown.py controls --format xref-risks
-python3 scripts/hooks/yaml_to_markdown.py components --format summary
+uv run --locked --no-sync python scripts/hooks/yaml_to_markdown.py controls --format xref-risks
+uv run --locked --no-sync python scripts/hooks/yaml_to_markdown.py components --format summary
 ```
 
 **Available formats:**
@@ -129,10 +129,10 @@ You can run control-to-risk reference validation at any time:
 
 ```bash
 # Validate control-to-risk references if at least on of controls.yaml or risks.yaml is staged
-python scripts/hooks/validate_control_risk_references.py
+uv run --locked --no-sync python scripts/hooks/validate_control_risk_references.py
 
 # Force control-to-risk references validation regardless of git status
-python scripts/hooks/validate_control_risk_references.py --force
+uv run --locked --no-sync python scripts/hooks/validate_control_risk_references.py --force
 ```
 
 The control-to-risk validates cross-reference consistency between `controls.yaml` and `risks.yaml`:
@@ -147,10 +147,10 @@ You can run framework reference validation at any time:
 
 ```bash
 # Validate framework references if frameworks.yaml, risks.yaml, or controls.yaml is staged
-python scripts/hooks/validate_framework_references.py
+uv run --locked --no-sync python scripts/hooks/validate_framework_references.py
 
 # Force framework reference validation regardless of git status
-python scripts/hooks/validate_framework_references.py --force
+uv run --locked --no-sync python scripts/hooks/validate_framework_references.py --force
 ```
 
 The framework reference validator ensures consistency between framework definitions and their usage:

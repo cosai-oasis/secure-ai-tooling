@@ -5,7 +5,7 @@
 If you already have git hooks and want to replace them with the framework hook:
 
 ```bash
-pre-commit install --overwrite
+uv run --locked --no-sync pre-commit install --overwrite
 ```
 
 ## Installing with Playwright Chromium (ARM64 Linux)
@@ -18,7 +18,7 @@ The `regenerate-svgs` hook self-discovers Playwright Chromium when
 npx playwright install chromium
 
 # Then install the framework hook (no Chromium config required):
-pre-commit install
+uv run --locked --no-sync pre-commit install
 ```
 
 To explicitly override discovery, export `CHROMIUM_PATH` to point at any
@@ -95,7 +95,7 @@ git commit --no-verify -m "emergency commit"
 ❌ Ruff linting failed
 ```
 
-**Fix**: Check that ruff is installed (`pip install ruff`) and review the specific linting errors in the output
+**Fix**: Check that the uv environment is synchronized (`uv sync --locked`) and review the specific linting errors in the output
 
 ## Common SVG generation errors
 
@@ -190,10 +190,10 @@ npx playwright install chromium --with-deps
 
 ```bash
 # Install dependencies
-pip install -r requirements.txt
+uv sync --locked
 
 # Test manually
-python3 scripts/hooks/yaml_to_markdown.py controls --all-formats
+uv run --locked --no-sync python scripts/hooks/yaml_to_markdown.py controls --all-formats
 ```
 
 ```
@@ -207,25 +207,25 @@ python3 scripts/hooks/yaml_to_markdown.py controls --all-formats
 Run the component edge validator manually:
 
 ```bash
-python3 scripts/hooks/validate_riskmap.py
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py
 ```
 
 Run the component edge validator even if files aren't staged:
 
 ```bash
-python3 scripts/hooks/validate_riskmap.py --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --force
 ```
 
 Run the control-risk validator manually:
 
 ```bash
-python3 scripts/hooks/validate_control_risk_references.py
+uv run --locked --no-sync python scripts/hooks/validate_control_risk_references.py
 ```
 
 Force validation of control-risk references even if files aren't staged:
 
 ```bash
-python3 scripts/hooks/validate_control_risk_references.py --force
+uv run --locked --no-sync python scripts/hooks/validate_control_risk_references.py --force
 ```
 
 Run prettier formatting manually:

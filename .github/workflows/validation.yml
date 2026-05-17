@@ -30,7 +30,12 @@ jobs:
       uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       with:
         python-version: '3.14'
-        cache: 'pip'
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      with:
+        version: '0.11.14'
+        enable-cache: true
 
     - name: Setup Node
       uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -48,13 +53,13 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install -r requirements.txt
+        uv sync --locked
         npm ci
 
     - name: Generate cache key
       id: cache-key
       run: |
-        echo "key=deps-${{ hashFiles('requirements.txt', 'package-lock.json') }}" >> $GITHUB_OUTPUT
+        echo "key=deps-${{ hashFiles('uv.lock', 'package-lock.json') }}" >> $GITHUB_OUTPUT
 
   # Individual validation jobs that can fail independently
   schema-validation:
@@ -72,7 +77,12 @@ jobs:
       uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       with:
         python-version: '3.14'
-        cache: 'pip'
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      with:
+        version: '0.11.14'
+        enable-cache: true
 
     - name: Setup Node
       uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -82,7 +92,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install -r requirements.txt
+        uv sync --locked
         npm ci
 
     - name: Run YAML Schema Validation
@@ -106,7 +116,7 @@ jobs:
             echo "📄 Validating ${yaml_file} against ${schema_file}..."
             validation_count=$((validation_count + 1))
 
-            if check-jsonschema --base-uri "$BASE_URI" --schemafile "$schema_file" "$yaml_file"; then
+            if uv run --locked --no-sync check-jsonschema --base-uri "$BASE_URI" --schemafile "$schema_file" "$yaml_file"; then
               echo "✅ ${yaml_file} is valid"
             else
               echo "❌ ${yaml_file} validation failed"
@@ -176,7 +186,12 @@ jobs:
       uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       with:
         python-version: '3.14'
-        cache: 'pip'
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      with:
+        version: '0.11.14'
+        enable-cache: true
 
     - name: Copy validation scripts
       run: |
@@ -185,14 +200,14 @@ jobs:
         cp -r scripts/hooks/riskmap_validator/* ./riskmap_validator/
 
     - name: Install dependencies
-      run: pip install -r requirements.txt
+      run: uv sync --locked
 
     - name: Run Component Edge Validation
       id: validate-edges
       run: |
         echo "🔗 Running component edge validation..."
 
-        if python3 validate_riskmap.py --force; then
+        if uv run --locked --no-sync python validate_riskmap.py --force; then
           echo "✅ Component edge validation completed successfully"
           echo "status=success" >> $GITHUB_OUTPUT
         else
@@ -216,20 +231,25 @@ jobs:
       uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       with:
         python-version: '3.14'
-        cache: 'pip'
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      with:
+        version: '0.11.14'
+        enable-cache: true
 
     - name: Copy validation scripts
       run: cp scripts/hooks/validate_control_risk_references.py .
 
     - name: Install dependencies
-      run: pip install -r requirements.txt
+      run: uv sync --locked
 
     - name: Run Control-Risk Reference Validation
       id: validate-controls
       run: |
         echo "🔒 Running control-to-risk reference validation..."
 
-        if python3 validate_control_risk_references.py --force; then
+        if uv run --locked --no-sync python validate_control_risk_references.py --force; then
           echo "✅ Control-to-risk reference validation completed successfully"
           echo "status=success" >> $GITHUB_OUTPUT
         else
@@ -253,20 +273,25 @@ jobs:
       uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       with:
         python-version: '3.14'
-        cache: 'pip'
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      with:
+        version: '0.11.14'
+        enable-cache: true
 
     - name: Copy validation scripts
       run: cp scripts/hooks/validate_framework_references.py .
 
     - name: Install dependencies
-      run: pip install -r requirements.txt
+      run: uv sync --locked
 
     - name: Run Framework Reference Validation
       id: validate-frameworks
       run: |
         echo "🔗 Running framework reference validation..."
 
-        if python3 validate_framework_references.py --force; then
+        if uv run --locked --no-sync python validate_framework_references.py --force; then
           echo "✅ Framework reference validation completed successfully"
           echo "status=success" >> $GITHUB_OUTPUT
         else
@@ -291,7 +316,12 @@ jobs:
       uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       with:
         python-version: '3.14'
-        cache: 'pip'
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      with:
+        version: '0.11.14'
+        enable-cache: true
 
     - name: Copy validation scripts
       run: |
@@ -300,7 +330,7 @@ jobs:
         cp -r scripts/hooks/riskmap_validator/* ./riskmap_validator/
 
     - name: Install dependencies
-      run: pip install -r requirements.txt
+      run: uv sync --locked
 
     - name: Validate graphs
       id: validate-graphs
@@ -333,7 +363,7 @@ jobs:
             echo "🔍 Validating ${graph_name}..."
             graphs_validated=$((graphs_validated + 1))
 
-            if ! python3 ${VALIDATE_CMD} --force ${gen_args} "${temp_file}"; then
+            if ! uv run --locked --no-sync python ${VALIDATE_CMD} --force ${gen_args} "${temp_file}"; then
                 echo "❌ ${graph_name} generation via ${VALIDATE_CMD} failed..."
                 graph_compare_failed=true
             elif ! output=$(diff -u "${target_path}" "${temp_file}" 2>&1); then

@@ -8,17 +8,17 @@ The repo uses the upstream `pre-commit` framework. Useful commands while debuggi
 
 ```bash
 # Run all hooks against the current working tree (regenerates derivatives):
-pre-commit run --all-files
+uv run --locked --no-sync pre-commit run --all-files
 
 # Run one hook by id, against all files or a specific file set:
-pre-commit run validate-component-edges --all-files
-pre-commit run check-jsonschema --files risk-map/yaml/components.yaml
+uv run --locked --no-sync pre-commit run validate-component-edges --all-files
+uv run --locked --no-sync pre-commit run check-jsonschema --files risk-map/yaml/components.yaml
 
 # Validate content without regenerating graphs / tables / SVGs:
 ./scripts/tools/validate-all.sh
 ```
 
-> **Note:** `pre-commit run --all-files` stages regenerated derivatives (SVGs,
+> **Note:** `uv run --locked --no-sync pre-commit run --all-files` stages regenerated derivatives (SVGs,
 > graphs, tables, issue templates) via the Mode B auto-stage pattern. See
 > [scripts/docs/manual-validation.md](../../scripts/docs/manual-validation.md#recommended-unified-dev-helper)
 > for the full caveat and how to unstage bycatch before an unrelated commit.
@@ -59,7 +59,7 @@ If you encounter issues with the automatic graph generation:
 **Fix**: Check that `components.yaml` is valid and accessible. Test manually:
 
 ```bash
-python scripts/hooks/validate_riskmap.py --to-graph ./test-graph.md --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-graph ./test-graph.md --force
 ```
 
 ### 2. Control-to-component graph generation failed
@@ -71,7 +71,7 @@ python scripts/hooks/validate_riskmap.py --to-graph ./test-graph.md --force
 **Fix**: Verify that both `controls.yaml` and `components.yaml` are accessible and properly formatted. Test manually:
 
 ```bash
-python scripts/hooks/validate_riskmap.py --to-controls-graph ./test-controls.md --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-controls-graph ./test-controls.md --force
 ```
 
 ### 3. Generated graph not staged
@@ -87,7 +87,7 @@ python scripts/hooks/validate_riskmap.py --to-controls-graph ./test-controls.md 
 **Fix**: Use debug mode to inspect graph structure:
 
 ```bash
-python scripts/hooks/validate_riskmap.py --to-graph ./debug-graph.md --debug --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-graph ./debug-graph.md --debug --force
 ```
 
 ### 5. Control graph looks cluttered or confusing

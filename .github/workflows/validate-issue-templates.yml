@@ -35,15 +35,17 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: '3.14'
-          cache: 'pip'
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: '0.11.14'
+          enable-cache: true
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install check-jsonschema
+        run: uv sync --locked
       - name: Generate cache key
         id: cache-key
         run: |
-          echo "key=deps-${{ hashFiles('requirements.txt') }}" >> $GITHUB_OUTPUT
+          echo "key=deps-${{ hashFiles('uv.lock') }}" >> $GITHUB_OUTPUT
 
   # Validate templates against GitHub schemas
   validate-templates:
@@ -59,14 +61,18 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: '3.14'
-          cache: 'pip'
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: '0.11.14'
+          enable-cache: true
       - name: Install dependencies
-        run: pip install check-jsonschema
+        run: uv sync --locked
       - name: Validate issue templates
         id: validate
         run: |
           echo "🔍 Validating GitHub issue templates..."
-          if python scripts/hooks/validate_issue_templates.py --force; then
+          if uv run --locked --no-sync python scripts/hooks/validate_issue_templates.py --force; then
             echo "✅ All issue templates passed GitHub schema validation"
             echo "status=success" >> $GITHUB_OUTPUT
           else
@@ -92,22 +98,26 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: '3.14'
-          cache: 'pip'
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: '0.11.14'
+          enable-cache: true
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: uv sync --locked
       - name: Check for template drift
         id: drift
         run: |
           echo "🔍 Checking for template drift..."
 
           # Run generator in dry-run mode
-          python scripts/generate_issue_templates.py --dry-run
+          uv run --locked --no-sync python scripts/generate_issue_templates.py --dry-run
 
           # Check if any templates would be changed
           if ! git diff --exit-code .github/ISSUE_TEMPLATE/*.yml; then
             echo "❌ Issue templates are out of sync with schemas"
             echo "::error::Templates need regeneration"
-            echo "::error::Run: python scripts/generate_issue_templates.py"
+            echo "::error::Run: uv run --locked --no-sync python scripts/generate_issue_templates.py"
             echo "::error::Then commit the updated templates"
             echo "status=failed" >> $GITHUB_OUTPUT
             exit 1
@@ -130,14 +140,18 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: '3.14'
-          cache: 'pip'
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: '0.11.14'
+          enable-cache: true
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: uv sync --locked
       - name: Run validator tests
         id: test
         run: |
           echo "🧪 Running template validator tests..."
-          if PYTHONPATH=./scripts/hooks pytest scripts/hooks/tests/test_validate_issue_templates.py -v --junitxml=junit/test-results.xml; then
+          if PYTHONPATH=./scripts/hooks uv run --locked --no-sync pytest scripts/hooks/tests/test_validate_issue_templates.py -v --junitxml=junit/test-results.xml; then
             echo "✅ All tests passed"
             echo "status=success" >> $GITHUB_OUTPUT
           else

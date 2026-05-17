@@ -141,7 +141,7 @@ class TestCheckJsonschemaAvailable:
             text=True,
         )
         assert result.returncode == 0, (
-            "check-jsonschema is not installed or not on PATH; install with: pip install check-jsonschema"
+            "check-jsonschema is not installed or not on PATH; install with: uv sync --locked"
         )
 
 

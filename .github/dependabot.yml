@@ -1,7 +1,7 @@
 version: 2
 updates:
-  # Python (pip) - requirements.txt
-  - package-ecosystem: "pip"
+  # Python (uv/pyproject.toml)
+  - package-ecosystem: "uv"
     directory: "/"
     schedule:
       interval: "weekly"

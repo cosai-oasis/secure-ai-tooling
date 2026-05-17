@@ -49,7 +49,7 @@ The legacy `risk-map/yaml/self-assessment.yaml` remains unchanged and can coexis
 Generate the site data:
 
 ```bash
-python3 scripts/build_persona_site_data.py
+uv run --locked --no-sync python scripts/build_persona_site_data.py
 ```
 
 Serve the site directory locally:
@@ -63,8 +63,8 @@ Then open [http://localhost:8000](http://localhost:8000).
 If you want to build into a different staging directory instead of `site/generated/`, pass `--site-dir` or `--output`:
 
 ```bash
-python3 scripts/build_persona_site_data.py --site-dir /tmp/cosai-persona-site
-python3 scripts/build_persona_site_data.py --output /tmp/persona-site-data.json
+uv run --locked --no-sync python scripts/build_persona_site_data.py --site-dir /tmp/cosai-persona-site
+uv run --locked --no-sync python scripts/build_persona_site_data.py --output /tmp/persona-site-data.json
 ```
 
 ## Validation
@@ -75,7 +75,7 @@ Run the focused validations for the explorer:
 ruff check .
 pytest scripts/hooks/tests/test_build_persona_site_data.py
 node --test site/tests/*.test.mjs
-python3 scripts/build_persona_site_data.py
+uv run --locked --no-sync python scripts/build_persona_site_data.py
 ```
 
 The Python tests cover YAML loading and transformation. The Node tests cover persona matching, manual fallback behavior, and deduplication logic.
@@ -122,7 +122,7 @@ Known gap: focus is not preserved across full-app re-renders (answering a questi
 
 ## Troubleshooting
 
-- `Generated site data is missing` → run `python3 scripts/build_persona_site_data.py`
+- `Generated site data is missing` → run `uv run --locked --no-sync python scripts/build_persona_site_data.py`
 - `ValueError: ... is empty or all-null` → the named YAML file is empty or all-null; populate or remove it
 - `TypeError: Prose items must be string or list-of-strings` (or `Nested prose items must be strings`) → a YAML prose field has an unexpected nested structure; inspect the named risk/control
 - Empty risks pane for a matched persona → see the Data Flow note on governance-only personas

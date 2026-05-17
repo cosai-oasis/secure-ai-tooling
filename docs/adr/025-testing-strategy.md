@@ -48,7 +48,7 @@ The canonical "run the tests" experience for contributors is **three named comma
 
 - `pytest` — Python wrappers and validators under `scripts/hooks/tests/`.
 - `node --test site/tests/*.test.mjs` — site logic per ADR-012; framework choice and zero-install property are governed there.
-- `./scripts/tools/validate-all.sh` — content, schema, and edge validators (the inspection-only command preserved by ADR-005, distinct from `pre-commit run --all-files`).
+- `./scripts/tools/validate-all.sh` — content, schema, and edge validators (the inspection-only command preserved by ADR-005, distinct from `uv run --locked --no-sync pre-commit run --all-files`).
 
 A single wrapper script (`test-all.sh`) was considered and rejected: the wrapper hides which surface failed and how to iterate on it, while three named commands give contributors the right mental model — Python wrappers, site logic, and content validation are different surfaces with different feedback loops.
 
@@ -105,7 +105,7 @@ The project documents the CI/local divergence rather than pretending parity exis
 - **Local pre-commit + pytest + `node --test`** is the cheap iteration gate. Contributors get fast feedback before push.
 - **The two are correlated but not identical.** Strict parity is not enforced. Differences include CI-only environment factors (clean checkout, fresh dependency install, runner-OS specifics) that local cannot reproduce without considerable cost. The project tolerates this divergence in exchange for keeping the local loop fast.
 
-This is the posture that prevents "works on my machine" from being a defensible response to a CI failure: CI is the gate, local is iteration. ADR-005 already established `pre-commit run --all-files` and `./scripts/tools/validate-all.sh` as the two local entry points; this ADR records the parity posture above them.
+This is the posture that prevents "works on my machine" from being a defensible response to a CI failure: CI is the gate, local is iteration. ADR-005 already established `uv run --locked --no-sync pre-commit run --all-files` and `./scripts/tools/validate-all.sh` as the two local entry points; this ADR records the parity posture above them.
 
 ### D10. Wire-up / call-site verification
 

@@ -10,7 +10,7 @@ false` after the framework's `files:` regex matches any of:
   - risk-map/yaml/frameworks.yaml
 
 When invoked, the wrapper unconditionally runs
-`python3 scripts/generate_issue_templates.py` and git-adds the
+`uv run --locked --no-sync python scripts/generate_issue_templates.py` and git-adds the
 `.github/ISSUE_TEMPLATE` directory. argv is ignored — the framework is the
 scheduler.
 

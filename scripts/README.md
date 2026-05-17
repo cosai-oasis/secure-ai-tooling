@@ -103,7 +103,7 @@ Development tools and utilities for this project.
 - `hooks/validate_issue_templates.py` - Issue template schema validation
 - `generate_issue_templates.py` - Issue template generator from sources
 - `hooks/yaml_to_markdown.py` - Markdown table generation from YAML
-- `tools/install-deps.sh` - Idempotent dependency installer; Step 8 invokes `pre-commit install` for the framework hook
+- `tools/install-deps.sh` - Idempotent dependency installer; Step 8 invokes `uv run --locked --no-sync pre-commit install` for the framework hook
 - `tools/verify-deps.sh` - Verifies all required tools are installed and correct versions
 - `tools/validate-all.sh` - Dev helper: runs every validator with `--force` for non-staged verification (no regeneration)
 - `agents/content-reviewer.md` - Content review agent definition (LLM-neutral structured prompt)

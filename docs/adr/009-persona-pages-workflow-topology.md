@@ -42,7 +42,7 @@ Concrete shape:
 - **Operational hardening.**
   - `timeout-minutes: 10` on `build`, `5` on `deploy`. Hung work aborts promptly rather than consuming the 360-minute default.
   - Per-ref `concurrency` group: `group: persona-pages-${{ github.ref }}`, `cancel-in-progress: ${{ github.event_name == 'pull_request' }}`. PR pushes supersede earlier PR builds on the same ref; `main` deploys are never cancelled mid-flight.
-  - `paths:` filter covers the full input surface: the workflow file itself, `site/**`, the three consumed YAMLs (`personas.yaml`, `risks.yaml`, `controls.yaml`), `risk-map/schemas/**`, `risk-map/docs/persona-pages.md`, the Python builder and its tests, `requirements.txt`, and both READMEs. The same list is mirrored between the `pull_request` and `push` triggers (duplication accepted — `NIT-02` DEFER).
+  - `paths:` filter covers the full input surface: the workflow file itself, `site/**`, the three consumed YAMLs (`personas.yaml`, `risks.yaml`, `controls.yaml`), `risk-map/schemas/**`, `risk-map/docs/persona-pages.md`, the Python builder and its tests, `pyproject.toml`, `uv.lock`, and both READMEs. The same list is mirrored between the `pull_request` and `push` triggers (duplication accepted — `NIT-02` DEFER).
 - **Reporting surface.** `pages-summary` is the single reporting entry point. Status and deployed URL surface in the GitHub Actions UI via `$GITHUB_STEP_SUMMARY`; there is no separate PR-comment bot or external webhook.
 
 ## Alternatives Considered

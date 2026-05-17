@@ -6,10 +6,10 @@ workflow while iterating on content: it catches issues without committing and
 does NOT regenerate derivatives (no graph/table/SVG churn).
 
 The framework pre-commit hook itself does not have a `--force` flag — use
-`pre-commit run --all-files` instead, but note that this also runs the
+`uv run --locked --no-sync pre-commit run --all-files` instead, but note that this also runs the
 regeneration hooks and modifies the working tree.
 
-> **Caveat: `pre-commit run --all-files` has side effects on the git index.**
+> **Caveat: `uv run --locked --no-sync pre-commit run --all-files` has side effects on the git index.**
 > The Mode B regenerator hooks (`regenerate-graphs`, `regenerate-tables`,
 > `regenerate-svgs`, `regenerate-issue-templates`, `prettier-yaml`) all call
 > `git add` on their outputs so derivatives land in the same commit as their
@@ -25,7 +25,7 @@ regeneration hooks and modifies the working tree.
 > ```
 >
 > For safer verification, prefer scoped invocations — e.g.,
-> `pre-commit run <hook-id> --files <specific-files>` — or use
+> `uv run --locked --no-sync pre-commit run <hook-id> --files <specific-files>` — or use
 > `./scripts/tools/validate-all.sh` (below), which validates without
 > regenerating anything.
 
@@ -47,19 +47,19 @@ the prior `pre-commit.sh --force` workflow.
 
 ```bash
 # Component edge consistency
-python3 scripts/hooks/validate_riskmap.py --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --force
 
 # Control-to-risk cross references
-python3 scripts/hooks/validate_control_risk_references.py --force
+uv run --locked --no-sync python scripts/hooks/validate_control_risk_references.py --force
 
 # Framework references
-python3 scripts/hooks/validate_framework_references.py --force
+uv run --locked --no-sync python scripts/hooks/validate_framework_references.py --force
 
 # GitHub Actions `uses:` pinning
-python3 scripts/hooks/precommit/validate_workflow_uses_pinning.py
+uv run --locked --no-sync python scripts/hooks/precommit/validate_workflow_uses_pinning.py
 
 # Issue template schemas
-python3 scripts/hooks/validate_issue_templates.py --force
+uv run --locked --no-sync python scripts/hooks/validate_issue_templates.py --force
 ```
 
 ## Running a single framework hook
@@ -68,13 +68,13 @@ To exercise a single hook declaratively (using the framework's config), run:
 
 ```bash
 # By hook id, against all files in the repo:
-pre-commit run validate-component-edges --all-files
-pre-commit run validate-workflow-uses-pinning --all-files
-pre-commit run check-jsonschema --all-files
+uv run --locked --no-sync pre-commit run validate-component-edges --all-files
+uv run --locked --no-sync pre-commit run validate-workflow-uses-pinning --all-files
+uv run --locked --no-sync pre-commit run check-jsonschema --all-files
 
 # Against a specific file set:
-pre-commit run validate-component-edges --files risk-map/yaml/components.yaml
-pre-commit run validate-workflow-uses-pinning --files .github/workflows/validation.yml
+uv run --locked --no-sync pre-commit run validate-component-edges --files risk-map/yaml/components.yaml
+uv run --locked --no-sync pre-commit run validate-workflow-uses-pinning --files .github/workflows/validation.yml
 ```
 
 Note: framework hooks with `pass_filenames: false` (the validators) will
@@ -86,18 +86,18 @@ To regenerate derivatives (graphs, tables, SVGs) without staging a commit:
 
 ```bash
 # Graphs (components, controls, risks)
-python3 scripts/hooks/validate_riskmap.py --to-graph risk-map/diagrams/risk-map-graph.md -m --quiet
-python3 scripts/hooks/validate_riskmap.py --to-controls-graph risk-map/diagrams/controls-graph.md -m --quiet
-python3 scripts/hooks/validate_riskmap.py --to-risk-graph risk-map/diagrams/controls-to-risk-graph.md -m --quiet
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-graph risk-map/diagrams/risk-map-graph.md -m --quiet
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-controls-graph risk-map/diagrams/controls-graph.md -m --quiet
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-risk-graph risk-map/diagrams/controls-to-risk-graph.md -m --quiet
 
 # Tables
-python3 scripts/hooks/yaml_to_markdown.py components --all-formats --quiet
-python3 scripts/hooks/yaml_to_markdown.py controls --all-formats --quiet
-python3 scripts/hooks/yaml_to_markdown.py risks --all-formats --quiet
-python3 scripts/hooks/yaml_to_markdown.py personas --all-formats --quiet
+uv run --locked --no-sync python scripts/hooks/yaml_to_markdown.py components --all-formats --quiet
+uv run --locked --no-sync python scripts/hooks/yaml_to_markdown.py controls --all-formats --quiet
+uv run --locked --no-sync python scripts/hooks/yaml_to_markdown.py risks --all-formats --quiet
+uv run --locked --no-sync python scripts/hooks/yaml_to_markdown.py personas --all-formats --quiet
 
 # SVGs (reads CHROMIUM_PATH env or auto-discovers Playwright Chromium on ARM64)
-python3 scripts/hooks/precommit/regenerate_svgs.py risk-map/diagrams/<file>.mmd
+uv run --locked --no-sync python scripts/hooks/precommit/regenerate_svgs.py risk-map/diagrams/<file>.mmd
 ```
 
 ---

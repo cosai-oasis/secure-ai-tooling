@@ -62,13 +62,13 @@ pinning. The CI failure names the offending workflow file and line.
 # Fix by running locally and committing the updated graphs:
 
 # For component graph issues:
-python3 scripts/hooks/validate_riskmap.py --to-graph ./risk-map/diagrams/risk-map-graph.md --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-graph ./risk-map/diagrams/risk-map-graph.md --force
 
 # For control graph issues:
-python3 scripts/hooks/validate_riskmap.py --to-controls-graph ./risk-map/diagrams/controls-graph.md --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-controls-graph ./risk-map/diagrams/controls-graph.md --force
 
 # For controls-to-risk graph issues:
-python3 scripts/hooks/validate_riskmap.py --to-risk-graph ./risk-map/diagrams/controls-to-risk-graph.md --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --to-risk-graph ./risk-map/diagrams/controls-to-risk-graph.md --force
 
 # Then commit the updated graphs:
 git add risk-map/diagrams/risk-map-graph.md risk-map/diagrams/controls-graph.md risk-map/diagrams/controls-to-risk-graph.md
@@ -89,12 +89,12 @@ git commit -m "Update generated graphs"
 # Fix by running locally and committing the updated tables:
 
 # Generate all table files (recommended)
-python3 scripts/hooks/yaml_to_markdown.py --all --all-formats
+uv run --locked --no-sync python scripts/hooks/yaml_to_markdown.py --all --all-formats
 
 # Or generate specific tables:
-python3 scripts/hooks/yaml_to_markdown.py components --all-formats
-python3 scripts/hooks/yaml_to_markdown.py risks --all-formats
-python3 scripts/hooks/yaml_to_markdown.py controls --all-formats
+uv run --locked --no-sync python scripts/hooks/yaml_to_markdown.py components --all-formats
+uv run --locked --no-sync python scripts/hooks/yaml_to_markdown.py risks --all-formats
+uv run --locked --no-sync python scripts/hooks/yaml_to_markdown.py controls --all-formats
 
 # Then commit the updated tables:
 git add risk-map/tables/*.md

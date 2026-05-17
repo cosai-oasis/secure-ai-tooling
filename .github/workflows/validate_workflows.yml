@@ -29,13 +29,18 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: '3.14'
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: '0.11.14'
+          enable-cache: true
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: uv sync --locked
       - name: Validate GitHub Actions uses pinning
         id: workflow-pinning
         run: |
           echo "🔍 Validating GitHub Actions uses pinning..."
-          if python scripts/hooks/precommit/validate_workflow_uses_pinning.py; then
+          if uv run --locked --no-sync python scripts/hooks/precommit/validate_workflow_uses_pinning.py; then
             echo "✅ GitHub Actions uses pinning validation completed successfully"
             echo "status=success" >> $GITHUB_OUTPUT
           else

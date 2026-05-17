@@ -284,7 +284,7 @@ scripts/hooks/tests/test_markdown_examples.py::test_code_block[guide-frameworks.
 **Problem**: Code fails with `ModuleNotFoundError` for standard imports.
 
 **Solutions**:
-- ✅ Verify the module is in `requirements.txt`
+- ✅ Verify the module is declared in `pyproject.toml` and locked in `uv.lock`
 - ✅ Common available imports: `yaml`, `pytest`, `pathlib`, `re`, `json`
 - ✅ If the module isn't essential, consider using a skip marker
 

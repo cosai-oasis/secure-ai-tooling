@@ -11,7 +11,7 @@ GitHub issue templates in `.github/ISSUE_TEMPLATE/` are generated artifacts. Som
 ```
 scripts/TEMPLATES/*.template.yml     <-- authored here
             |
-            | python3 scripts/generate_issue_templates.py
+            | uv run --locked --no-sync python scripts/generate_issue_templates.py
             v
 .github/ISSUE_TEMPLATE/*.yml         <-- generated artifacts
 ```
@@ -56,7 +56,7 @@ Any hand-edit to a generated file is silently overwritten the next time generati
 The correct workflow for a generated template:
 
 1. Edit the corresponding source in `scripts/TEMPLATES/<name>.template.yml`.
-2. Run `python3 scripts/generate_issue_templates.py` to preview the result.
+2. Run `uv run --locked --no-sync python scripts/generate_issue_templates.py` to preview the result.
 3. Stage both the source and the generated file.
 
 For hand-authored templates (`new_persona.yml`, `update_persona.yml`, `update_component.yml`, `infrastructure.yml`), edit the file in `.github/ISSUE_TEMPLATE/` directly — there is no source to update.
@@ -67,19 +67,19 @@ For hand-authored templates (`new_persona.yml`, `update_persona.yml`, `update_co
 
 ```bash
 # Generate all templates (from repo root)
-python3 scripts/generate_issue_templates.py
+uv run --locked --no-sync python scripts/generate_issue_templates.py
 
 # Preview changes without writing
-python3 scripts/generate_issue_templates.py --dry-run
+uv run --locked --no-sync python scripts/generate_issue_templates.py --dry-run
 
 # Generate a single template
-python3 scripts/generate_issue_templates.py --template new_risk
+uv run --locked --no-sync python scripts/generate_issue_templates.py --template new_risk
 
 # Validate rendered content without writing
-python3 scripts/generate_issue_templates.py --validate
+uv run --locked --no-sync python scripts/generate_issue_templates.py --validate
 
 # Verbose output
-python3 scripts/generate_issue_templates.py --verbose
+uv run --locked --no-sync python scripts/generate_issue_templates.py --verbose
 ```
 
 The pre-commit hook auto-regenerates and stages the affected templates when any of the following files are staged:
@@ -166,7 +166,7 @@ See [submission-readiness-guide.md §3](../../risk-map/docs/contributing/submiss
 
 3. Add tests in `scripts/hooks/issue_template_generator/tests/test_template_renderer.py`.
 4. Reference the placeholder in a source template via `{{MY_NEW_PLACEHOLDER}}`.
-5. Run `python3 scripts/generate_issue_templates.py` and review the output.
+5. Run `uv run --locked --no-sync python scripts/generate_issue_templates.py` and review the output.
 6. Commit the source template and the regenerated artifact together.
 
 ---
@@ -176,7 +176,7 @@ See [submission-readiness-guide.md §3](../../risk-map/docs/contributing/submiss
 1. Create `scripts/TEMPLATES/<name>.template.yml`. The generator discovers all `*.template.yml` files via glob — no registration needed.
 2. Determine the entity type (`risks`, `controls`, `components`, or `personas`) and confirm that `IssueTemplateGenerator._get_entity_type()` in `scripts/hooks/issue_template_generator/generator.py` maps the new filename to the right type. Add a mapping there if needed.
 3. Use `{{PLACEHOLDER_NAME}}` tokens where dynamic values belong.
-4. Run `python3 scripts/generate_issue_templates.py` to generate the first version.
+4. Run `uv run --locked --no-sync python scripts/generate_issue_templates.py` to generate the first version.
 5. Commit the source template and the generated file together.
 
 ---
@@ -188,8 +188,8 @@ See [submission-readiness-guide.md §3](../../risk-map/docs/contributing/submiss
 | Regeneration produces an unexpected diff in a generated file | The source template was not updated; only the generated file was edited | Discard the generated change, edit the source template instead, then regenerate |
 | A deprecated entry still appears in a rendered checkbox | The mapping has no `yaml_source` configured | Add `yaml_source` to the entry in `PLACEHOLDER_MAPPINGS` |
 | Wrong personas in the risk template | Template uses `{{PERSONAS}}` instead of `{{PERSONAS_FOR_RISKS}}` | Replace `{{PERSONAS}}` with `{{PERSONAS_FOR_RISKS}}` in `new_risk.template.yml` |
-| Hook says "validator not found in worktree" | Stale bash hook left over from before #211 migration | Reinstall the framework hook with `pre-commit install --overwrite` |
-| `check-jsonschema` fails after regeneration | Generated template has a structural issue | Run `python3 scripts/generate_issue_templates.py --validate` and inspect the error |
+| Hook says "validator not found in worktree" | Stale bash hook left over from before #211 migration | Reinstall the framework hook with `uv run --locked --no-sync pre-commit install --overwrite` |
+| `check-jsonschema` fails after regeneration | Generated template has a structural issue | Run `uv run --locked --no-sync python scripts/generate_issue_templates.py --validate` and inspect the error |
 
 ---
 

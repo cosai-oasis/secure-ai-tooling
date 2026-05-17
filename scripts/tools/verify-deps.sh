@@ -17,6 +17,17 @@ fi
 # Failure counter
 FAILURES=0
 
+# Resolve repo root relative to this script. verify-deps.sh checks the uv
+# project environment in the repository, not whichever Python happens to be
+# globally active.
+_script_source="${BASH_SOURCE[0]}"
+if [[ "$_script_source" == */* ]]; then
+    SCRIPT_DIR="$(cd "${_script_source%/*}" && pwd)"
+else
+    SCRIPT_DIR="$(pwd)"
+fi
+REPO_ROOT="${VERIFY_DEPS_REPO_ROOT:-$SCRIPT_DIR/../..}"
+
 # Output functions
 pass_msg() {
     if [[ "$QUIET" == "false" ]]; then
@@ -35,29 +46,80 @@ warn_msg() {
     fi
 }
 
-# Check 1: Python >= 3.14
-if command -v python3 &>/dev/null; then
-    PYTHON_VERSION=$(python3 --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+# extract_version: extract version string from text using bash builtins only
+extract_version() {
+    local text="$1"
+    local result=""
+    local in_version=false
+    local i char
+
+    for (( i=0; i<${#text}; i++ )); do
+        char="${text:$i:1}"
+        if [[ "$char" =~ [0-9] ]]; then
+            in_version=true
+            result+="$char"
+        elif [[ "$char" == "." && "$in_version" == "true" && -n "$result" ]]; then
+            result+="$char"
+        elif [[ "$in_version" == "true" ]]; then
+            break
+        fi
+    done
+
+    result="${result%.}"
+    echo "$result"
+}
+
+extract_major() {
+    echo "${1%%.*}"
+}
+
+extract_minor() {
+    local without_major="${1#*.}"
+    echo "${without_major%%.*}"
+}
+
+PROJECT_PYTHON="$REPO_ROOT/.venv/bin/python"
+if [[ ! -x "$PROJECT_PYTHON" && -x "$REPO_ROOT/.venv/Scripts/python.exe" ]]; then
+    PROJECT_PYTHON="$REPO_ROOT/.venv/Scripts/python.exe"
+fi
+
+# Check 1: Python >= 3.14. Prefer the uv-managed project interpreter because
+# repository Python commands run through `.venv`, not whichever python3 appears
+# first on PATH.
+PYTHON_CHECK_CMD=""
+PYTHON_CHECK_LABEL=""
+if [[ -x "$PROJECT_PYTHON" ]]; then
+    PYTHON_CHECK_CMD="$PROJECT_PYTHON"
+    PYTHON_CHECK_LABEL="Project Python"
+elif command -v python3 &>/dev/null; then
+    PYTHON_CHECK_CMD="$(command -v python3)"
+    PYTHON_CHECK_LABEL="Python"
+fi
+
+if [[ -n "$PYTHON_CHECK_CMD" ]]; then
+    PYTHON_RAW=$("$PYTHON_CHECK_CMD" --version 2>&1)
+    PYTHON_VERSION=$(extract_version "$PYTHON_RAW")
     if [[ -n "$PYTHON_VERSION" ]]; then
-        PYTHON_MAJOR=$(echo "$PYTHON_VERSION" | cut -d. -f1)
-        PYTHON_MINOR=$(echo "$PYTHON_VERSION" | cut -d. -f2)
+        PYTHON_MAJOR=$(extract_major "$PYTHON_VERSION")
+        PYTHON_MINOR=$(extract_minor "$PYTHON_VERSION")
         if [[ "$PYTHON_MAJOR" -gt 3 ]] || [[ "$PYTHON_MAJOR" -eq 3 && "$PYTHON_MINOR" -ge 14 ]]; then
-            pass_msg "Python $PYTHON_VERSION (>= 3.14 required)"
+            pass_msg "$PYTHON_CHECK_LABEL $PYTHON_VERSION (>= 3.14 required)"
         else
-            fail_msg "Python $PYTHON_VERSION (>= 3.14 required)"
+            fail_msg "$PYTHON_CHECK_LABEL $PYTHON_VERSION (>= 3.14 required)"
         fi
     else
         fail_msg "Python version detection failed"
     fi
 else
-    fail_msg "python3 not found"
+    fail_msg "Project .venv Python not found at $REPO_ROOT/.venv and python3 not found"
 fi
 
 # Check 2: Node.js >= 22
 if command -v node &>/dev/null; then
-    NODE_VERSION=$(node --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    NODE_RAW=$(node --version 2>&1)
+    NODE_VERSION=$(extract_version "$NODE_RAW")
     if [[ -n "$NODE_VERSION" ]]; then
-        NODE_MAJOR=$(echo "$NODE_VERSION" | cut -d. -f1)
+        NODE_MAJOR=$(extract_major "$NODE_VERSION")
         if [[ "$NODE_MAJOR" -ge 22 ]]; then
             pass_msg "Node.js $NODE_VERSION (>= 22 required)"
         else
@@ -84,45 +146,72 @@ else
     fail_msg "git not found"
 fi
 
-# Check 5: pip packages (all 8 from requirements.txt)
-PIP_PACKAGES=("check-jsonschema" "pytest" "pytest-cov" "pytest-timeout" "PyYAML" "ruff" "pandas" "tabulate")
-for package in "${PIP_PACKAGES[@]}"; do
-    if python3 -m pip show "$package" &>/dev/null; then
-        pass_msg "pip package: $package"
-    else
-        fail_msg "pip package: $package (not installed)"
-    fi
-done
+# Check 5: uv
+if command -v uv &>/dev/null; then
+    pass_msg "uv found"
+else
+    fail_msg "uv not found"
+fi
 
-# Check 6: npx prettier
+# Check 6: uv-managed Python packages in the project .venv
+UV_PACKAGES=(
+    "check-jsonschema"
+    "jsonschema"
+    "pre-commit"
+    "pytest"
+    "pytest-cov"
+    "pytest-timeout"
+    "PyYAML"
+    "ruff"
+    "pandas"
+    "tabulate"
+)
+
+if command -v uv &>/dev/null && [[ -x "$PROJECT_PYTHON" ]]; then
+    for package in "${UV_PACKAGES[@]}"; do
+        if uv pip show --python "$PROJECT_PYTHON" "$package" &>/dev/null; then
+            pass_msg "uv package: $package"
+        else
+            fail_msg "uv package: $package (not installed in .venv)"
+        fi
+    done
+else
+    if ! command -v uv &>/dev/null; then
+        warn_msg "Skipping uv package checks because uv is not available"
+    else
+        fail_msg "Project .venv Python not found at $REPO_ROOT/.venv"
+    fi
+fi
+
+# Check 7: npx prettier
 if npx prettier --version &>/dev/null; then
     pass_msg "npx prettier found"
 else
     fail_msg "npx prettier not found"
 fi
 
-# Check 7: npx mmdc (mermaid-cli)
+# Check 8: npx mmdc (mermaid-cli)
 if npx mmdc --version &>/dev/null; then
     pass_msg "npx mmdc found"
 else
     fail_msg "npx mmdc not found"
 fi
 
-# Check 8: ruff command-line
-if command -v ruff &>/dev/null || ruff version &>/dev/null 2>&1; then
-    pass_msg "ruff found"
+# Check 9: ruff through uv-managed environment
+if command -v uv &>/dev/null && (cd "$REPO_ROOT" && uv run --locked --no-sync ruff version) &>/dev/null; then
+    pass_msg "ruff found via uv"
 else
-    fail_msg "ruff not found"
+    fail_msg "ruff not found via uv"
 fi
 
-# Check 9: check-jsonschema command-line
-if command -v check-jsonschema &>/dev/null; then
-    pass_msg "check-jsonschema found"
+# Check 10: check-jsonschema through uv-managed environment
+if command -v uv &>/dev/null && (cd "$REPO_ROOT" && uv run --locked --no-sync check-jsonschema --version) &>/dev/null; then
+    pass_msg "check-jsonschema found via uv"
 else
-    fail_msg "check-jsonschema not found"
+    fail_msg "check-jsonschema not found via uv"
 fi
 
-# Check 10: Chromium
+# Check 11: Chromium
 CHROMIUM_FOUND=false
 CHROMIUM_PATH=""
 
@@ -160,7 +249,7 @@ else
     fail_msg "Chromium not found (checked Playwright cache and system paths)"
 fi
 
-# Check 11: act
+# Check 12: act
 if command -v act &>/dev/null || act --version &>/dev/null 2>&1; then
     pass_msg "act found"
 else

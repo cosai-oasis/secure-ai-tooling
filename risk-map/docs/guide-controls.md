@@ -138,7 +138,7 @@ Before committing, validate that your control-risk cross-references are consiste
 
 ```bash
 # Manual validation (recommended during development)
-python scripts/hooks/validate_control_risk_references.py --force
+uv run --locked --no-sync python scripts/hooks/validate_control_risk_references.py --force
 
 # Format YAML files (auto-runs in pre-commit but useful for preview)
 npx prettier --write risk-map/yaml/controls.yaml risk-map/yaml/risks.yaml

@@ -89,11 +89,11 @@ Run validation to ensure your changes are correct:
 
 ```bash
 # Run framework reference validation
-python scripts/hooks/validate_framework_references.py --force
+uv run --locked --no-sync python scripts/hooks/validate_framework_references.py --force
 
 # Run full validation including edge checks and cross-references
-python scripts/hooks/validate_riskmap.py --force
-python scripts/hooks/validate_control_risk_references.py --force
+uv run --locked --no-sync python scripts/hooks/validate_riskmap.py --force
+uv run --locked --no-sync python scripts/hooks/validate_control_risk_references.py --force
 ```
 
 ---

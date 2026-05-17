@@ -51,8 +51,8 @@ Coverage Target: 100% of verify-deps.sh functionality
    - Exit code 1 when git missing
    - FAIL indicator in output
 
-9. TestMissingPipPackage - pip package validation
-   - Detects when required pip packages missing
+9. TestMissingUvPackage - uv-managed package validation
+   - Detects when required project packages are missing from .venv
    - Exit code 1 when package not installed
    - FAIL indicator with package name
 
@@ -113,7 +113,8 @@ Dependencies Checked:
 - Node.js >= 22
 - npm
 - git
-- pip packages: check-jsonschema, pytest, pytest-cov, pytest-timeout, PyYAML, ruff, pandas, tabulate
+- uv-managed packages: check-jsonschema, jsonschema, pre-commit, pytest,
+  pytest-cov, pytest-timeout, PyYAML, ruff, pandas, tabulate
 - npx prettier
 - npx mmdc (mermaid-cli)
 - ruff (command-line)
@@ -299,6 +300,96 @@ class TestWrongPythonVersion:
             f"STDERR:\n{result.stderr}"
         )
 
+    def test_project_python_takes_precedence_over_old_global_python3(self, tmp_path):
+        """
+        Test that the uv-managed project Python is authoritative when present.
+
+        Given: A global python3 that reports 3.12 and a project .venv Python that reports 3.14
+        When: Running verify-deps.sh
+        Then: Script validates the project Python and exits 0 when all other stubs pass
+        """
+        stub_bin = tmp_path / "bin"
+        stub_bin.mkdir()
+
+        stubs = {
+            "python3": (
+                "#!/bin/bash\n"
+                'if [[ "$1" == "--version" ]]; then\n'
+                '    echo "Python 3.12.0"\n'
+                "fi\n"
+            ),
+            "node": (
+                "#!/bin/bash\n"
+                'if [[ "$1" == "--version" || "$1" == "-v" ]]; then\n'
+                '    echo "v22.0.0"\n'
+                "fi\n"
+            ),
+            "npm": "#!/bin/bash\nexit 0\n",
+            "git": '#!/bin/bash\necho "git version 2.40.0"\n',
+            "uv": (
+                "#!/bin/bash\n"
+                'if [[ "$1" == "pip" && "$2" == "show" ]]; then\n'
+                '    echo "Name: ${@: -1}"\n'
+                '    echo "Version: 1.0.0"\n'
+                "    exit 0\n"
+                'elif [[ "$1" == "run" ]]; then\n'
+                "    exit 0\n"
+                'elif [[ "$1" == "--version" ]]; then\n'
+                '    echo "uv 0.11.14"\n'
+                "fi\n"
+            ),
+            "npx": (
+                "#!/bin/bash\n"
+                'if [[ "$2" == "--version" ]]; then\n'
+                "    exit 0\n"
+                "fi\n"
+            ),
+            "act": (
+                "#!/bin/bash\n"
+                'if [[ "$1" == "--version" ]]; then\n'
+                '    echo "act version 0.2.68"\n'
+                "fi\n"
+            ),
+        }
+
+        for name, content in stubs.items():
+            stub = stub_bin / name
+            stub.write_text(content)
+            stub.chmod(0o755)
+
+        repo_root = tmp_path / "repo"
+        project_python = repo_root / ".venv" / "bin" / "python"
+        project_python.parent.mkdir(parents=True)
+        project_python.write_text("#!/bin/bash\necho 'Python 3.14.0'\n")
+        project_python.chmod(0o755)
+
+        playwright_cache = tmp_path / "playwright-cache"
+        chromium_bin = playwright_cache / "chromium-1234" / "chrome-linux" / "chrome"
+        chromium_bin.parent.mkdir(parents=True)
+        chromium_bin.write_text("#!/bin/bash\necho 'Chromium stub'\n")
+        chromium_bin.chmod(0o755)
+
+        env = os.environ.copy()
+        env["PATH"] = str(stub_bin)
+        env["VERIFY_DEPS_REPO_ROOT"] = str(repo_root)
+        env["PLAYWRIGHT_BROWSERS_PATH"] = str(playwright_cache)
+
+        result = subprocess.run(
+            [str(SCRIPT_PATH)],
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=30,
+        )
+
+        assert result.returncode == 0, (
+            f"Script should pass using project .venv Python instead of global python3.\n"
+            f"Exit code: {result.returncode}\n"
+            f"STDOUT:\n{result.stdout}\n"
+            f"STDERR:\n{result.stderr}"
+        )
+        assert "Project Python 3.14.0" in result.stdout
+
 
 class TestMissingNode:
     """
@@ -442,19 +533,19 @@ class TestMissingGit:
         assert result.returncode == 1, f"Script should exit 1 when git missing.\nExit code: {result.returncode}"
 
 
-class TestMissingPipPackage:
+class TestMissingUvPackage:
     """
-    Test script behavior when required pip packages are missing.
+    Test script behavior when required uv-managed packages are missing.
 
-    Creates a stub python3 and pip that report packages as not installed.
+    Creates a stub uv and project .venv that report packages as not installed.
     Tests check for key packages: check-jsonschema, pytest, PyYAML, ruff, pandas.
     """
 
-    def test_missing_pip_package_fails(self, tmp_path):
+    def test_missing_uv_package_fails(self, tmp_path):
         """
-        Test that script fails when required pip package is missing.
+        Test that script fails when a required uv-managed package is missing.
 
-        Given: A python3 environment missing check-jsonschema package
+        Given: A project .venv missing check-jsonschema package
         When: Running verify-deps.sh
         Then: Script exits with code 1
         And: Output contains FAIL indicator for missing package
@@ -462,21 +553,40 @@ class TestMissingPipPackage:
         stub_bin = tmp_path / "bin"
         stub_bin.mkdir()
 
-        # Create stub python3 that reports package not found
+        # Create stub python3 for the global interpreter version check.
         stub_python = stub_bin / "python3"
         stub_python.write_text(
             "#!/bin/bash\n"
             'if [[ "$1" == "--version" ]]; then\n'
             '    echo "Python 3.14.0"\n'
-            'elif [[ "$1" == "-m" && "$2" == "pip" && "$3" == "show" ]]; then\n'
-            "    # Simulate package not found\n"
-            "    exit 1\n"
             "fi\n"
         )
         stub_python.chmod(0o755)
 
+        # Create stub uv that reports project package checks as missing while
+        # allowing uv-run entrypoint checks to succeed.
+        stub_uv = stub_bin / "uv"
+        stub_uv.write_text(
+            "#!/bin/bash\n"
+            'if [[ "$1" == "pip" && "$2" == "show" ]]; then\n'
+            "    exit 1\n"
+            'elif [[ "$1" == "run" ]]; then\n'
+            "    exit 0\n"
+            'elif [[ "$1" == "--version" ]]; then\n'
+            '    echo "uv 0.11.14"\n'
+            "fi\n"
+        )
+        stub_uv.chmod(0o755)
+
+        repo_root = tmp_path / "repo"
+        project_python = repo_root / ".venv" / "bin" / "python"
+        project_python.parent.mkdir(parents=True)
+        project_python.write_text("#!/bin/bash\necho 'Python 3.14.0'\n")
+        project_python.chmod(0o755)
+
         env = os.environ.copy()
         env["PATH"] = str(stub_bin)
+        env["VERIFY_DEPS_REPO_ROOT"] = str(repo_root)
 
         result = subprocess.run(
             [str(SCRIPT_PATH)],
@@ -487,7 +597,7 @@ class TestMissingPipPackage:
         )
 
         assert result.returncode == 1, (
-            f"Script should exit 1 when pip package missing.\nExit code: {result.returncode}"
+            f"Script should exit 1 when uv package missing.\nExit code: {result.returncode}"
         )
 
 
@@ -833,26 +943,45 @@ class TestPartialFailure:
         stub_bin = tmp_path / "bin"
         stub_bin.mkdir()
 
-        # Create some valid stubs (python3 and git)
+        # Create some valid stubs (python3, uv, and git)
         stub_python = stub_bin / "python3"
         stub_python.write_text(
             "#!/bin/bash\n"
             'if [[ "$1" == "--version" ]]; then\n'
             '    echo "Python 3.14.0"\n'
-            'elif [[ "$1" == "-m" && "$2" == "pip" && "$3" == "show" ]]; then\n'
-            '    echo "Name: ${4}"\n'
-            '    echo "Version: 1.0.0"\n'
             "fi\n"
         )
         stub_python.chmod(0o755)
+
+        stub_uv = stub_bin / "uv"
+        stub_uv.write_text(
+            "#!/bin/bash\n"
+            'if [[ "$1" == "pip" && "$2" == "show" ]]; then\n'
+            '    echo "Name: ${@: -1}"\n'
+            '    echo "Version: 1.0.0"\n'
+            "    exit 0\n"
+            'elif [[ "$1" == "run" ]]; then\n'
+            "    exit 0\n"
+            'elif [[ "$1" == "--version" ]]; then\n'
+            '    echo "uv 0.11.14"\n'
+            "fi\n"
+        )
+        stub_uv.chmod(0o755)
 
         stub_git = stub_bin / "git"
         stub_git.write_text('#!/bin/bash\necho "git version 2.40.0"\n')
         stub_git.chmod(0o755)
 
+        repo_root = tmp_path / "repo"
+        project_python = repo_root / ".venv" / "bin" / "python"
+        project_python.parent.mkdir(parents=True)
+        project_python.write_text("#!/bin/bash\necho 'Python 3.14.0'\n")
+        project_python.chmod(0o755)
+
         # But leave out node, npm, etc.
         env = os.environ.copy()
         env["PATH"] = str(stub_bin)
+        env["VERIFY_DEPS_REPO_ROOT"] = str(repo_root)
 
         result = subprocess.run(
             [str(SCRIPT_PATH)],
@@ -883,7 +1012,7 @@ Coverage Areas:
 - Python availability and version validation
 - Node.js availability and version validation
 - npm, git availability validation
-- pip package installation validation
+- uv-managed project package validation
 - npx prettier and mmdc availability
 - ruff and check-jsonschema command-line tools
 - Chromium detection (Playwright cache and system paths)
@@ -902,7 +1031,8 @@ Dependencies Validated:
 - Python >= 3.14
 - Node.js >= 22
 - npm, git, ruff, check-jsonschema, act
-- pip packages: check-jsonschema, pytest, pytest-cov, pytest-timeout, PyYAML, ruff, pandas, tabulate
+- uv-managed packages: check-jsonschema, jsonschema, pre-commit, pytest,
+  pytest-cov, pytest-timeout, PyYAML, ruff, pandas, tabulate
 - npx prettier, npx mmdc
 - Chromium (Playwright or system)
 
