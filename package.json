@@ -3,6 +3,6 @@
     "@mermaid-js/mermaid-cli": "^11.15.0",
     "playwright": "1.60.0",
     "prettier": "^3.8.3",
-    "puppeteer": "24.43.1"
+    "puppeteer": "25.0.4"
   }
 }
