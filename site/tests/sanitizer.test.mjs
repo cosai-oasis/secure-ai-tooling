@@ -74,6 +74,20 @@ const STRUCTURED_ITEM_TYPES = ["link", "ref"];
 // as the integration-layer tests, not only one of them.
 const UNSUPPORTED_PROSE_ITEM_MARKER = "renderProse: unsupported prose-item type";
 
+function countOccurrences(text, needle) {
+  let count = 0;
+  let position = 0;
+  while ((position = text.indexOf(needle, position)) !== -1) {
+    count += 1;
+    position += needle.length;
+  }
+  return count;
+}
+
+function countHtmlCommentEndTags(html) {
+  return countOccurrences(html, "-->") + countOccurrences(html, "--!>");
+}
+
 function assertNoStructuredItemBleedThrough(output) {
   assert.ok(!output.includes("[object Object]"), `Output leaked [object Object]: ${output}`);
   assert.ok(
@@ -394,16 +408,16 @@ test("adversarial — every unknown-type fixture stays HTML-inert and free of re
     for (const { label, input } of ADVERSARIAL_TYPE_FIXTURES) {
       const output = callRenderProse(input);
 
-      // Comment containment: exactly one `-->` terminator, opening `<!--`.
+      // Comment containment: one canonical close marker and no injected alternate terminator.
       assert.ok(output.startsWith("<!--"), `[${label}] marker must open as HTML comment: ${output}`);
       assert.ok(output.endsWith("-->"), `[${label}] marker must close as HTML comment: ${output}`);
       assert.equal(
-        (output.match(/-->/g) ?? []).length,
+        countHtmlCommentEndTags(output),
         1,
         `[${label}] marker must contain exactly one comment terminator: ${output}`,
       );
       assert.equal(
-        (output.match(/<!--/g) ?? []).length,
+        countOccurrences(output, "<!--"),
         1,
         `[${label}] marker must contain exactly one comment opener: ${output}`,
       );
