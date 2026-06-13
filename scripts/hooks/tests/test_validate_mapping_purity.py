@@ -16,28 +16,34 @@ Tooling under test:
 
 Authoritative spec: docs/adr/027-framework-versioning-and-mapping-convention.md
 
-Classification contract (D4c / D3a):
+Classification contract (D4c / D3a), post-#343 strict flip:
   For a value `v` under framework key `fw`:
   1. If `fw` is not in the registry → FAIL (fail-loud; unknown mapping key).
   2. Let is_versioned = registry[fw]["version"] is not None.
-  3. Versioned AND `v` contains neither `@` nor `:` → SKIP (legacy unpinned form,
-     e.g. AML.T0020, GV-6.2, LLM06). Migration is #343, not #347.
+  3. Versioned AND `v` contains neither `@` nor `:` → FAIL (unpinned value for a
+     versioned framework; a version token is mandatory now that #343 has migrated
+     the corpus — this completes the ADR-027 D7/M1 "block" phase. The pre-migration
+     "skip" tolerance is gone). Examples that now fail: a bare `GOVERN-6.2`,
+     `AML.T0020`, or `LLM06` with no version token.
   4. Otherwise attempt split_pinned_value + compose_pinned_value round-trip:
      - FrameworkMappingError raised AND versioned → FAIL (tampered pinned value).
      - FrameworkMappingError raised AND unversioned → SKIP (legacy STRIDE spelling).
      - recomposed != v → FAIL (round-trip mismatch = tamper).
      - recomposed == v → OK.
 
-  The `@`/`:` delimiter presence test (step 3) is the sole signal distinguishing
-  a legacy unpinned value from a tampered pinned value. This is justified by
-  D3a / H3: the `@` and `:` delimiters never appear in any legacy base ref or
-  concept id, so their presence in a value is an unambiguous "this was intended
-  as a pinned value" signal.
+  The `@`/`:` delimiter presence test (step 3) distinguishes, for a VERSIONED
+  framework, an unpinned failure (no delimiter → "version token required") from a
+  tampered-value failure (delimiter present but no round-trip). Both fail; only
+  the detail differs. This is justified by D3a / H3: the `@` and `:` delimiters
+  never appear in any legacy base ref or concept id. The UNVERSIONED framework
+  (STRIDE) carries no version token by design, so its tokenless values are never
+  subject to step 3 — they fall to step 4 and skip when not in the closed enum.
 
 The LIVE CORPUS test asserts that all four content files produce zero purity
-failures today. Every value in the current corpus is a legacy pre-ADR-027 form
-(no `@` or `:` in versioned framework values; bare PascalCase/lowercase for
-STRIDE). The validator must skip them all — migration to pinned forms is #343.
+failures today. Post-#343 migration every value in the corpus is in the
+ADR-027 pinned form (`AML.T0020@5.0.1`, `GOVERN-6.2@1.0`, `LLM06:2025`,
+`AI Producer@2022`) or the unversioned STRIDE PascalCase enum (`Tampering`).
+The validator classifies them all "ok" (or "skip" for STRIDE), zero failures.
 
 Import strategy: import validate_mapping_purity at module level so an ImportError
 causes a collection-time ImportError until the module exists — the correct
@@ -229,82 +235,16 @@ class TestClassifyValueOK:
 
 class TestClassifyValueSkip:
     """
-    classify_value returns ("skip", ...) for all legacy pre-ADR-027 values.
+    classify_value returns ("skip", ...) only for the UNVERSIONED framework
+    (STRIDE) legacy spellings.
 
-    The skip decision rests on the delimiter-presence test (D3a / H3):
-    for versioned frameworks, a value lacking both `@` and `:` is a legacy
-    unpinned form. Migrating these values is #343, not #347.
-
-    For the unversioned STRIDE framework, a FrameworkMappingError from
-    split_pinned_value (e.g., a value not in the closed PascalCase enum)
-    maps to skip rather than fail because there is no version token to
-    indicate tampering intent.
+    Post-#343 the skip path is narrow: a versioned framework value that lacks a
+    version token is no longer tolerated (it now FAILs — see
+    TestClassifyValueUnpinnedVersioned). Skip survives only for the unversioned
+    STRIDE framework, where a FrameworkMappingError from split_pinned_value
+    (e.g. a value not in the closed PascalCase enum) maps to skip rather than
+    fail because there is no version token to indicate tampering intent.
     """
-
-    def test_mitre_atlas_legacy_no_version_token(self):
-        """
-        Given: legacy MITRE ATLAS value `AML.T0020` (no `@` delimiter)
-        When: classify_value is called
-        Then: status is "skip" (legacy unpinned form; D3a / H3 delimiter absence)
-        """
-        status, _ = classify_value(
-            "mitre-atlas",
-            "AML.T0020",
-            registry=_registry(),
-            pinned_patterns=_pinned(),
-        )
-        assert status == "skip"
-
-    def test_mitre_atlas_legacy_control_form(self):
-        """
-        Given: legacy MITRE ATLAS mitigation `AML.M0007` (no `@` delimiter)
-        When: classify_value is called
-        Then: status is "skip"
-
-        Real value from risk-map/yaml/controls.yaml. No version token present.
-        """
-        status, _ = classify_value(
-            "mitre-atlas",
-            "AML.M0007",
-            registry=_registry(),
-            pinned_patterns=_pinned(),
-        )
-        assert status == "skip"
-
-    def test_nist_short_legacy_form(self):
-        """
-        Given: legacy NIST AI RMF subcategory `GV-6.2` (short `GV-` prefix, no `@`)
-        When: classify_value is called
-        Then: status is "skip"
-
-        Real value from risk-map/yaml/controls.yaml. The canonical pinned form
-        would be `GOVERN-6.2@1.0`; migration to that form is #343.
-        D3a: no `@` or `:` → legacy.
-        """
-        status, _ = classify_value(
-            "nist-ai-rmf",
-            "GV-6.2",
-            registry=_registry(),
-            pinned_patterns=_pinned(),
-        )
-        assert status == "skip"
-
-    def test_owasp_legacy_unversioned(self):
-        """
-        Given: legacy OWASP value `LLM06` (no `:` delimiter, no year)
-        When: classify_value is called
-        Then: status is "skip"
-
-        Real value from risk-map/yaml/risks.yaml. The canonical pinned form
-        would be `LLM06:2025`; migration is #343. D3a: no `:` → legacy.
-        """
-        status, _ = classify_value(
-            "owasp-top10-llm",
-            "LLM06",
-            registry=_registry(),
-            pinned_patterns=_pinned(),
-        )
-        assert status == "skip"
 
     def test_stride_lowercase_kebab(self):
         """
@@ -343,57 +283,163 @@ class TestClassifyValueSkip:
         )
         assert status == "skip"
 
-    def test_iso_22989_bare_role_no_delimiter(self):
-        """
-        Given: legacy ISO 22989 role `AI Producer` (no `@` delimiter, no version)
-        When: classify_value is called
-        Then: status is "skip"
 
-        Real value from risk-map/yaml/personas.yaml. The canonical pinned form
-        is `AI Producer@2022`. D3a / H3: no `@` present → legacy unpinned form.
+# ===========================================================================
+# 2b. classify_value — versioned framework with NO version token → FAIL
+#     (post-#343 mandatory-pin enforcement; ADR-027 D7/M1 "block" phase)
+# ===========================================================================
+
+
+class TestClassifyValueUnpinnedVersioned:
+    """
+    classify_value returns ("fail", ...) for a VERSIONED framework value that
+    carries no version token (no `@` / `:`).
+
+    Before #343 the migration window tolerated these legacy unpinned forms with a
+    "skip". Migration is now complete and the strict schema makes pinning
+    mandatory, so an unpinned value on a versioned framework is invalid — the
+    purity validator must FAIL it (this is the D7/M1 "block" phase; the prior
+    skip was the "warn" tolerance). The failure detail is "unpinned"-flavored,
+    distinguishing it from a tampered-value round-trip failure.
+
+    The UNVERSIONED framework (STRIDE) is unaffected — see TestClassifyValueSkip.
+    """
+
+    def test_mitre_atlas_unpinned_technique_fails(self):
         """
-        status, _ = classify_value(
+        Given: MITRE ATLAS value `AML.T0020` with no `@` version token
+        When: classify_value is called
+        Then: status is "fail" with an "unpinned"-flavored detail (mitre-atlas is
+              versioned; a token is mandatory post-#343)
+        """
+        status, detail = classify_value(
+            "mitre-atlas",
+            "AML.T0020",
+            registry=_registry(),
+            pinned_patterns=_pinned(),
+        )
+        assert status == "fail"
+        assert detail is not None and "unpinned" in detail
+
+    def test_mitre_atlas_unpinned_mitigation_fails(self):
+        """
+        Given: MITRE ATLAS mitigation `AML.M0007` with no `@` version token
+        When: classify_value is called
+        Then: status is "fail" with an "unpinned"-flavored detail
+        """
+        status, detail = classify_value(
+            "mitre-atlas",
+            "AML.M0007",
+            registry=_registry(),
+            pinned_patterns=_pinned(),
+        )
+        assert status == "fail"
+        assert detail is not None and "unpinned" in detail
+
+    def test_nist_short_legacy_form_fails(self):
+        """
+        Given: NIST AI RMF short legacy subcategory `GV-6.2` (no `@` token)
+        When: classify_value is called
+        Then: status is "fail" with an "unpinned"-flavored detail
+
+        The canonical pinned form is `GOVERN-6.2@1.0`; the bare form is now invalid.
+        """
+        status, detail = classify_value(
+            "nist-ai-rmf",
+            "GV-6.2",
+            registry=_registry(),
+            pinned_patterns=_pinned(),
+        )
+        assert status == "fail"
+        assert detail is not None and "unpinned" in detail
+
+    def test_nist_canonical_but_unpinned_fails(self):
+        """
+        Given: NIST AI RMF canonical base ref `GOVERN-6.2` with NO `@1.0` token
+        When: classify_value is called
+        Then: status is "fail" with an "unpinned"-flavored detail
+
+        This is the explicit mandatory-pin case: the base ref is already in the
+        canonical (post-migration) spelling, but the missing version token alone
+        makes it invalid under the strict schema. check-jsonschema rejects this
+        same value; the purity validator must agree (no skip).
+        """
+        status, detail = classify_value(
+            "nist-ai-rmf",
+            "GOVERN-6.2",
+            registry=_registry(),
+            pinned_patterns=_pinned(),
+        )
+        assert status == "fail"
+        assert detail is not None and "unpinned" in detail
+
+    def test_owasp_unpinned_fails(self):
+        """
+        Given: OWASP value `LLM06` with no `:` year token
+        When: classify_value is called
+        Then: status is "fail" with an "unpinned"-flavored detail
+
+        The canonical pinned form is `LLM06:2025`; the bare form is now invalid.
+        """
+        status, detail = classify_value(
+            "owasp-top10-llm",
+            "LLM06",
+            registry=_registry(),
+            pinned_patterns=_pinned(),
+        )
+        assert status == "fail"
+        assert detail is not None and "unpinned" in detail
+
+    def test_iso_22989_bare_role_fails(self):
+        """
+        Given: ISO 22989 role `AI Producer` with no `@` version token
+        When: classify_value is called
+        Then: status is "fail" with an "unpinned"-flavored detail
+
+        iso-22989 is versioned (`2022`); the canonical pinned form is
+        `AI Producer@2022`. The bare role is now invalid.
+        """
+        status, detail = classify_value(
             "iso-22989",
             "AI Producer",
             registry=_registry(),
             pinned_patterns=_pinned(),
         )
-        assert status == "skip"
+        assert status == "fail"
+        assert detail is not None and "unpinned" in detail
 
-    def test_iso_22989_bare_role_data_supplier_no_delimiter(self):
+    def test_iso_22989_bare_role_data_supplier_fails(self):
         """
-        Given: legacy ISO 22989 role `AI Partner (data supplier)` (no `@`)
+        Given: ISO 22989 role `AI Partner (data supplier)` with no `@` token
         When: classify_value is called
-        Then: status is "skip"
-
-        Real value from personas.yaml. H3 guarantees `@` absence in any base
-        ref, so no delimiter → legacy form → skip.
+        Then: status is "fail" with an "unpinned"-flavored detail
         """
-        status, _ = classify_value(
+        status, detail = classify_value(
             "iso-22989",
             "AI Partner (data supplier)",
             registry=_registry(),
             pinned_patterns=_pinned(),
         )
-        assert status == "skip"
+        assert status == "fail"
+        assert detail is not None and "unpinned" in detail
 
-    def test_eu_ai_act_legacy_no_version_token(self):
+    def test_eu_ai_act_unpinned_fails(self):
         """
-        Given: legacy EU AI Act reference `Article 52` (no `@` delimiter)
+        Given: EU AI Act reference `Article 52` with no `@` version token
         When: classify_value is called
-        Then: status is "skip" (legacy unpinned form; D3a / H3 delimiter absence)
+        Then: status is "fail" with an "unpinned"-flavored detail
 
-        D3a: eu-ai-act is versioned (version: `2024`). A value without `@` or `:`
-        lacks the delimiter signal that H3 defines as the sole pinned-intent marker.
-        The canonical pinned form would be `Article 52@2024`; migration is #343.
+        eu-ai-act is versioned (`2024`); the canonical pinned form is
+        `Article 52@2024`. The bare reference is now invalid.
         """
-        status, _ = classify_value(
+        status, detail = classify_value(
             "eu-ai-act",
             "Article 52",
             registry=_registry(),
             pinned_patterns=_pinned(),
         )
-        assert status == "skip"
+        assert status == "fail"
+        assert detail is not None and "unpinned" in detail
 
 
 # ===========================================================================
@@ -618,14 +664,17 @@ class TestMainWithTmpYaml:
     with a `mappings:` dict carrying bare-string lists.
     """
 
-    def test_main_only_legacy_values_exits_zero(self, tmp_path, capsys):
+    def test_main_only_skippable_values_exits_zero(self, tmp_path, capsys):
         """
-        Given: a risks.yaml with only legacy (no-delimiter) mapping values
+        Given: a risks.yaml whose only mapping values are skippable unversioned
+               STRIDE legacy spellings (`tampering`, `denial-of-service`)
         When: main([path]) is called
         Then: returns 0 and no failure output on stderr
 
-        Legacy values (AML.T0020, GV-6.2, LLM06, tampering) are all skipped
-        by the validator — migration is #343, not #347 (D4c).
+        Post-#343 the only values the purity validator skips are unversioned
+        STRIDE legacy spellings (not in the closed PascalCase enum, no version
+        token to signal tamper). Versioned-framework legacy forms now FAIL — see
+        test_main_unpinned_versioned_values_exit_one.
         """
         risks_file = tmp_path / "risks.yaml"
         _write_content_yaml(
@@ -636,8 +685,35 @@ class TestMainWithTmpYaml:
                     "id": "riskFoo",
                     "title": "Foo Risk",
                     "mappings": {
-                        "mitre-atlas": ["AML.T0020", "AML.T0043"],
-                        "stride": ["tampering"],
+                        "stride": ["tampering", "denial-of-service"],
+                    },
+                }
+            ],
+        )
+        rc = main([str(risks_file)])
+        assert rc == 0
+
+    def test_main_unpinned_versioned_values_exit_one(self, tmp_path, capsys):
+        """
+        Given: a risks.yaml with versioned-framework values that lack a version
+               token (`AML.T0020`, `GV-6.2`, `LLM06`)
+        When: main([path]) is called
+        Then: returns 1 and each unpinned value is reported on stderr
+
+        This is the main()-level mandatory-pin enforcement: post-#343 an unpinned
+        value on a versioned framework is invalid (ADR-027 D7/M1 block phase),
+        matching what check-jsonschema rejects.
+        """
+        risks_file = tmp_path / "risks.yaml"
+        _write_content_yaml(
+            risks_file,
+            "risks",
+            [
+                {
+                    "id": "riskFoo",
+                    "title": "Foo Risk",
+                    "mappings": {
+                        "mitre-atlas": ["AML.T0020"],
                         "owasp-top10-llm": ["LLM06"],
                         "nist-ai-rmf": ["GV-6.2"],
                     },
@@ -645,7 +721,10 @@ class TestMainWithTmpYaml:
             ],
         )
         rc = main([str(risks_file)])
-        assert rc == 0
+        assert rc == 1
+        captured = capsys.readouterr()
+        for value in ("AML.T0020", "LLM06", "GV-6.2"):
+            assert value in captured.err
 
     def test_main_tampered_value_exits_one(self, tmp_path, capsys):
         """
@@ -675,14 +754,16 @@ class TestMainWithTmpYaml:
         captured = capsys.readouterr()
         assert "GOVERN-6.2@9.9" in captured.err
 
-    def test_main_mixed_legacy_and_tampered_exits_one(self, tmp_path, capsys):
+    def test_main_mixed_skippable_and_tampered_exits_one(self, tmp_path, capsys):
         """
-        Given: a controls.yaml with some legacy values and one tampered value
+        Given: a controls.yaml with a skippable STRIDE value, a correctly-pinned
+               value, and one tampered value
         When: main([path]) is called
-        Then: returns 1; tampered value appears on stderr; legacy values do not
+        Then: returns 1; the tampered value appears on stderr; the skippable and
+              correctly-pinned values do not
 
-        Verifies that legacy values are not incorrectly reported as failures
-        even when a tampered value causes exit 1.
+        Verifies that skippable (STRIDE legacy) and ok (pinned) values are not
+        incorrectly reported as failures even when a tampered value causes exit 1.
         """
         controls_file = tmp_path / "controls.yaml"
         _write_content_yaml(
@@ -693,9 +774,9 @@ class TestMainWithTmpYaml:
                     "id": "controlFoo",
                     "title": "Foo Control",
                     "mappings": {
-                        "mitre-atlas": ["AML.M0007"],  # legacy → skip
+                        "stride": ["tampering"],  # unversioned legacy → skip
                         "nist-ai-rmf": ["GOVERN-6.2@9.9"],  # tampered → fail
-                        "owasp-top10-llm": ["LLM06"],  # legacy → skip
+                        "mitre-atlas": ["AML.M0007@5.0.1"],  # correctly pinned → ok
                     },
                 }
             ],
@@ -704,18 +785,18 @@ class TestMainWithTmpYaml:
         assert rc == 1
         captured = capsys.readouterr()
         assert "GOVERN-6.2@9.9" in captured.err
-        # Legacy values must not appear as failures in stderr
-        assert "AML.M0007" not in captured.err
-        assert "LLM06" not in captured.err
+        # Skippable and ok values must not appear as failures in stderr
+        assert "tampering" not in captured.err
+        assert "AML.M0007@5.0.1" not in captured.err
 
-    def test_main_personas_yaml_with_legacy_iso_exits_zero(self, tmp_path):
+    def test_main_personas_yaml_with_unpinned_iso_exits_one(self, tmp_path, capsys):
         """
-        Given: a personas.yaml with bare ISO 22989 roles (no `@` delimiter)
+        Given: a personas.yaml with bare ISO 22989 roles (no `@` version token)
         When: main([path]) is called
-        Then: returns 0
+        Then: returns 1 and each bare role is reported on stderr
 
-        Real corpus shape: personas carry `iso-22989: [AI Producer]` without
-        a version token. These are legacy forms → skip (D3a / H3). #343 migrates.
+        iso-22989 is versioned (`2022`); post-#343 a bare role without `@2022` is
+        invalid (ADR-027 D7/M1). The canonical pinned form is `AI Producer@2022`.
         """
         personas_file = tmp_path / "personas.yaml"
         _write_content_yaml(
@@ -727,6 +808,35 @@ class TestMainWithTmpYaml:
                     "title": "Foo Persona",
                     "mappings": {
                         "iso-22989": ["AI Producer", "AI Customer (end user)"],
+                    },
+                }
+            ],
+        )
+        rc = main([str(personas_file)])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "AI Producer" in captured.err
+        assert "AI Customer (end user)" in captured.err
+
+    def test_main_personas_yaml_with_pinned_iso_exits_zero(self, tmp_path):
+        """
+        Given: a personas.yaml with correctly pinned ISO 22989 roles (`@2022`)
+        When: main([path]) is called
+        Then: returns 0
+
+        The post-#343 corpus shape: personas carry `iso-22989: [AI Producer@2022]`.
+        These round-trip → ok → exit 0.
+        """
+        personas_file = tmp_path / "personas.yaml"
+        _write_content_yaml(
+            personas_file,
+            "personas",
+            [
+                {
+                    "id": "personaFoo",
+                    "title": "Foo Persona",
+                    "mappings": {
+                        "iso-22989": ["AI Producer@2022", "AI Customer (end user)@2022"],
                     },
                 }
             ],
@@ -829,14 +939,16 @@ class TestMainWithTmpYaml:
         captured = capsys.readouterr()
         assert "bogus-framework" in captured.err
 
-    def test_main_multiple_files_all_legacy_exits_zero(self, tmp_path):
+    def test_main_multiple_files_all_clean_exits_zero(self, tmp_path):
         """
-        Given: multiple content files each containing only legacy values
+        Given: multiple content files each containing only clean values — pinned
+               (ok) or unversioned STRIDE (skip)
         When: main([risks_path, controls_path, personas_path]) is called
         Then: returns 0
 
         The validator must handle multiple file arguments (pre-commit passes
-        all changed files as positional args).
+        all changed files as positional args). Post-#343 "clean" means pinned or
+        STRIDE-skippable, not bare versioned legacy forms.
         """
         risks_file = tmp_path / "risks.yaml"
         controls_file = tmp_path / "controls.yaml"
@@ -845,17 +957,17 @@ class TestMainWithTmpYaml:
         _write_content_yaml(
             risks_file,
             "risks",
-            [{"id": "riskFoo", "mappings": {"mitre-atlas": ["AML.T0020"]}}],
+            [{"id": "riskFoo", "mappings": {"mitre-atlas": ["AML.T0020@5.0.1"]}}],
         )
         _write_content_yaml(
             controls_file,
             "controls",
-            [{"id": "controlFoo", "mappings": {"nist-ai-rmf": ["GV-6.2"]}}],
+            [{"id": "controlFoo", "mappings": {"stride": ["tampering"]}}],
         )
         _write_content_yaml(
             personas_file,
             "personas",
-            [{"id": "personaFoo", "mappings": {"iso-22989": ["AI Producer"]}}],
+            [{"id": "personaFoo", "mappings": {"iso-22989": ["AI Producer@2022"]}}],
         )
         rc = main([str(risks_file), str(controls_file), str(personas_file)])
         assert rc == 0
@@ -875,7 +987,7 @@ class TestMainWithTmpYaml:
         _write_content_yaml(
             clean_file,
             "risks",
-            [{"id": "riskFoo", "mappings": {"mitre-atlas": ["AML.T0020"]}}],
+            [{"id": "riskFoo", "mappings": {"mitre-atlas": ["AML.T0020@5.0.1"]}}],
         )
         _write_content_yaml(
             tampered_file,
@@ -1022,16 +1134,18 @@ class TestMainRealShapeSilentSkip:
         captured = capsys.readouterr()
         assert "LLM02:2099" in captured.err
 
-    def test_real_shape_legacy_values_stay_green(self, tmp_path):
+    def test_real_shape_clean_values_stay_green(self, tmp_path):
         """
         Given: a YAML file with description (list) BEFORE risks (list), where
-               risks entities carry only legacy (no-delimiter) mapping values
+               risks entities carry only clean values — pinned (ok) and
+               unversioned STRIDE (skip)
         When: main([path]) is called
         Then: returns 0
 
         Confirms that the fix for the silent-skip bug does not over-scan
         description or categories prose items into false failures, and that
-        legitimate legacy values in the entity list still skip cleanly.
+        legitimate clean values in the entity list classify cleanly. Post-#343
+        "clean" is pinned or STRIDE-skippable, not bare versioned legacy forms.
 
         Reference: #347 D4c; silent-skip risk described in class docstring.
         """
@@ -1044,13 +1158,13 @@ class TestMainRealShapeSilentSkip:
             ],
             "risks": [
                 {
-                    "id": "riskLegacy",
-                    "title": "Legacy Risk",
+                    "id": "riskClean",
+                    "title": "Clean Risk",
                     "mappings": {
-                        "nist-ai-rmf": ["GV-6.2"],  # legacy: no @ → skip
-                        "mitre-atlas": ["AML.T0020"],  # legacy: no @ → skip
-                        "owasp-top10-llm": ["LLM06"],  # legacy: no : → skip
-                        "stride": ["tampering"],  # legacy: unversioned → skip
+                        "nist-ai-rmf": ["GOVERN-6.2@1.0"],  # pinned → ok
+                        "mitre-atlas": ["AML.T0020@5.0.1"],  # pinned → ok
+                        "owasp-top10-llm": ["LLM06:2025"],  # pinned → ok
+                        "stride": ["tampering"],  # unversioned legacy → skip
                     },
                 }
             ],
@@ -1060,9 +1174,10 @@ class TestMainRealShapeSilentSkip:
         rc = main([str(risks_file)])
 
         assert rc == 0, (
-            "Expected exit 0 for all-legacy values in real-shape YAML. "
-            "A non-zero exit indicates false positives from prose in "
-            "description or categories being scanned as entity mappings."
+            "Expected exit 0 for clean (pinned + STRIDE-skippable) values in "
+            "real-shape YAML. A non-zero exit indicates false positives from prose "
+            "in description or categories being scanned as entity mappings, or a "
+            "pinned value failing to round-trip."
         )
 
 
@@ -1077,20 +1192,18 @@ class TestLiveCorpusGreen:
     The live corpus (risks/controls/components/personas.yaml on this branch)
     must produce zero purity failures from main().
 
-    Rationale: every mapping value currently in the corpus is a legacy
-    pre-ADR-027 form:
-      - mitre-atlas:     `AML.T0020`, `AML.M0007`, ...  (no `@`)
-      - nist-ai-rmf:     `GV-6.2`, `GV-1.6`, ...        (no `@`)
-      - owasp-top10-llm: `LLM06`, `LLM04`, ...          (no `:`)
-      - stride:          `tampering`, ...                (lowercase-kebab)
-      - iso-22989:       `AI Producer`, ...              (no `@`)
+    Rationale: post-#343 every mapping value in the corpus is in the ADR-027
+    pinned form, or the unversioned STRIDE PascalCase enum:
+      - mitre-atlas:     `AML.T0020@5.0.1`, `AML.M0007@5.0.1`, ...  (`@` token)
+      - nist-ai-rmf:     `GOVERN-6.2@1.0`, ...                       (`@` token)
+      - owasp-top10-llm: `LLM06:2025`, ...                           (`:` token)
+      - stride:          `Tampering`, ...                            (PascalCase enum)
+      - iso-22989:       `AI Producer@2022`, ...                     (`@` token)
 
-    None of these contain the `@` or `:` delimiters that D3a / H3 defines as
-    the sole signal of pinned-value intent. The validator skips all of them.
-
-    Migration to pinned forms (`AML.T0020` → `AML.T0020@5.0.1`, etc.) is
-    issue #343. Until that migration lands, this test is the regression guard
-    confirming that the purity validator does not break the existing corpus.
+    The versioned values round-trip (split + compose) → "ok"; the STRIDE enum
+    values round-trip → "ok". The validator reports zero failures. Post-#343 a
+    bare versioned value (no `@`/`:`) would FAIL the purity check, so this test
+    also guards that the migrated corpus carries no such unpinned value.
 
     components.yaml currently has zero mapping values; it is included to
     confirm the validator handles a mappings-free file gracefully.
@@ -1100,7 +1213,7 @@ class TestLiveCorpusGreen:
         """
         Given: the live risk-map/yaml/risks.yaml as it exists on this branch
         When: main([risks_path]) is called
-        Then: returns 0 (all legacy values are skipped, none fail purity check)
+        Then: returns 0 (every pinned value classifies "ok"; none fail purity)
         """
         assert RISKS_YAML.is_file(), f"risks.yaml not found at {RISKS_YAML}"
         rc = main([str(RISKS_YAML)])
@@ -1110,7 +1223,7 @@ class TestLiveCorpusGreen:
         """
         Given: the live risk-map/yaml/controls.yaml as it exists on this branch
         When: main([controls_path]) is called
-        Then: returns 0 (all legacy values are skipped, none fail purity check)
+        Then: returns 0 (every pinned value classifies "ok"; none fail purity)
         """
         assert CONTROLS_YAML.is_file(), f"controls.yaml not found at {CONTROLS_YAML}"
         rc = main([str(CONTROLS_YAML)])
@@ -1130,7 +1243,7 @@ class TestLiveCorpusGreen:
         """
         Given: the live risk-map/yaml/personas.yaml as it exists on this branch
         When: main([personas_path]) is called
-        Then: returns 0 (all ISO 22989 bare roles are legacy, no `@` → skipped)
+        Then: returns 0 (all ISO 22989 roles are pinned `@2022` → classify "ok")
         """
         assert PERSONAS_YAML.is_file(), f"personas.yaml not found at {PERSONAS_YAML}"
         rc = main([str(PERSONAS_YAML)])
@@ -1142,9 +1255,10 @@ class TestLiveCorpusGreen:
         When: main([risks, controls, components, personas]) is called
         Then: returns 0
 
-        This is the crux regression guard: the entire current corpus stays
-        clean (zero failures) with the purity validator in place. The validator must skip every
-        legacy value and report no failures. Migration to pinned forms is #343.
+        This is the crux regression guard: the entire migrated corpus stays
+        clean (zero failures) with the purity validator in place. Every pinned
+        value classifies "ok" and the STRIDE enum values classify "ok"/"skip";
+        no value is an unpinned-versioned form (which would now fail).
         """
         for path in (RISKS_YAML, CONTROLS_YAML, COMPONENTS_YAML, PERSONAS_YAML):
             assert path.is_file(), f"content file not found: {path}"

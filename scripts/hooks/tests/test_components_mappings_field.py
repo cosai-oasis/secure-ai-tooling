@@ -2,30 +2,35 @@
 """
 Tests for the optional mappings field on components.schema.json.
 
-Per ADR-018 D6 + ADR-022 D5b/D5c, definitions/component/properties declares
-a mappings field with the same hybrid shape used by risks/controls/personas:
-- propertyNames $ref to frameworks.schema.json framework/id enum.
-- Per-property strict wiring for mitre-atlas, iso-22989, eu-ai-act (regex-
-  backed via $ref to framework-mapping-patterns).
-- Loose additionalProperties catch-all (array of strings) for remaining
-  frameworks (stride, nist-ai-rmf, owasp-top10-llm).
-- Optional — NOT in the required array.
+Phase 2 of issue #343 flips components.schema.json from the hybrid
+(selective-strict + loose catch-all) shape to a fully-strict shape per
+ADR-027 D3a and D7:
 
-The hybrid wiring reflects the state of current YAML mappings content:
-mitre-atlas/iso-22989/eu-ai-act entries already conform to ADR-022 D5b
-canonical regexes; stride/nist-ai-rmf/owasp-top10-llm use non-canonical
-short forms that subsequent content normalisation will fix.
+- ALL six frameworks declared in mappings.properties, each items-$ref pointing at
+  frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/<fw>.
+- additionalProperties: false (the loose catch-all is removed).
+- propertyNames $ref to the framework id enum is KEPT.
+- Field remains optional (NOT in required).
+
+components.yaml currently has 0 mappings entries, so the live-corpus guard
+trivially passes once the schema flip lands.
 
 Coverage:
-- mappings property is declared in definitions/component/properties.
+- mappings property declared in definitions/component/properties.
 - propertyNames $ref to frameworks.schema.json is present.
-- Per-property entries for mitre-atlas, iso-22989, eu-ai-act are declared.
-- additionalProperties catch-all is present.
+- All six framework keys declared in mappings.properties.
+- additionalProperties is exactly false (catch-all removed).
 - Field is NOT in required.
-- Known-good mitre-atlas value AML.T0020 validates.
-- Malformed mitre-atlas value aml-t0020 is rejected.
-- Unknown framework key is rejected via propertyNames.
-- Current components.yaml passes validation unchanged.
+- Pinned mitre-atlas value AML.T0020@5.0.1 accepted; legacy AML.T0020 rejected.
+- Pinned stride PascalCase accepted; lowercase-kebab rejected.
+- Pinned nist-ai-rmf @1.0 accepted; short-prefix form rejected.
+- Pinned owasp :2025 accepted; bare LLMnn rejected.
+- Pinned iso @2022 enum accepted; bare string / off-enum rejected.
+- Pinned eu-ai-act @2024 accepted; bare Article N rejected.
+- Unknown framework key is rejected via propertyNames + additionalProperties:false.
+- Current components.yaml (no mappings) passes unchanged.
+
+These tests are RED until the Phase-2 schema flip lands (#343 ADR-027 D3a/D7).
 """
 
 import json
@@ -49,36 +54,36 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 SCHEMA_FILE = "components.schema.json"
 ENTITY_KEY = "component"
 
-# Frameworks wired with per-property strict patterns.
-STRICTLY_WIRED_FRAMEWORKS = {"mitre-atlas", "iso-22989", "eu-ai-act"}
+# All six frameworks must be wired with per-property strict-pinned patterns
+# after Phase 2 (#343 ADR-027 D3a).
+ALL_SIX_FRAMEWORKS = {"mitre-atlas", "iso-22989", "eu-ai-act", "stride", "nist-ai-rmf", "owasp-top10-llm"}
 
-# Frameworks that fall through to the loose additionalProperties catch-all.
-LOOSE_FRAMEWORKS = {"stride", "nist-ai-rmf", "owasp-top10-llm"}
-
-# Valid per-framework examples for the strictly-wired set.
-# mitre-atlas: canonical uppercase form from A1 pattern ^AML\.(T|M)\d{4}(\.\d{3})?$
-# iso-22989: bare string (no pattern)
-# eu-ai-act: pattern ^Article\s\d+(\(\d+\))?$
-VALID_STRICT_EXAMPLES: dict[str, list[str]] = {
-    "mitre-atlas": ["AML.T0020", "AML.M0011", "AML.T0010.002"],
-    "iso-22989": ["AI Producer", "AI Customer (application builder)"],
-    "eu-ai-act": ["Article 5", "Article 5(1)", "Article 50"],
+# Pinned forms that must be ACCEPTED after the strict flip.
+PINNED_VALID_EXAMPLES: dict[str, list[str]] = {
+    "mitre-atlas": ["AML.T0020@5.0.1", "AML.M0011@5.0.1", "AML.T0010.002@5.0.1"],
+    "nist-ai-rmf": ["GOVERN-6.2@1.0", "MEASURE-2.11@1.0"],
+    "stride": ["Tampering", "Spoofing", "InformationDisclosure"],
+    "owasp-top10-llm": ["LLM06:2025", "LLM01:2025"],
+    "iso-22989": ["AI Producer@2022", "AI Customer (application builder)@2022"],
+    "eu-ai-act": ["Article 5@2024", "Article 5(1)@2024"],
 }
 
-# Invalid mitre-atlas examples (wrong form).
+# Legacy/unpinned forms that must be REJECTED after the strict flip.
+LEGACY_INVALID_EXAMPLES: dict[str, list[str]] = {
+    "mitre-atlas": ["AML.T0020", "AML.M0011"],  # missing @5.0.1
+    "nist-ai-rmf": ["GV-6.2", "MS-2.11", "GOVERN-6.2"],  # short prefix / missing @1.0
+    "stride": ["tampering", "spoofing", "information-disclosure"],  # lowercase / kebab
+    "owasp-top10-llm": ["LLM01", "LLM09"],  # missing :2025
+    "iso-22989": ["AI Producer", "Data supplier"],  # missing @2022 / off-enum
+    "eu-ai-act": ["Article 5", "Article 5(1)"],  # missing @2024
+}
+
+# Malformed mitre-atlas examples that must always be rejected.
 INVALID_MITRE_ATLAS: list[str] = [
-    "aml-t0020",  # lowercase-kebab (external-references surface, not this one)
+    "aml-t0020",  # lowercase-kebab
     "AML.T20",  # short ID
     "AML.X0020",  # non-T/M letter
 ]
-
-# Loose framework examples — current content uses short forms that don't match
-# the A1 patterns, so they go through the catch-all.
-VALID_LOOSE_EXAMPLES: dict[str, list[str]] = {
-    "stride": ["tampering", "spoofing", "repudiation"],
-    "nist-ai-rmf": ["GV-6.2", "MS-2.11", "MS-2.3"],
-    "owasp-top10-llm": ["LLM01", "LLM09"],
-}
 
 
 # ============================================================================
@@ -197,36 +202,62 @@ class TestMappingsFieldPresence:
             f"mappings.propertyNames must $ref {expected_ref!r}; got: {property_names!r}"
         )
 
-    def test_mappings_has_additional_properties_catch_all(self, mappings_schema: dict):
+    def test_mappings_additional_properties_is_false(self, mappings_schema: dict):
         """
-        Test that the loose catch-all additionalProperties is declared.
+        Test that mappings.additionalProperties is exactly false (catch-all removed).
 
-        Given: The mappings sub-schema
+        Given: The mappings sub-schema (post Phase-2 flip, #343)
         When: additionalProperties is examined
-        Then: It is present and is an array-of-strings shape
+        Then: It is the boolean false — NOT a schema-object catch-all
 
-        The catch-all covers stride/nist-ai-rmf/owasp-top10-llm whose current
-        content uses non-canonical forms that do not match the ADR-022 D5b
-        canonical regexes. Only mitre-atlas/iso-22989/eu-ai-act receive
-        per-property strict wiring.
+        ADR-027 D3a: the loose catch-all for stride/nist-ai-rmf/owasp-top10-llm
+        must be removed. This is RED until the Phase-2 schema flip lands (#343).
         """
-        additional = mappings_schema.get("additionalProperties")
-        assert additional is not None, "mappings must declare additionalProperties catch-all"
-        assert additional.get("type") == "array", "additionalProperties catch-all must be type: array"
-        items = additional.get("items", {})
-        assert items.get("type") == "string", "additionalProperties items must be type: string"
+        ap = mappings_schema.get("additionalProperties", "<MISSING>")
+        assert ap is False, (
+            f"mappings must have additionalProperties: false (strict Phase-2 flip, "
+            f"#343 ADR-027 D3a); got: {ap!r}. The loose catch-all must be removed."
+        )
 
-    @pytest.mark.parametrize("framework_key", sorted(STRICTLY_WIRED_FRAMEWORKS))
-    def test_strictly_wired_frameworks_declared_in_properties(self, mappings_schema: dict, framework_key: str):
+    @pytest.mark.parametrize("framework_key", sorted(ALL_SIX_FRAMEWORKS))
+    def test_all_six_frameworks_declared_in_properties(self, mappings_schema: dict, framework_key: str):
         """
-        Test that per-property entries for strictly-wired frameworks are declared.
+        Test that all six framework keys are declared in mappings.properties.
 
         Given: The mappings sub-schema properties block
-        When: A strictly-wired framework key is looked up
-        Then: It is present (with its items $ref pointing at framework-mapping-patterns)
+        When: A framework key is looked up
+        Then: It is present (all six, not just the previous three)
+
+        ADR-027 D3a: all six frameworks must be explicitly wired with per-property
+        entries after the Phase-2 flip. This is RED until stride, nist-ai-rmf,
+        and owasp-top10-llm are added to properties (#343).
         """
         props = mappings_schema.get("properties", {})
-        assert framework_key in props, f"mappings.properties must declare '{framework_key}' (strictly-wired)"
+        assert framework_key in props, (
+            f"mappings.properties must declare '{framework_key}' "
+            "(all six frameworks strictly wired per ADR-027 D3a, #343 Phase 2)"
+        )
+
+    @pytest.mark.parametrize("framework_key", sorted(ALL_SIX_FRAMEWORKS))
+    def test_framework_items_ref_points_at_pinned_block(self, mappings_schema: dict, framework_key: str):
+        """
+        Test that each framework's items $ref resolves to framework-mapping-patterns-pinned.
+
+        Given: mappings.properties.<framework_key>.items
+        When: Its $ref is inspected
+        Then: It ends in 'framework-mapping-patterns-pinned/properties/<framework_key>'
+
+        ADR-027 D7: consumer $refs must repoint from the base block to the pinned block.
+        RED until Phase-2 schema flip lands (#343).
+        """
+        fw_schema = mappings_schema.get("properties", {}).get(framework_key, {})
+        items = fw_schema.get("items", {})
+        ref = items.get("$ref", "")
+        expected_suffix = f"framework-mapping-patterns-pinned/properties/{framework_key}"
+        assert ref.endswith(expected_suffix), (
+            f"mappings.properties.{framework_key}.items.$ref must end with "
+            f"'{expected_suffix}' (pinned block, ADR-027 D7, #343 Phase 2); got: {ref!r}"
+        )
 
 
 # ============================================================================
@@ -253,144 +284,112 @@ class TestMappingsIsOptional:
 
 
 # ============================================================================
-# Behavioral validation — mitre-atlas strict wiring
+# Behavioral validation — pinned values accepted after strict flip
 # ============================================================================
 
 
-class TestMitreAtlasWiring:
+class TestPinnedValuesAccepted:
     """
-    mitre-atlas items must be validated against the ADR-022 D5b pattern
-    ^AML\\.(T|M)\\d{4}(\\.\\d{3})?$ via the framework-mapping-patterns $ref.
-    """
+    Pinned-form values for all six frameworks must be accepted after the Phase-2
+    strict flip (#343 ADR-027 D3a/D7).
 
-    @pytest.mark.parametrize("valid_id", VALID_STRICT_EXAMPLES["mitre-atlas"])
-    def test_mitre_atlas_valid_value_accepted(self, mappings_schema: dict, registry: Registry, valid_id: str):
-        """
-        Test that canonical mitre-atlas values pass.
-
-        Given: A mappings object with mitre-atlas: [<valid_id>]
-        When: It is validated against the mappings schema
-        Then: No errors are raised
-        """
-        validator = Draft7Validator(mappings_schema, registry=registry)
-        instance = {"mitre-atlas": [valid_id]}
-        errors = list(validator.iter_errors(instance))
-        assert not errors, f"mitre-atlas value {valid_id!r} must be accepted; got: {[e.message for e in errors]}"
-
-    @pytest.mark.parametrize("invalid_id", INVALID_MITRE_ATLAS)
-    def test_mitre_atlas_invalid_value_rejected(self, mappings_schema: dict, registry: Registry, invalid_id: str):
-        """
-        Test that malformed mitre-atlas values are rejected.
-
-        Given: A mappings object with mitre-atlas: [<invalid_id>]
-        When: It is validated
-        Then: ValidationError is raised (strict pattern rejects malformed IDs)
-        """
-        validator = Draft7Validator(mappings_schema, registry=registry)
-        instance = {"mitre-atlas": [invalid_id]}
-        errors = list(validator.iter_errors(instance))
-        assert errors, f"mitre-atlas value {invalid_id!r} must be rejected by the strict pattern"
-
-
-# ============================================================================
-# Behavioral validation — iso-22989 and eu-ai-act strict wiring
-# ============================================================================
-
-
-class TestIsoAndEuAiActStrictWiring:
-    """
-    iso-22989 uses bare string items with no pattern constraint (deliberately
-    permissive per A1 design). eu-ai-act items must match
-    ^Article\\s\\d+(\\(\\d+\\))?$ per ADR-022 D5b.
-
-    Both frameworks receive per-property strict wiring in the components mappings
-    schema via $ref to framework-mapping-patterns in frameworks.schema.json.
-    """
-
-    @pytest.mark.parametrize("value", VALID_STRICT_EXAMPLES["iso-22989"])
-    def test_iso_22989_valid_value_accepted(self, mappings_schema: dict, registry: Registry, value: str):
-        """
-        Test that iso-22989 bare-string descriptors are accepted.
-
-        Given: A mappings object with iso-22989: [<value>]
-        When: It is validated against the mappings schema
-        Then: No errors are raised (iso-22989 is permissive — any non-empty string)
-        """
-        validator = Draft7Validator(mappings_schema, registry=registry)
-        instance = {"iso-22989": [value]}
-        errors = list(validator.iter_errors(instance))
-        assert not errors, f"iso-22989 value {value!r} must be accepted; got: {[e.message for e in errors]}"
-
-    @pytest.mark.parametrize("value", VALID_STRICT_EXAMPLES["eu-ai-act"])
-    def test_eu_ai_act_valid_value_accepted(self, mappings_schema: dict, registry: Registry, value: str):
-        """
-        Test that eu-ai-act Article-form values are accepted.
-
-        Given: A mappings object with eu-ai-act: [<value>] in ^Article\\s\\d+(\\(\\d+\\))?$ form
-        When: It is validated against the mappings schema
-        Then: No errors are raised
-        """
-        validator = Draft7Validator(mappings_schema, registry=registry)
-        instance = {"eu-ai-act": [value]}
-        errors = list(validator.iter_errors(instance))
-        assert not errors, f"eu-ai-act value {value!r} must be accepted; got: {[e.message for e in errors]}"
-
-    @pytest.mark.parametrize(
-        "invalid_value",
-        [
-            "Article",  # no article number
-            "article-5",  # lowercase-kebab form
-            "Art 5",  # abbreviated prefix
-            "Art. 5(1)",  # abbreviated with period
-        ],
-    )
-    def test_eu_ai_act_invalid_value_rejected(self, mappings_schema: dict, registry: Registry, invalid_value: str):
-        """
-        Test that malformed eu-ai-act values are rejected.
-
-        Given: A mappings object with eu-ai-act: [<invalid_value>]
-        When: It is validated against the mappings schema
-        Then: ValidationError is raised (strict pattern ^Article\\s\\d+(\\(\\d+\\))?$ rejects it)
-        """
-        validator = Draft7Validator(mappings_schema, registry=registry)
-        instance = {"eu-ai-act": [invalid_value]}
-        errors = list(validator.iter_errors(instance))
-        assert errors, f"eu-ai-act value {invalid_value!r} must be rejected by the strict pattern"
-
-
-# ============================================================================
-# Behavioral validation — loose frameworks pass through
-# ============================================================================
-
-
-class TestLooseFrameworksPassThrough:
-    """
-    stride, nist-ai-rmf, and owasp-top10-llm fall through to the loose
-    additionalProperties catch-all (array of strings). Current YAML uses
-    non-canonical forms that subsequent content normalisation will fix.
+    These will FAIL against the current schema because:
+    - nist-ai-rmf/stride/owasp-top10-llm are not yet in properties (catch-all only).
+    - mitre-atlas/iso-22989/eu-ai-act $refs still point at base patterns (no @token).
     """
 
     @pytest.mark.parametrize(
         ("framework_key", "value"),
-        [(fw, v) for fw, vals in VALID_LOOSE_EXAMPLES.items() for v in vals],
+        [(fw, v) for fw, vals in PINNED_VALID_EXAMPLES.items() for v in vals],
     )
-    def test_loose_framework_value_accepted(
+    def test_pinned_value_accepted(
         self, mappings_schema: dict, registry: Registry, framework_key: str, value: str
     ):
         """
-        Test that non-canonical values for loose frameworks are accepted.
+        Test that pinned-form values for all six frameworks are accepted.
 
-        Given: A mappings object with <framework_key>: [<value>]
-        When: It is validated against the mappings schema
-        Then: No errors are raised (falls through to additionalProperties catch-all)
+        Given: A mappings object with <framework_key>: [<pinned-value>]
+        When: It is validated against the mappings schema (post Phase-2 flip)
+        Then: No errors — each framework's pinned pattern accepts the versioned form
+
+        RED until Phase-2 schema flip lands (#343 ADR-027 D3a/D7).
         """
         validator = Draft7Validator(mappings_schema, registry=registry)
         instance = {framework_key: [value]}
         errors = list(validator.iter_errors(instance))
         assert not errors, (
-            f"Loose framework {framework_key!r} value {value!r} must be accepted "
-            f"via catch-all; got: {[e.message for e in errors]}"
+            f"Pinned value {framework_key!r}: {value!r} must be accepted after Phase-2 flip "
+            f"(#343 ADR-027 D3a); got: {[e.message for e in errors]}"
         )
+
+
+# ============================================================================
+# Behavioral validation — legacy forms rejected after strict flip
+# ============================================================================
+
+
+class TestLegacyFormsRejected:
+    """
+    Legacy (unpinned / non-canonical) forms must be REJECTED after the Phase-2
+    strict flip (#343 ADR-027 D3a).
+
+    Currently stride/nist-ai-rmf/owasp-top10-llm pass via the loose catch-all
+    and mitre-atlas/iso-22989 accept bare strings via the base pattern. All of
+    these must be rejected after the flip.
+    """
+
+    @pytest.mark.parametrize(
+        ("framework_key", "legacy_value"),
+        [(fw, v) for fw, vals in LEGACY_INVALID_EXAMPLES.items() for v in vals],
+    )
+    def test_legacy_value_rejected(
+        self, mappings_schema: dict, registry: Registry, framework_key: str, legacy_value: str
+    ):
+        """
+        Test that legacy/unpinned values are rejected after the strict flip.
+
+        Given: A mappings object with <framework_key>: [<legacy-value>]
+        When: It is validated against the mappings schema (post Phase-2 flip)
+        Then: ValidationError — legacy forms do not satisfy the pinned patterns
+
+        RED until Phase-2 schema flip lands (#343). Currently passes via catch-all
+        or base patterns.
+        """
+        validator = Draft7Validator(mappings_schema, registry=registry)
+        instance = {framework_key: [legacy_value]}
+        errors = list(validator.iter_errors(instance))
+        assert errors, (
+            f"Legacy value {framework_key!r}: {legacy_value!r} must be REJECTED after "
+            f"Phase-2 strict flip (#343 ADR-027 D3a); was incorrectly accepted"
+        )
+
+
+# ============================================================================
+# Behavioral validation — structurally malformed values rejected (regression guard)
+# ============================================================================
+
+
+class TestMalformedValuesRejected:
+    """
+    Structurally malformed values must be rejected both before and after the flip.
+    This is a regression guard.
+    """
+
+    @pytest.mark.parametrize("invalid_id", INVALID_MITRE_ATLAS)
+    def test_mitre_atlas_malformed_value_rejected(
+        self, mappings_schema: dict, registry: Registry, invalid_id: str
+    ):
+        """
+        Test that structurally malformed mitre-atlas IDs are rejected.
+
+        Given: A mappings object with mitre-atlas: [<malformed-id>]
+        When: It is validated
+        Then: ValidationError is raised (malformed forms fail both base and pinned patterns)
+        """
+        validator = Draft7Validator(mappings_schema, registry=registry)
+        instance = {"mitre-atlas": [invalid_id]}
+        errors = list(validator.iter_errors(instance))
+        assert errors, f"mitre-atlas malformed value {invalid_id!r} must be rejected by the strict pattern"
 
 
 # ============================================================================
@@ -399,7 +398,7 @@ class TestLooseFrameworksPassThrough:
 
 
 class TestUnknownFrameworkRejected:
-    """Unknown framework keys must be rejected via propertyNames."""
+    """Unknown framework keys must be rejected via propertyNames + additionalProperties:false."""
 
     def test_unknown_framework_key_rejected(self, mappings_schema: dict, registry: Registry):
         """
@@ -407,12 +406,15 @@ class TestUnknownFrameworkRejected:
 
         Given: A mappings object with made-up-framework: ["some-value"]
         When: It is validated
-        Then: ValidationError is raised (propertyNames constraint rejects it)
+        Then: ValidationError (propertyNames + additionalProperties:false after Phase-2 flip)
         """
         validator = Draft7Validator(mappings_schema, registry=registry)
         instance = {"made-up-framework": ["some-value"]}
         errors = list(validator.iter_errors(instance))
-        assert errors, "Unknown framework key 'made-up-framework' must be rejected via propertyNames"
+        assert errors, (
+            "Unknown framework key 'made-up-framework' must be rejected via "
+            "propertyNames + additionalProperties:false (#343 Phase 2)"
+        )
 
 
 # ============================================================================
@@ -807,32 +809,45 @@ class TestPairingConstraintBehavior:
 
 
 # ============================================================================
-# Test summary
+# Test summary (Phase 2 strict wiring — #343 ADR-027 D3a/D7)
 # ============================================================================
 """
 Test Summary
 ============
-Test classes: 8
+Test classes: 10
 
 - TestSchemaMetaValidity (1)             — schema valid Draft-07
-- TestMappingsFieldPresence (5)          — property exists, type=object,
-                                           propertyNames $ref, catch-all,
-                                           strictly-wired keys present
+- TestMappingsFieldPresence              — property exists, type=object,
+                                           propertyNames $ref,
+                                           additionalProperties:false,
+                                           all-six in properties,
+                                           items $ref → pinned block
+                                           (parametrized × 6 for last two = 14 total)
 - TestMappingsIsOptional (1)             — not in required
-- TestMitreAtlasWiring (6)               — parametrized: 3 valid + 3 invalid
-- TestIsoAndEuAiActStrictWiring          — iso-22989: 2 valid accepted;
-                                           eu-ai-act: 3 valid accepted +
-                                           4 invalid rejected
-- TestLooseFrameworksPassThrough         — parametrized: stride/nist-ai-rmf/
-                                           owasp-top10-llm loose values accepted
-                                           (8 cases; nist-ai-rmf has 3 values)
-- TestUnknownFrameworkRejected (1)       — propertyNames rejects unknown key
-- TestCurrentYamlStillValid (1)          — regression: components.yaml still passes
+- TestPinnedValuesAccepted               — parametrized: all six fw × pinned values
+                                           (≈ 14 cases)
+- TestLegacyFormsRejected                — parametrized: all six fw × legacy values
+                                           (≈ 14 cases)
+- TestMalformedValuesRejected (3)        — structurally bad mitre-atlas rejected
+- TestUnknownFrameworkRejected (1)       — propertyNames + additionalProperties:false
+- TestCurrentYamlStillValid (1)          — components.yaml still passes (trivially,
+                                           no mappings entries today)
+- TestSchemaContainsPairingConstraint    — D10 allOf structure (pre-existing)
+- TestPairingConstraintBehavior          — D10 valid/invalid pairs via check-jsonschema
+                                           (pre-existing)
+
+RED items (fail until Phase-2 schema flip lands, #343):
+- TestMappingsFieldPresence.test_mappings_additional_properties_is_false
+- TestMappingsFieldPresence.test_all_six_frameworks_declared_in_properties
+  (stride, nist-ai-rmf, owasp-top10-llm not yet in properties)
+- TestMappingsFieldPresence.test_framework_items_ref_points_at_pinned_block
+- TestPinnedValuesAccepted (all pinned forms require @-token or :year)
+- TestLegacyFormsRejected (all legacy forms currently accepted)
 
 Coverage areas:
-- mappings field: presence, structure, optional status
-- Strict wiring: mitre-atlas, iso-22989, eu-ai-act valid/invalid examples
-- Loose catch-all: stride/nist-ai-rmf/owasp-top10-llm
-- propertyNames constraint enforcement
-- Backward compatibility: current components.yaml unchanged
+- mappings field: presence, strict structure, optional status
+- Strict-pinned wiring: all six frameworks, valid/invalid examples
+- Structural: additionalProperties:false, items $ref pinned block
+- Regression: components.yaml validates (no mappings content today)
+- D10 pairing constraint (pre-existing, unaffected by Phase 2)
 """

@@ -152,11 +152,11 @@ The `examples` field cites "what if" scenarios or product launch blog posts rath
 
 The proposal maps to an invalid MITRE ATLAS technique, a non-existent OWASP LLM entry, applies a mitigation ID to a risk (or vice versa), or uses a non-canonical identifier form (lowercase STRIDE, `GV-/MP-/MS-/MG-` NIST abbreviations, un-versioned `LLM##`).
 
-- Fix: verify each ID against the referenced framework and use the **canonical** form — `Tampering` (not `tampering`), `GOVERN-1.1` (not `GV-1.1`), `LLM01:2025` (not `LLM01`). Risks use techniques (`AML.T####`), controls use mitigations (`AML.M####`). The schema enforces MITRE ATLAS, EU AI Act, and ISO 22989 strictly; STRIDE/NIST/OWASP fall through pending content migration but should still be authored canonically. See [`framework-mappings-style-guide.md`](./framework-mappings-style-guide.md).
+- Fix: verify each ID against the referenced framework and use the **canonical, version-pinned** form — `Tampering` (not `tampering`), `GOVERN-1.1@1.0` (not `GV-1.1`), `LLM01:2025` (not `LLM01`). Risks use techniques (`AML.T####`), controls use mitigations (`AML.M####`). The strict consumer schemas enforce all frameworks — MITRE ATLAS, NIST AI RMF, OWASP Top 10 LLM, STRIDE, ISO 22989, and EU AI Act — with no loose fall-through; every mapping value must carry its version token (STRIDE excepted, which is tokenless). See [`framework-mappings-style-guide.md`](./framework-mappings-style-guide.md).
 
 ### 9. Parent technique and sub-technique both listed (MITRE ATLAS)
 
-The mappings list both `AML.T0020` and `AML.T0020.001`.
+The mappings list both `AML.T0020@5.0.1` and `AML.T0020.001@5.0.1`.
 
 - Fix: keep only the most specific applicable ID. Do not list both.
 

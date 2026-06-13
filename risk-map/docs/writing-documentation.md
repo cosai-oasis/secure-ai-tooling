@@ -198,9 +198,11 @@ with open('risk-map/yaml/frameworks.yaml', 'r') as f:
 # Get framework by ID
 mitre_atlas = next(f for f in frameworks['frameworks'] if f['id'] == 'mitre-atlas')
 
-# Construct technique URI
-technique_id = 'AML.T0001'
-uri = mitre_atlas['techniqueUriPattern'].replace('{id}', technique_id)
+# Construct technique URI. Mapping values are version-pinned (e.g. AML.T0001@5.0.1);
+# strip the @-token before {id} substitution so the URI targets the base ID.
+technique_id = 'AML.T0001@5.0.1'
+base_id = technique_id.split('@', 1)[0]
+uri = mitre_atlas['techniqueUriPattern'].replace('{id}', base_id)
 print(f"Technique URI: {uri}")
 ```
 

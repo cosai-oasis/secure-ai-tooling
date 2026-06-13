@@ -108,7 +108,7 @@ controls:
       - riskRetrievalVectorStorePoisoning
     mappings:
       mitre-atlas:
-        - AML.M0007
+        - AML.M0007@5.0.1
     lifecycleStage:
       - data-preparation
       - model-training
@@ -219,10 +219,10 @@ controls:
       - riskStaleAgentIdentityBinding
     mappings:
       mitre-atlas:
-        - AML.M0013
-        - AML.M0014
+        - AML.M0013@5.0.1
+        - AML.M0014@5.0.1
       nist-ai-rmf:
-        - MS-2.3
+        - MEASURE-2.3@1.0
     lifecycleStage:
       - data-preparation
       - model-training
@@ -300,7 +300,7 @@ controls:
       - riskCrossTenantCredentialPropagation
     mappings:
       mitre-atlas:
-        - AML.M0011
+        - AML.M0011@5.0.1
     lifecycleStage:
       - development
       - model-training
@@ -335,12 +335,12 @@ controls:
       - riskInsecureIntegratedComponent
     mappings:
       mitre-atlas:
-        - AML.M0010
-        - AML.M0015
-        - AML.M0020
-        - AML.M0024
+        - AML.M0010@5.0.1
+        - AML.M0015@5.0.1
+        - AML.M0020@5.0.1
+        - AML.M0024@5.0.1
       owasp-top10-llm:
-        - LLM01
+        - LLM01:2025
     lifecycleStage:
       - runtime
     impactType:
@@ -376,11 +376,11 @@ controls:
       - riskRetrievalVectorStorePoisoning
     mappings:
       mitre-atlas:
-        - AML.M0020
-        - AML.M0024
+        - AML.M0020@5.0.1
+        - AML.M0024@5.0.1
       owasp-top10-llm:
-        - LLM02
-        - LLM05
+        - LLM02:2025
+        - LLM05:2025
     lifecycleStage:
       - runtime
     impactType:
@@ -413,9 +413,9 @@ controls:
       - riskInsecureModelOutput
     mappings:
       mitre-atlas:
-        - AML.M0003
-        - AML.M0006
-        - AML.M0008
+        - AML.M0003@5.0.1
+        - AML.M0006@5.0.1
+        - AML.M0008@5.0.1
     lifecycleStage:
       - model-training
       - evaluation
@@ -453,9 +453,9 @@ controls:
       - riskModelReverseEngineering
     mappings:
       mitre-atlas:
-        - AML.M0019
+        - AML.M0019@5.0.1
       owasp-top10-llm:
-        - LLM10
+        - LLM10:2025
     lifecycleStage:
       - runtime
     impactType:
@@ -535,12 +535,12 @@ controls:
       - riskCrossTenantCredentialPropagation
     mappings:
       mitre-atlas:
-        - AML.M0028
+        - AML.M0028@5.0.1
       nist-ai-rmf:
-        - MS-2.11
-        - GV-6.2
+        - MEASURE-2.11@1.0
+        - GOVERN-6.2@1.0
       owasp-top10-llm:
-        - LLM06
+        - LLM06:2025
     lifecycleStage:
       - development
       - runtime
@@ -779,8 +779,8 @@ controls:
       - riskAgentDelegationChainOpacity
     mappings:
       nist-ai-rmf:
-        - GV-1.6
-        - MP-3.4
+        - GOVERN-1.6@1.0
+        - MAP-3.4@1.0
     lifecycleStage:
       - deployment
       - runtime
@@ -829,10 +829,10 @@ controls:
       - riskAgentDelegationChainOpacity
     mappings:
       mitre-atlas:
-        - AML.M0013
+        - AML.M0013@5.0.1
       nist-ai-rmf:
-        - MP-3.4
-        - MS-2.9
+        - MAP-3.4@1.0
+        - MEASURE-2.9@1.0
     lifecycleStage:
       - deployment
       - runtime
@@ -885,10 +885,10 @@ controls:
       - riskStaleAgentIdentityBinding
     mappings:
       owasp-top10-llm:
-        - LLM06
+        - LLM06:2025
       nist-ai-rmf:
-        - MS-2.10
-        - GV-6.2
+        - MEASURE-2.10@1.0
+        - GOVERN-6.2@1.0
     lifecycleStage:
       - deployment
       - runtime
@@ -974,10 +974,10 @@ controls:
       - riskZombieShadowMCPServers
     mappings:
       nist-ai-rmf:
-        - MS-2.7
-        - MP-3.4
+        - MEASURE-2.7@1.0
+        - MAP-3.4@1.0
       owasp-top10-llm:
-        - LLM03
+        - LLM03:2025
     lifecycleStage:
       - deployment
       - runtime
@@ -1043,8 +1043,8 @@ controls:
       - riskMCPTransportHijacking
     mappings:
       nist-ai-rmf:
-        - MP-3.4
-        - MS-2.7
+        - MAP-3.4@1.0
+        - MEASURE-2.7@1.0
     lifecycleStage:
       - deployment
       - runtime
@@ -1093,12 +1093,12 @@ controls:
       - riskEconomicDenialOfWallet
     mappings:
       owasp-top10-llm:
-        - LLM10
+        - LLM10:2025
       mitre-atlas:
-        - AML.M0004
+        - AML.M0004@5.0.1
       nist-ai-rmf:
-        - MS-2.6
-        - MG-2.1
+        - MEASURE-2.6@1.0
+        - MANAGE-2.1@1.0
     lifecycleStage:
       - deployment
       - runtime

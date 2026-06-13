@@ -146,6 +146,49 @@ else
     FAILURES=$((FAILURES + 1))
 fi
 
+# Content schema validation — validate each consumer YAML against its schema,
+# mirroring the per-file `schema: <X>.yaml` check-jsonschema hooks in
+# .pre-commit-config.yaml (same --schemafile / --base-uri invocation). The
+# meta-validation above only checks that the schema FILES are valid JSON Schema;
+# it never validates the content. Post-#343 the strict consumer schemas make
+# framework-mapping pinning mandatory, so this is where the full-tree sweep
+# enforces the same mandatory-pin gate as pre-commit and CI. Without it the sweep
+# gives a false all-clear on an unpinned value. One explicit block per consumer
+# (matching this script's unrolled per-validator style) so the conformance is
+# greppable and a dropped file cannot hide behind a loop variable.
+banner "Content schema validation"
+if check-jsonschema --schemafile risk-map/schemas/risks.schema.json \
+    --base-uri file://./risk-map/schemas/ risk-map/yaml/risks.yaml; then
+    pass_msg "Content schema: risks.yaml"
+else
+    fail_msg "Content schema validation failed for risks.yaml"
+    FAILURES=$((FAILURES + 1))
+fi
+
+if check-jsonschema --schemafile risk-map/schemas/controls.schema.json \
+    --base-uri file://./risk-map/schemas/ risk-map/yaml/controls.yaml; then
+    pass_msg "Content schema: controls.yaml"
+else
+    fail_msg "Content schema validation failed for controls.yaml"
+    FAILURES=$((FAILURES + 1))
+fi
+
+if check-jsonschema --schemafile risk-map/schemas/components.schema.json \
+    --base-uri file://./risk-map/schemas/ risk-map/yaml/components.yaml; then
+    pass_msg "Content schema: components.yaml"
+else
+    fail_msg "Content schema validation failed for components.yaml"
+    FAILURES=$((FAILURES + 1))
+fi
+
+if check-jsonschema --schemafile risk-map/schemas/personas.schema.json \
+    --base-uri file://./risk-map/schemas/ risk-map/yaml/personas.yaml; then
+    pass_msg "Content schema: personas.yaml"
+else
+    fail_msg "Content schema validation failed for personas.yaml"
+    FAILURES=$((FAILURES + 1))
+fi
+
 banner "Component edge validation"
 if python3 scripts/hooks/validate_riskmap.py --force; then
     pass_msg "Component edges"

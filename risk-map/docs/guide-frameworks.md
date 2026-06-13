@@ -46,6 +46,17 @@ frameworks:
 - `techniqueUriPattern` - URL pattern with `{id}` placeholder
 - `documentUri` - Direct link to specification document
 
+> **Mapping values are not optional, even though the registry `version:` field is.**
+> The `version:` field above is a property of the framework *definition* and may be
+> `null` (STRIDE, for example, is unversioned). A framework *mapping value* — the
+> string a risk, control, or persona lists under `mappings.<framework>` — is
+> different: post-ADR-027 it **must** carry its version token (`AML.T0020@5.0.1`,
+> `GOVERN-1.1@1.0`, `LLM01:2025`, `AI Producer@2022`). STRIDE is the sole tokenless
+> exception. Generate values with `framework_mapping_maintainer.py` rather than
+> hand-typing them; an unpinned value is rejected at commit by `check-jsonschema`
+> and `validate-mapping-purity`. See the canonical
+> [framework mappings style guide](contributing/framework-mappings-style-guide.md).
+
 ---
 
 ## Adding a New Framework
@@ -139,10 +150,10 @@ risks:
     # ... other required fields ...
     mappings:
       mitre-atlas:
-        - AML.T0018
-        - AML.T0020
+        - AML.T0018@5.0.1
+        - AML.T0020@5.0.1
       stride:
-        - tampering
+        - Tampering
 ```
 
 ### Example: Adding Framework Mappings to Controls
@@ -156,9 +167,9 @@ controls:
     # ... other required fields ...
     mappings:
       mitre-atlas:
-        - AML.M0005
+        - AML.M0005@5.0.1
       nist-ai-rmf:
-        - MP-4.1
+        - MAP-4.1@1.0
 ```
 
 **Note**: Risks and controls also support additional optional metadata fields (`lifecycleStage`, `impactType`, `actorAccess`). See [Metadata Fields Guide](guide-metadata.md) for details
@@ -182,7 +193,7 @@ personas:
         Actors that develop, train, evaluate, and tune AI/ML models...
     mappings:
       iso-22989:
-        - AI Producer
+        - AI Producer@2022
     responsibilities:
       - Model architecture design and training
       - Model evaluation and validation
@@ -192,12 +203,12 @@ personas:
 
 | CoSAI Persona | ISO 22989 Actor |
 |---------------|-----------------|
-| `personaModelProvider` | AI Producer |
-| `personaDataProvider` | AI Partner (data supplier) |
-| `personaPlatformProvider` | AI Partner (infrastructure provider) |
-| `personaAgenticProvider` | AI Partner (tooling provider) |
-| `personaApplicationDeveloper` | AI Customer (application builder) |
-| `personaEndUser` | AI Customer (end user) |
+| `personaModelProvider` | AI Producer@2022 |
+| `personaDataProvider` | AI Partner (data supplier)@2022 |
+| `personaPlatformProvider` | AI Partner (infrastructure provider)@2022 |
+| `personaAgenticProvider` | AI Partner (tooling provider)@2022 |
+| `personaApplicationDeveloper` | AI Customer (application builder)@2022 |
+| `personaEndUser` | AI Customer (end user)@2022 |
 | `personaGovernance` | (No direct ISO 22989 mapping) |
 
 See [Personas Guide](guide-personas.md) for detailed persona descriptions and responsibilities.
@@ -224,12 +235,12 @@ See [Personas Guide](guide-personas.md) for detailed persona descriptions and re
     - controlModelAndDataIntegrityManagement
   mappings:
     mitre-atlas:
-      - AML.T0010
+      - AML.T0010@5.0.1
     stride:
-      - tampering
-      - elevation-of-privilege
+      - Tampering
+      - ElevationOfPrivilege
     owasp-top10-llm:
-      - LLM05
+      - LLM05:2025
   lifecycleStage:
     - data-preparation
     - model-training
@@ -261,7 +272,9 @@ See [Personas Guide](guide-personas.md) for detailed persona descriptions and re
     - riskModelDeploymentTampering
   mappings:
     mitre-atlas:
-      - AML.M0013
+      - AML.M0013@5.0.1
+    # TODO(#343 follow-up): SC-8 / SI-7 are NIST SP 800-53 control IDs, not NIST
+    # AI RMF function IDs — a pre-existing content smell to reconcile on develop.
     nist-ai-rmf:
       - SC-8
       - SI-7
@@ -287,8 +300,9 @@ The schema enforces these validation rules:
 1. **Framework ID Validation**: All keys in the `mappings` object must match framework IDs defined in the frameworks schema enum
 2. **Array Values**: Each framework mapping must be an array of strings
 3. **Optional Fields**: All four metadata fields (`mappings`, `lifecycleStage`, `impactType`, `actorAccess`) are optional
-4. **Enum Constraints**: Values in `lifecycleStage`, `impactType`, and `actorAccess` must match their respective schema enums
-5. **Framework Definition**: Each framework in `frameworks.yaml` must include all required fields (`id`, `name`, `fullName`, `description`, `baseUri`)
+4. **Version-Pinned Mapping Values**: When `mappings` is present, every value must carry its version token (`AML.T0020@5.0.1`, `GOVERN-1.1@1.0`, `LLM01:2025`, `AI Producer@2022`); STRIDE is the only tokenless framework. This is distinct from the optional registry `version:` field. Generate values with `framework_mapping_maintainer.py` — an unpinned value is rejected by `check-jsonschema` and `validate-mapping-purity`. See the [framework mappings style guide](contributing/framework-mappings-style-guide.md).
+5. **Enum Constraints**: Values in `lifecycleStage`, `impactType`, and `actorAccess` must match their respective schema enums
+6. **Framework Definition**: Each framework in `frameworks.yaml` must include all required fields (`id`, `name`, `fullName`, `description`, `baseUri`)
 
 ---
 
@@ -299,12 +313,12 @@ The schema enforces these validation rules:
 ```yaml
 mappings:
   mitre-atlas:
-    - AML.T0001
-    - AML.T0002
-    - AML.T0003
+    - AML.T0001@5.0.1
+    - AML.T0002@5.0.1
+    - AML.T0003@5.0.1
   stride:
-    - spoofing
-    - tampering
+    - Spoofing
+    - Tampering
 ```
 
 ### Partial Metadata
@@ -315,7 +329,7 @@ You can include only the fields relevant to your risk or control:
 # Only mappings
 mappings:
   mitre-atlas:
-    - AML.T0015
+    - AML.T0015@5.0.1
 
 # Only lifecycle and impact
 lifecycleStage:
@@ -421,12 +435,13 @@ for risk in risks_data['risks']:
             'techniques': mappings['mitre-atlas']
         }
 
-# Find risks mapping to a specific technique
-target_technique = 'AML.T0020'
+# Find risks mapping to a specific technique. Mapping values are version-pinned,
+# so the lookup key carries its @-token to match the on-disk value exactly.
+target_technique = 'AML.T0020@5.0.1'
 for risk_id, info in mitre_atlas_risks.items():
     if target_technique in info['techniques']:
         print(f"{risk_id}: {info['title']} -> {target_technique}")
-# Output: riskDataPoisoning: Data Poisoning -> AML.T0020
+# Output: riskDataPoisoning: Data Poisoning -> AML.T0020@5.0.1
 ```
 
 ### Example 3: Query Controls by Confidentiality Impact
@@ -522,12 +537,15 @@ if 'mitre-atlas' in mappings:
     if pattern:
         print(f"MITRE ATLAS techniques for {risk['title']}:")
         for technique in mappings['mitre-atlas']:
-            uri = pattern.replace('{id}', technique)
+            # Mapping values are version-pinned (e.g. AML.T0020@5.0.1). Strip the
+            # @-token before substitution so the URI targets the base technique ID.
+            base_id = technique.split('@', 1)[0]
+            uri = pattern.replace('{id}', base_id)
             print(f"  - {technique}: {uri}")
 # Output:
 #   MITRE ATLAS techniques for Data Poisoning:
-#   - AML.T0020: https://atlas.mitre.org/techniques/AML.T0020
-#   - AML.T0019: https://atlas.mitre.org/techniques/AML.T0019
+#   - AML.T0020@5.0.1: https://atlas.mitre.org/techniques/AML.T0020
+#   - AML.T0019@5.0.1: https://atlas.mitre.org/techniques/AML.T0019
 #   - ...
 ```
 
@@ -629,9 +647,9 @@ for persona in personas_data['personas']:
 
 # Output:
 #   Model Provider (personaModelProvider):
-#     ISO 22989: AI Producer
+#     ISO 22989: AI Producer@2022
 #   Data Provider (personaDataProvider):
-#     ISO 22989: AI Partner (data supplier)
+#     ISO 22989: AI Partner (data supplier)@2022
 #   ...
 ```
 
@@ -646,11 +664,11 @@ When using `techniqueUriPattern`, follow these guidelines:
    techniqueUriPattern: "https://example.com/techniques/{id}"
    ```
 
-2. **ID Format**: Ensure technique IDs in mappings match the expected format
+2. **ID Format**: Mapping values are version-pinned; strip the `@`-token before `{id}` substitution so the URI targets the base technique ID
    ```yaml
    mappings:
      mitre-atlas:
-       - AML.T0020  # Will become: https://atlas.mitre.org/techniques/AML.T0020
+       - AML.T0020@5.0.1  # @-token stripped → https://atlas.mitre.org/techniques/AML.T0020
    ```
 
 3. **Validation**: The pattern should produce valid, accessible URIs when IDs are substituted

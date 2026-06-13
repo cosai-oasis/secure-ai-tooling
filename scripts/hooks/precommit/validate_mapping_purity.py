@@ -10,8 +10,10 @@ risks/controls/components/personas.yaml, the validator classifies the value
 as "ok", "skip", or "fail" according to the D4c / D3a algorithm:
 
   1. Unknown framework key → FAIL (fail-loud).
-  2. Versioned framework + value has no `@` or `:` → SKIP (legacy unpinned;
-     migration is #343).
+  2. Versioned framework + value has no `@` or `:` → FAIL (unpinned value; a
+     version token is mandatory now that #343 has migrated the corpus and the
+     strict schema enforces pinning — ADR-027 D7/M1 "block" phase. The prior
+     "skip" was the pre-migration "warn" tolerance and is retired).
   3. Otherwise, attempt split_pinned_value + compose_pinned_value round-trip:
      - FrameworkMappingError raised AND versioned → FAIL (delimiter present
        but won't round-trip = tampered pinned value).
@@ -89,6 +91,10 @@ def classify_value(
     Returns:
         Tuple (status, detail) where status is one of "ok", "skip", "fail".
         detail is a human-readable string describing the failure, or None.
+
+    Post-#343 note: a versioned framework value lacking a version token now FAILs
+    (step 2) — pinning is mandatory. "skip" survives only for the unversioned
+    STRIDE framework (step 3, FrameworkMappingError + unversioned).
     """
     # Step 1: unknown framework key is always a failure (D4c fail-loud).
     if fw_id not in registry:
@@ -96,14 +102,22 @@ def classify_value(
 
     is_versioned = registry[fw_id].get("version") is not None
 
-    # Step 2: versioned framework with no delimiter → legacy unpinned form.
-    # D3a / H3: `@` and `:` never appear in any legacy base ref or concept id,
-    # so their absence is an unambiguous "this was NOT intended as a pinned value"
-    # signal. Do NOT build a per-framework delimiter table — delimiter selection
-    # belongs inside split_pinned_value / compose_pinned_value; we only test for
-    # presence of either reserved character.
+    # Step 2: versioned framework with no delimiter → unpinned value → FAIL.
+    # D3a / H3: `@` and `:` never appear in any legacy base ref or concept id, so
+    # their absence is an unambiguous "this value carries no version token". Post
+    # -#343 the corpus is migrated and the strict schema makes pinning mandatory,
+    # so an unpinned value on a versioned framework is invalid (the ADR-027 D7/M1
+    # "block" phase; the pre-migration "skip" tolerance is retired). check-jsonschema
+    # rejects the same value — the purity validator must agree.
+    # Do NOT build a per-framework delimiter table — delimiter selection belongs
+    # inside split_pinned_value / compose_pinned_value; we only test for presence
+    # of either reserved character.
     if is_versioned and ("@" not in value and ":" not in value):
-        return ("skip", None)
+        return (
+            "fail",
+            f"{value!r}: unpinned value for versioned framework {fw_id!r}; "
+            f"a version token is required (ADR-027 D7/M1)",
+        )
 
     # Step 3: attempt split + compose round-trip.
     try:

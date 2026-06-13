@@ -90,28 +90,37 @@
         "examples": { "$ref": "riskmap.schema.json#/definitions/utils/prose-strict" },
         "mappings": {
           "type": "object",
-          "description": "Cross-references to external security frameworks. Per ADR-019 D5 + ADR-022 D5b: mitre-atlas, iso-22989, and eu-ai-act receive per-framework strict patterns from frameworks.schema.json; stride, nist-ai-rmf, and owasp-top10-llm fall through to the loose catch-all because their current entries use non-canonical forms. Keys must match valid framework IDs in frameworks.schema.json.",
+          "description": "Per ADR-019 D5 + ADR-027 D3a/D7 (#343): all six framework keys strictly wired to framework-mapping-patterns-pinned; additionalProperties:false closes the legacy catch-all.",
           "propertyNames": {
             "$ref": "frameworks.schema.json#/definitions/framework/properties/id"
           },
           "properties": {
             "mitre-atlas": {
               "type": "array",
-              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns/properties/mitre-atlas" }
+              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/mitre-atlas" }
+            },
+            "nist-ai-rmf": {
+              "type": "array",
+              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/nist-ai-rmf" }
+            },
+            "stride": {
+              "type": "array",
+              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/stride" }
+            },
+            "owasp-top10-llm": {
+              "type": "array",
+              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/owasp-top10-llm" }
             },
             "iso-22989": {
               "type": "array",
-              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns/properties/iso-22989" }
+              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/iso-22989" }
             },
             "eu-ai-act": {
               "type": "array",
-              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns/properties/eu-ai-act" }
+              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/eu-ai-act" }
             }
           },
-          "additionalProperties": {
-            "type": "array",
-            "items": { "type": "string" }
-          }
+          "additionalProperties": false
         },
         "lifecycleStage": {
           "description": "AI system lifecycle phases where applicable",

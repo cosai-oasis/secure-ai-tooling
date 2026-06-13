@@ -41,20 +41,40 @@
         },
         "mappings": {
           "type": "object",
-          "description": "Maps this persona to equivalent actors in external frameworks. Keys must match valid framework IDs defined in frameworks.schema.json.",
+          "description": "Per ADR-021 D5 + ADR-027 D3a/D7 (#343): all six framework keys strictly wired to framework-mapping-patterns-pinned; additionalProperties:false closes the legacy catch-all.",
           "propertyNames": {
             "$ref": "frameworks.schema.json#/definitions/framework/properties/id"
           },
-          "additionalProperties": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "description": "Framework-specific actor identifier"
+          "properties": {
+            "mitre-atlas": {
+              "type": "array",
+              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/mitre-atlas" }
+            },
+            "nist-ai-rmf": {
+              "type": "array",
+              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/nist-ai-rmf" }
+            },
+            "stride": {
+              "type": "array",
+              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/stride" }
+            },
+            "owasp-top10-llm": {
+              "type": "array",
+              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/owasp-top10-llm" }
+            },
+            "iso-22989": {
+              "type": "array",
+              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/iso-22989" }
+            },
+            "eu-ai-act": {
+              "type": "array",
+              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/eu-ai-act" }
             }
           },
+          "additionalProperties": false,
           "examples": [
             {
-              "iso-22989": ["AI system provider", "Data provider"]
+              "iso-22989": ["AI Producer@2022"]
             }
           ]
         },

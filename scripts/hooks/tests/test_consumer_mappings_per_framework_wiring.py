@@ -1,25 +1,28 @@
 #!/usr/bin/env python3
 """
-Tests for the selective per-framework wiring in risks + controls mappings.
+Tests for strict per-framework wiring in the risks + controls mappings block.
 
-Per ADR-019 D5 and ADR-020 D5, risks.schema.json and controls.schema.json
-declare a mappings block with a hybrid shape:
-- Per-property strict wiring for mitre-atlas, iso-22989, eu-ai-act (regex via
-  $ref to frameworks.schema.json#/definitions/framework-mapping-patterns).
-- Loose additionalProperties catch-all for stride, nist-ai-rmf, owasp-top10-llm
-  whose current YAML content does not match the ADR-022 D5b canonical regexes.
+Phase 2 of issue #343 flips risks.schema.json and controls.schema.json from the
+hybrid (selective-strict + loose catch-all) shape to a fully-strict shape per
+ADR-027 D3a and D7:
 
-The decision is deliberate and selective: only frameworks whose current YAML
-content already matches the canonical regexes receive per-property strict
-wiring. Subsequent content normalisation will fix the remaining frameworks.
+- ALL six frameworks declared in mappings.properties, each items-$ref pointing at
+  frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/<fw>.
+- additionalProperties: false (the loose catch-all is removed).
+- propertyNames $ref to the framework id enum is KEPT (already present).
 
-Coverage:
-- risks and controls schemas each have per-property mitre-atlas/iso-22989/eu-ai-act.
-- additionalProperties catch-all is present.
-- mitre-atlas "AML.T0020" validates; "aml-t0020" is rejected.
-- stride "tampering" passes (loose path — not yet normalised to PascalCase).
-- Unknown framework key "made-up-framework" is rejected via propertyNames.
-- Current risks.yaml and controls.yaml still pass check-jsonschema.
+The base `framework-mapping-patterns` block stays byte-for-byte in
+frameworks.schema.json; this test file only tests the consumer $ref repoint.
+
+After the flip:
+- Pinned forms ACCEPTED: AML.T0020@5.0.1, GOVERN-6.2@1.0, MEASURE-2.11@1.0,
+  Tampering, InformationDisclosure, LLM06:2025, AI Producer@2022, Article 5@2024.
+- Legacy forms REJECTED: AML.T0020, GV-6.2, MS-2.11, tampering, spoofing,
+  information-disclosure, LLM06, AI Producer, Article 5.
+- Malformed STILL REJECTED: aml-t0020, AML.X0020, off-enum iso values.
+- Unknown framework key REJECTED via propertyNames + additionalProperties:false.
+
+These tests assert the strict ADR-027 pinned wiring that the schema now enforces (#343).
 """
 
 import subprocess
@@ -38,64 +41,109 @@ from conftest import _load_schema, _make_registry  # noqa: E402, I001  conftest 
 
 
 # ============================================================================
-# Module-level constants — current-YAML-content audit data
+# Module-level constants
 # ============================================================================
 
-# Consumer schemas receiving the hybrid wiring.
+# Consumer schemas being flipped. Both get identical strict treatment.
 CONSUMER_SCHEMAS = [
     ("risks.schema.json", "risk"),
     ("controls.schema.json", "control"),
 ]
 
-# These frameworks get strict per-property wiring because their current YAML
-# content already matches the ADR-022 D5b canonical regex patterns.
-STRICTLY_WIRED_FRAMEWORKS = {"mitre-atlas", "iso-22989", "eu-ai-act"}
+ALL_SIX_FRAMEWORKS = {
+    "mitre-atlas",
+    "nist-ai-rmf",
+    "stride",
+    "owasp-top10-llm",
+    "iso-22989",
+    "eu-ai-act",
+}
 
-# These frameworks fall through to the loose additionalProperties catch-all
-# because current YAML uses non-canonical short forms:
-#   nist-ai-rmf:     GV-6.2, MS-2.11     — short prefix; pattern needs GOVERN/MAP/...
-#   owasp-top10-llm: LLM01, LLM09        — missing version year; pattern needs LLM\d{2}:\d{4}
-#   stride:          tampering, spoofing  — lowercase-kebab; pattern needs PascalCase
-LOOSE_FRAMEWORKS = {"stride", "nist-ai-rmf", "owasp-top10-llm"}
-
-# mitre-atlas valid examples drawn from current risks.yaml content.
-MITRE_ATLAS_VALID: list[str] = [
-    "AML.T0020",
-    "AML.M0011",
-    "AML.T0010.002",
+# Pinned forms that must be ACCEPTED after the strict flip.
+# Each value includes the version token required by framework-mapping-patterns-pinned.
+MITRE_ATLAS_PINNED_VALID: list[str] = [
+    "AML.T0020@5.0.1",
+    "AML.M0011@5.0.1",
+    "AML.T0010.002@5.0.1",
 ]
 
-# mitre-atlas malformed examples that must be rejected after strict wiring.
-MITRE_ATLAS_INVALID: list[str] = [
-    "aml-t0020",  # lowercase-kebab (external-references surface)
-    "AML.T20",  # short technique ID
-    "AML.X0020",  # non-T/M letter
+NIST_PINNED_VALID: list[str] = [
+    "GOVERN-6.2@1.0",
+    "MEASURE-2.11@1.0",
+    "MEASURE-2.3@1.0",
 ]
 
-# stride current-YAML values that must still pass via the loose catch-all.
-STRIDE_LOOSE_VALID: list[str] = [
-    "tampering",
+STRIDE_PINNED_VALID: list[str] = [
+    # STRIDE has no version token (version is null); PascalCase form is the pinned shape.
+    "Tampering",
+    "Spoofing",
+    "InformationDisclosure",
+    "DenialOfService",
+    "Repudiation",
+]
+
+OWASP_PINNED_VALID: list[str] = [
+    "LLM06:2025",
+    "LLM01:2025",
+    "LLM09:2025",
+]
+
+ISO_PINNED_VALID: list[str] = [
+    "AI Producer@2022",
+    "AI Customer (application builder)@2022",
+    "AI Partner (data supplier)@2022",
+]
+
+EU_AI_ACT_PINNED_VALID: list[str] = [
+    "Article 5@2024",
+    "Article 5(1)@2024",
+    "Article 50@2024",
+]
+
+# Legacy forms that must be REJECTED after the strict flip (no version token).
+MITRE_ATLAS_LEGACY_INVALID: list[str] = [
+    "AML.T0020",  # missing @5.0.1
+    "AML.M0011",  # missing @5.0.1
+]
+
+NIST_LEGACY_INVALID: list[str] = [
+    "GV-6.2",  # old short-prefix form (not GOVERN/MAP/MEASURE/MANAGE prefix)
+    "MS-2.11",  # old short-prefix form
+    "GOVERN-6.2",  # base pattern form, missing @1.0 version
+]
+
+STRIDE_LEGACY_INVALID: list[str] = [
+    "tampering",  # lowercase; stride pinned still requires PascalCase
     "spoofing",
-    "repudiation",
-    "information-disclosure",
-    "denial-of-service",
+    "information-disclosure",  # kebab-case
 ]
 
-# nist-ai-rmf current-YAML values (short prefix form).
-NIST_LOOSE_VALID: list[str] = ["GV-6.2", "MS-2.11", "MS-2.3"]
-
-# owasp-top10-llm current-YAML values (missing version year).
-OWASP_LOOSE_VALID: list[str] = ["LLM01", "LLM05", "LLM09"]
-
-# iso-22989 bare strings from current personas.yaml.
-ISO_VALID: list[str] = [
-    "AI Producer",
-    "AI Customer (application builder)",
-    "Arbitrary descriptor",
+OWASP_LEGACY_INVALID: list[str] = [
+    "LLM06",  # missing :2025 version
+    "LLM01",
+    "LLM09",
 ]
 
-# eu-ai-act is currently empty in YAML; any Article-form value should pass.
-EU_AI_ACT_VALID: list[str] = ["Article 5", "Article 5(1)", "Article 50"]
+ISO_LEGACY_INVALID: list[str] = [
+    "AI Producer",  # missing @2022
+    "Data supplier",  # off-enum AND missing @2022
+]
+
+EU_AI_ACT_LEGACY_INVALID: list[str] = [
+    "Article 5",  # missing @2024
+    "Article 5(1)",  # missing @2024
+]
+
+# Malformed values that must be REJECTED regardless of version token.
+MITRE_ATLAS_MALFORMED: list[str] = [
+    "aml-t0020",  # lowercase-kebab
+    "AML.X0020",  # non-T/M letter
+    "AML.T20",  # short ID
+]
+
+ISO_OFF_ENUM: list[str] = [
+    "AI Part (Data supplier)@2022",  # wrong label (not in the 2022 enum)
+]
 
 
 # ============================================================================
@@ -114,7 +162,7 @@ def controls_schema(risk_map_schemas_dir: Path) -> dict:
 
 
 @pytest.fixture(scope="module")
-def schemas_registry(risk_map_schemas_dir: Path):
+def schemas_registry(risk_map_schemas_dir: Path) -> Registry:
     """Shared registry for risks + controls cross-file $ref resolution."""
     return _make_registry(risk_map_schemas_dir)
 
@@ -152,398 +200,602 @@ class TestSchemaMetaValidity:
 
 
 # ============================================================================
-# Structural shape of mappings (hybrid wiring)
+# Strict wiring shape — Phase 2 ADR-027 D3a/D7 contract
 # ============================================================================
 
 
-class TestMappingsStructure:
+class TestMappingsStrictWiringShape:
     """
-    The mappings block in risks/controls must have the hybrid wiring shape:
-    per-property strict entries + loose catch-all.
+    The mappings block in risks/controls declares:
+    - additionalProperties: false (catch-all removed).
+    - all six frameworks in properties, each items-$ref pointing at
+      framework-mapping-patterns-pinned.
+
+    These tests assert the strict ADR-027 D3a/D7 shape now enforced by the schema (#343).
     """
 
     @pytest.mark.parametrize("schema_file,entity_key", CONSUMER_SCHEMAS, ids=["risks", "controls"])
-    def test_mappings_has_additional_properties_catch_all(
+    def test_mappings_additional_properties_is_false(
         self, risk_map_schemas_dir: Path, schema_file: str, entity_key: str
     ):
         """
-        Test that the loose catch-all additionalProperties is present.
+        Test that mappings.additionalProperties is exactly false (catch-all removed).
 
-        Given: The mappings sub-schema in a consumer schema
-        When: Its additionalProperties is examined
-        Then: It is type:array with items type:string
+        Given: The mappings sub-schema in a consumer schema (strict #343 schema)
+        When: additionalProperties is inspected
+        Then: It is the boolean false — NOT a schema object catch-all
+
+        ADR-027 D3a: the consumer mappings block is fully strict; the loose
+        catch-all that allowed legacy forms has been removed (#343).
         """
         schema = _load_schema(risk_map_schemas_dir, schema_file)
         mappings = _get_mappings_schema(schema, entity_key)
-        additional = mappings.get("additionalProperties")
-        assert additional is not None, f"{schema_file} mappings must declare additionalProperties catch-all"
-        assert additional.get("type") == "array", "additionalProperties catch-all must be type: array"
-        assert additional.get("items", {}).get("type") == "string", "catch-all items must be type: string"
+        ap = mappings.get("additionalProperties", "<MISSING>")
+        assert ap is False, (
+            f"{schema_file} definitions/{entity_key}/properties/mappings must have "
+            f"additionalProperties: false (strict schema, #343 ADR-027 D3a); "
+            f"got: {ap!r}. The loose catch-all must be removed."
+        )
 
     @pytest.mark.parametrize("schema_file,entity_key", CONSUMER_SCHEMAS, ids=["risks", "controls"])
-    @pytest.mark.parametrize("framework_key", sorted(STRICTLY_WIRED_FRAMEWORKS))
-    def test_strictly_wired_framework_declared_in_properties(
+    @pytest.mark.parametrize("framework_key", sorted(ALL_SIX_FRAMEWORKS))
+    def test_all_six_frameworks_declared_in_properties(
         self, risk_map_schemas_dir: Path, schema_file: str, entity_key: str, framework_key: str
     ):
         """
-        Test that per-property entries for mitre-atlas/iso-22989/eu-ai-act exist.
+        Test that all six framework keys are declared in mappings.properties.
 
         Given: The mappings sub-schema properties block in a consumer schema
-        When: A strictly-wired framework key is looked up
-        Then: It is present
+        When: A framework key is looked up
+        Then: It is present (all six, not just the previous three)
+
+        ADR-027 D3a: all six frameworks are explicitly wired with per-property
+        entries pointing at framework-mapping-patterns-pinned (#343).
         """
         schema = _load_schema(risk_map_schemas_dir, schema_file)
         mappings = _get_mappings_schema(schema, entity_key)
         props = mappings.get("properties", {})
         assert framework_key in props, (
             f"{schema_file} mappings.properties must declare '{framework_key}' "
-            "(strictly-wired per ADR-019 D5 / ADR-020 D5)"
+            "(all six frameworks strictly wired per ADR-027 D3a, #343 Phase 2)"
+        )
+
+    @pytest.mark.parametrize("schema_file,entity_key", CONSUMER_SCHEMAS, ids=["risks", "controls"])
+    @pytest.mark.parametrize("framework_key", sorted(ALL_SIX_FRAMEWORKS))
+    def test_framework_items_ref_points_at_pinned_block(
+        self, risk_map_schemas_dir: Path, schema_file: str, entity_key: str, framework_key: str
+    ):
+        """
+        Test that each framework's items $ref resolves to framework-mapping-patterns-pinned.
+
+        Given: The mappings.properties.<framework_key>.items sub-schema
+        When: Its $ref is inspected
+        Then: It ends in 'framework-mapping-patterns-pinned/properties/<framework_key>'
+
+        ADR-027 D7: the consumer $refs point from framework-mapping-patterns
+        (base block) to framework-mapping-patterns-pinned (strict block) (#343).
+        """
+        schema = _load_schema(risk_map_schemas_dir, schema_file)
+        mappings = _get_mappings_schema(schema, entity_key)
+        fw_schema = mappings.get("properties", {}).get(framework_key, {})
+        items = fw_schema.get("items", {})
+        ref = items.get("$ref", "")
+        expected_suffix = f"framework-mapping-patterns-pinned/properties/{framework_key}"
+        assert ref.endswith(expected_suffix), (
+            f"{schema_file} mappings.properties.{framework_key}.items.$ref must end with "
+            f"'{expected_suffix}' (pinned block, ADR-027 D7, #343 Phase 2); got: {ref!r}"
         )
 
 
 # ============================================================================
-# mitre-atlas strict wiring — valid / invalid behavioral tests
+# Pinned values ACCEPTED
 # ============================================================================
 
 
-class TestMitreAtlasStrictWiring:
+class TestPinnedValuesAccepted:
     """
-    mitre-atlas items must match ^AML\\.(T|M)\\d{4}(\\.\\d{3})?$ per ADR-022 D5b.
-    All 34 distinct values in the current corpus match this pattern, so strict
-    wiring is safe.
+    Per-framework pinned-form values are accepted by the strict schema (#343).
+
+    The pinned patterns require the version token (@5.0.1 etc.); the schemas
+    now point at framework-mapping-patterns-pinned (not the base block).
     """
 
-    @pytest.mark.parametrize("valid_id", MITRE_ATLAS_VALID)
-    def test_mitre_atlas_valid_accepted_in_risks(
+    @pytest.mark.parametrize("valid_id", MITRE_ATLAS_PINNED_VALID)
+    def test_mitre_atlas_pinned_accepted_in_risks(
         self, risks_schema: dict, schemas_registry: Registry, valid_id: str
     ):
         """
-        Test that canonical mitre-atlas IDs pass in risks mappings.
+        Test that pinned mitre-atlas IDs (with @5.0.1) pass in risks mappings.
 
-        Given: risks mappings schema with mitre-atlas strict wiring
+        Given: risks mappings schema with mitre-atlas strict-pinned wiring
         When: {"mitre-atlas": [<valid_id>]} is validated
-        Then: No errors are raised
+        Then: No errors — the @5.0.1 token satisfies the pinned pattern
+
+        The $ref now points at framework-mapping-patterns-pinned per ADR-027 D7 (#343).
         """
         mappings = _get_mappings_schema(risks_schema, "risk")
         validator = Draft7Validator(mappings, registry=schemas_registry)
         errors = list(validator.iter_errors({"mitre-atlas": [valid_id]}))
-        assert not errors, f"risks mitre-atlas {valid_id!r} must be accepted; got: {[e.message for e in errors]}"
+        assert not errors, (
+            f"risks mitre-atlas pinned value {valid_id!r} must be accepted; got: {[e.message for e in errors]}"
+        )
 
-    @pytest.mark.parametrize("invalid_id", MITRE_ATLAS_INVALID)
-    def test_mitre_atlas_invalid_rejected_in_risks(
-        self, risks_schema: dict, schemas_registry: Registry, invalid_id: str
-    ):
-        """
-        Test that malformed mitre-atlas IDs are rejected in risks mappings.
-
-        Given: risks mappings schema with mitre-atlas strict wiring
-        When: {"mitre-atlas": [<invalid_id>]} is validated
-        Then: ValidationError is raised
-        """
-        mappings = _get_mappings_schema(risks_schema, "risk")
-        validator = Draft7Validator(mappings, registry=schemas_registry)
-        errors = list(validator.iter_errors({"mitre-atlas": [invalid_id]}))
-        assert errors, f"risks mitre-atlas malformed ID {invalid_id!r} must be rejected"
-
-    @pytest.mark.parametrize("valid_id", MITRE_ATLAS_VALID)
-    def test_mitre_atlas_valid_accepted_in_controls(
+    @pytest.mark.parametrize("valid_id", MITRE_ATLAS_PINNED_VALID)
+    def test_mitre_atlas_pinned_accepted_in_controls(
         self, controls_schema: dict, schemas_registry: Registry, valid_id: str
     ):
         """
-        Test that canonical mitre-atlas IDs pass in controls mappings.
+        Test that pinned mitre-atlas IDs (with @5.0.1) pass in controls mappings.
 
-        Given: controls mappings schema with mitre-atlas strict wiring
+        Given: controls mappings schema with mitre-atlas strict-pinned wiring
         When: {"mitre-atlas": [<valid_id>]} is validated
-        Then: No errors are raised
+        Then: No errors
         """
         mappings = _get_mappings_schema(controls_schema, "control")
         validator = Draft7Validator(mappings, registry=schemas_registry)
         errors = list(validator.iter_errors({"mitre-atlas": [valid_id]}))
         assert not errors, (
-            f"controls mitre-atlas {valid_id!r} must be accepted; got: {[e.message for e in errors]}"
+            f"controls mitre-atlas pinned value {valid_id!r} must be accepted; got: {[e.message for e in errors]}"
         )
 
-    @pytest.mark.parametrize("invalid_id", MITRE_ATLAS_INVALID)
-    def test_mitre_atlas_invalid_rejected_in_controls(
-        self, controls_schema: dict, schemas_registry: Registry, invalid_id: str
+    @pytest.mark.parametrize("valid_id", NIST_PINNED_VALID)
+    def test_nist_ai_rmf_pinned_accepted_in_risks(
+        self, risks_schema: dict, schemas_registry: Registry, valid_id: str
     ):
         """
-        Test that malformed mitre-atlas IDs are rejected in controls mappings.
+        Test that pinned nist-ai-rmf IDs (GOVERN/MEASURE/MAP/MANAGE-N.N@1.0) pass.
 
-        Given: controls mappings schema with mitre-atlas strict wiring
-        When: {"mitre-atlas": [<invalid_id>]} is validated
-        Then: ValidationError is raised
+        Given: risks mappings schema with nist-ai-rmf strict-pinned wiring
+        When: {"nist-ai-rmf": [<valid_id>]} is validated
+        Then: No errors
+
+        nist-ai-rmf is wired in properties and points at the pinned block
+        per ADR-027 D3a (#343).
         """
+        mappings = _get_mappings_schema(risks_schema, "risk")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"nist-ai-rmf": [valid_id]}))
+        assert not errors, (
+            f"risks nist-ai-rmf pinned value {valid_id!r} must be accepted; got: {[e.message for e in errors]}"
+        )
+
+    @pytest.mark.parametrize("valid_id", NIST_PINNED_VALID)
+    def test_nist_ai_rmf_pinned_accepted_in_controls(
+        self, controls_schema: dict, schemas_registry: Registry, valid_id: str
+    ):
+        """Test that pinned nist-ai-rmf IDs pass in controls mappings."""
+        mappings = _get_mappings_schema(controls_schema, "control")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"nist-ai-rmf": [valid_id]}))
+        assert not errors, (
+            f"controls nist-ai-rmf pinned value {valid_id!r} must be accepted; got: {[e.message for e in errors]}"
+        )
+
+    @pytest.mark.parametrize("valid_id", STRIDE_PINNED_VALID)
+    def test_stride_pinned_accepted_in_risks(self, risks_schema: dict, schemas_registry: Registry, valid_id: str):
+        """
+        Test that STRIDE PascalCase values pass in risks mappings after the flip.
+
+        Given: risks mappings schema with stride strict-pinned wiring
+        When: {"stride": [<PascalCase-value>]} is validated
+        Then: No errors — stride pinned pattern uses same PascalCase as the base
+              but the value must come from stride's explicitly-wired properties entry
+
+        stride is now declared in properties per ADR-027 D3a (#343); the former
+        loose catch-all that stride fell through to has been removed.
+        """
+        mappings = _get_mappings_schema(risks_schema, "risk")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"stride": [valid_id]}))
+        assert not errors, (
+            f"risks stride pinned value {valid_id!r} must be accepted; got: {[e.message for e in errors]}"
+        )
+
+    @pytest.mark.parametrize("valid_id", STRIDE_PINNED_VALID)
+    def test_stride_pinned_accepted_in_controls(
+        self, controls_schema: dict, schemas_registry: Registry, valid_id: str
+    ):
+        """Test that STRIDE PascalCase values pass in controls mappings."""
+        mappings = _get_mappings_schema(controls_schema, "control")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"stride": [valid_id]}))
+        assert not errors, (
+            f"controls stride pinned value {valid_id!r} must be accepted; got: {[e.message for e in errors]}"
+        )
+
+    @pytest.mark.parametrize("valid_id", OWASP_PINNED_VALID)
+    def test_owasp_pinned_accepted_in_risks(self, risks_schema: dict, schemas_registry: Registry, valid_id: str):
+        """
+        Test that OWASP LLMnn:2025 values pass in risks mappings after the flip.
+
+        Given: risks mappings schema with owasp-top10-llm strict-pinned wiring
+        When: {"owasp-top10-llm": [<LLMnn:2025>]} is validated
+        Then: No errors
+
+        owasp-top10-llm is wired in properties and points at the pinned block
+        (pattern ^LLM\\d{2}:2025$) per ADR-027 D3a (#343).
+        """
+        mappings = _get_mappings_schema(risks_schema, "risk")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"owasp-top10-llm": [valid_id]}))
+        assert not errors, (
+            f"risks owasp-top10-llm pinned value {valid_id!r} must be accepted; got: {[e.message for e in errors]}"
+        )
+
+    @pytest.mark.parametrize("valid_id", OWASP_PINNED_VALID)
+    def test_owasp_pinned_accepted_in_controls(
+        self, controls_schema: dict, schemas_registry: Registry, valid_id: str
+    ):
+        """Test that OWASP LLMnn:2025 values pass in controls mappings."""
+        mappings = _get_mappings_schema(controls_schema, "control")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"owasp-top10-llm": [valid_id]}))
+        assert not errors, (
+            f"controls owasp-top10-llm pinned value {valid_id!r} must be accepted; "
+            f"got: {[e.message for e in errors]}"
+        )
+
+    @pytest.mark.parametrize("valid_id", ISO_PINNED_VALID)
+    def test_iso_22989_pinned_accepted_in_risks(
+        self, risks_schema: dict, schemas_registry: Registry, valid_id: str
+    ):
+        """
+        Test that iso-22989 enum-pinned values (with @2022) pass in risks mappings.
+
+        Given: risks mappings schema with iso-22989 strict-pinned wiring
+        When: {"iso-22989": [<role@2022>]} is validated
+        Then: No errors — the @2022 token satisfies the pinned oneOf enum
+
+        iso-22989 is now repointed to the pinned block (which uses a oneOf enum,
+        not a bare string) per ADR-027 D7/D8 (#343).
+        """
+        mappings = _get_mappings_schema(risks_schema, "risk")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"iso-22989": [valid_id]}))
+        assert not errors, (
+            f"risks iso-22989 pinned value {valid_id!r} must be accepted; got: {[e.message for e in errors]}"
+        )
+
+    @pytest.mark.parametrize("valid_id", ISO_PINNED_VALID)
+    def test_iso_22989_pinned_accepted_in_controls(
+        self, controls_schema: dict, schemas_registry: Registry, valid_id: str
+    ):
+        """Test that iso-22989 enum-pinned values (with @2022) pass in controls mappings."""
+        mappings = _get_mappings_schema(controls_schema, "control")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"iso-22989": [valid_id]}))
+        assert not errors, (
+            f"controls iso-22989 pinned value {valid_id!r} must be accepted; got: {[e.message for e in errors]}"
+        )
+
+    @pytest.mark.parametrize("valid_id", EU_AI_ACT_PINNED_VALID)
+    def test_eu_ai_act_pinned_accepted_in_risks(
+        self, risks_schema: dict, schemas_registry: Registry, valid_id: str
+    ):
+        """
+        Test that eu-ai-act Article N@2024 values pass in risks mappings.
+
+        Given: risks mappings schema with eu-ai-act strict-pinned wiring
+        When: {"eu-ai-act": [<Article N@2024>]} is validated
+        Then: No errors — the @2024 token satisfies the pinned pattern
+        """
+        mappings = _get_mappings_schema(risks_schema, "risk")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"eu-ai-act": [valid_id]}))
+        assert not errors, (
+            f"risks eu-ai-act pinned value {valid_id!r} must be accepted; got: {[e.message for e in errors]}"
+        )
+
+    @pytest.mark.parametrize("valid_id", EU_AI_ACT_PINNED_VALID)
+    def test_eu_ai_act_pinned_accepted_in_controls(
+        self, controls_schema: dict, schemas_registry: Registry, valid_id: str
+    ):
+        """Test that eu-ai-act Article N@2024 values pass in controls mappings."""
+        mappings = _get_mappings_schema(controls_schema, "control")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"eu-ai-act": [valid_id]}))
+        assert not errors, (
+            f"controls eu-ai-act pinned value {valid_id!r} must be accepted; got: {[e.message for e in errors]}"
+        )
+
+
+# ============================================================================
+# Legacy forms REJECTED
+# ============================================================================
+
+
+class TestLegacyFormsRejected:
+    """
+    Legacy (unpinned) forms are REJECTED by the strict schema (#343).
+
+    These formerly passed via the loose catch-all or via the base
+    framework-mapping-patterns (which had no version token requirement).
+    The strict pinned patterns now reject them.
+    """
+
+    @pytest.mark.parametrize("legacy_id", MITRE_ATLAS_LEGACY_INVALID)
+    def test_mitre_atlas_legacy_rejected_in_risks(
+        self, risks_schema: dict, schemas_registry: Registry, legacy_id: str
+    ):
+        """
+        Test that mitre-atlas IDs without @5.0.1 are rejected in risks mappings.
+
+        Given: risks mappings schema with strict-pinned mitre-atlas wiring
+        When: {"mitre-atlas": [<id-without-version>]} is validated
+        Then: ValidationError — pinned pattern ^AML\\.(T|M)\\d{4}(\\.\\d{3})?@(5\\.0\\.1)$ rejects it
+
+        The base pattern formerly accepted bare AML.Tnnnn; the pinned pattern now rejects it.
+        """
+        mappings = _get_mappings_schema(risks_schema, "risk")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"mitre-atlas": [legacy_id]}))
+        assert errors, (
+            f"risks mitre-atlas legacy value {legacy_id!r} must be REJECTED "
+            f"(missing @5.0.1, ADR-027 D3a strict flip, #343); "
+            f"was incorrectly accepted (currently on loose/base schema)"
+        )
+
+    @pytest.mark.parametrize("legacy_id", MITRE_ATLAS_LEGACY_INVALID)
+    def test_mitre_atlas_legacy_rejected_in_controls(
+        self, controls_schema: dict, schemas_registry: Registry, legacy_id: str
+    ):
+        """Test that mitre-atlas IDs without @5.0.1 are rejected in controls mappings."""
+        mappings = _get_mappings_schema(controls_schema, "control")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"mitre-atlas": [legacy_id]}))
+        assert errors, (
+            f"controls mitre-atlas legacy value {legacy_id!r} must be REJECTED "
+            f"(missing @5.0.1, ADR-027 D3a strict flip, #343)"
+        )
+
+    @pytest.mark.parametrize("legacy_id", NIST_LEGACY_INVALID)
+    def test_nist_ai_rmf_legacy_rejected_in_risks(
+        self, risks_schema: dict, schemas_registry: Registry, legacy_id: str
+    ):
+        """
+        Test that nist-ai-rmf legacy forms (GV-N.N, MS-N.N, or GOVERN-N.N without @1.0)
+        are rejected in risks mappings.
+
+        Given: risks mappings schema with strict-pinned nist-ai-rmf wiring
+        When: {"nist-ai-rmf": [<legacy>]} is validated
+        Then: ValidationError — pinned pattern requires @1.0 suffix and full prefix
+
+        The loose catch-all formerly allowed these through; the strict pinned pattern rejects them (#343).
+        """
+        mappings = _get_mappings_schema(risks_schema, "risk")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"nist-ai-rmf": [legacy_id]}))
+        assert errors, (
+            f"risks nist-ai-rmf legacy value {legacy_id!r} must be REJECTED (ADR-027 D3a strict flip, #343)"
+        )
+
+    @pytest.mark.parametrize("legacy_id", NIST_LEGACY_INVALID)
+    def test_nist_ai_rmf_legacy_rejected_in_controls(
+        self, controls_schema: dict, schemas_registry: Registry, legacy_id: str
+    ):
+        """Test that nist-ai-rmf legacy forms are rejected in controls mappings."""
+        mappings = _get_mappings_schema(controls_schema, "control")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"nist-ai-rmf": [legacy_id]}))
+        assert errors, (
+            f"controls nist-ai-rmf legacy value {legacy_id!r} must be REJECTED (ADR-027 D3a strict flip, #343)"
+        )
+
+    @pytest.mark.parametrize("legacy_id", STRIDE_LEGACY_INVALID)
+    def test_stride_legacy_rejected_in_risks(self, risks_schema: dict, schemas_registry: Registry, legacy_id: str):
+        """
+        Test that lowercase/kebab stride values are rejected in risks mappings.
+
+        Given: risks mappings schema with strict-pinned stride wiring
+        When: {"stride": [<lowercase-form>]} is validated
+        Then: ValidationError — pinned pattern (same as base) requires PascalCase
+
+        The loose catch-all formerly allowed these through; stride is now explicitly
+        wired to the pinned PascalCase pattern, so they are rejected (#343 ADR-027 D3a).
+        """
+        mappings = _get_mappings_schema(risks_schema, "risk")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"stride": [legacy_id]}))
+        assert errors, (
+            f"risks stride legacy value {legacy_id!r} must be REJECTED "
+            f"(ADR-027 D3a strict flip — stride wired to pinned PascalCase, #343)"
+        )
+
+    @pytest.mark.parametrize("legacy_id", STRIDE_LEGACY_INVALID)
+    def test_stride_legacy_rejected_in_controls(
+        self, controls_schema: dict, schemas_registry: Registry, legacy_id: str
+    ):
+        """Test that lowercase/kebab stride values are rejected in controls mappings."""
+        mappings = _get_mappings_schema(controls_schema, "control")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"stride": [legacy_id]}))
+        assert errors, (
+            f"controls stride legacy value {legacy_id!r} must be REJECTED (ADR-027 D3a strict flip, #343)"
+        )
+
+    @pytest.mark.parametrize("legacy_id", OWASP_LEGACY_INVALID)
+    def test_owasp_legacy_rejected_in_risks(self, risks_schema: dict, schemas_registry: Registry, legacy_id: str):
+        """
+        Test that owasp-top10-llm values without :2025 year are rejected in risks.
+
+        Given: risks mappings schema with strict-pinned owasp-top10-llm wiring
+        When: {"owasp-top10-llm": [<LLMnn-without-year>]} is validated
+        Then: ValidationError — pinned pattern ^LLM\\d{2}:2025$ rejects bare LLMnn
+
+        The loose catch-all formerly allowed these through; the strict pinned pattern
+        ^LLM\\d{2}:2025$ now rejects bare LLMnn values (#343).
+        """
+        mappings = _get_mappings_schema(risks_schema, "risk")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"owasp-top10-llm": [legacy_id]}))
+        assert errors, (
+            f"risks owasp-top10-llm legacy value {legacy_id!r} must be REJECTED (ADR-027 D3a strict flip, #343)"
+        )
+
+    @pytest.mark.parametrize("legacy_id", OWASP_LEGACY_INVALID)
+    def test_owasp_legacy_rejected_in_controls(
+        self, controls_schema: dict, schemas_registry: Registry, legacy_id: str
+    ):
+        """Test that owasp-top10-llm values without :2025 are rejected in controls."""
+        mappings = _get_mappings_schema(controls_schema, "control")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"owasp-top10-llm": [legacy_id]}))
+        assert errors, (
+            f"controls owasp-top10-llm legacy value {legacy_id!r} must be REJECTED (ADR-027 D3a strict flip, #343)"
+        )
+
+    @pytest.mark.parametrize("legacy_id", ISO_LEGACY_INVALID)
+    def test_iso_22989_legacy_rejected_in_risks(
+        self, risks_schema: dict, schemas_registry: Registry, legacy_id: str
+    ):
+        """
+        Test that iso-22989 bare-string values (without @2022) are rejected in risks.
+
+        Given: risks mappings schema with strict-pinned iso-22989 wiring
+        When: {"iso-22989": [<role-without-version>]} is validated
+        Then: ValidationError — pinned block uses a oneOf enum requiring @2022 suffix
+
+        The base iso-22989 was a bare string with no pattern; the pinned block
+        (now active) uses a oneOf enum that rejects bare strings (#343 ADR-027 D7).
+        """
+        mappings = _get_mappings_schema(risks_schema, "risk")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"iso-22989": [legacy_id]}))
+        assert errors, (
+            f"risks iso-22989 legacy value {legacy_id!r} must be REJECTED "
+            f"(ADR-027 D7 pinned oneOf enum requires @2022 suffix, #343)"
+        )
+
+    @pytest.mark.parametrize("legacy_id", ISO_LEGACY_INVALID)
+    def test_iso_22989_legacy_rejected_in_controls(
+        self, controls_schema: dict, schemas_registry: Registry, legacy_id: str
+    ):
+        """Test that iso-22989 bare-string values (without @2022) are rejected in controls."""
+        mappings = _get_mappings_schema(controls_schema, "control")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"iso-22989": [legacy_id]}))
+        assert errors, (
+            f"controls iso-22989 legacy value {legacy_id!r} must be REJECTED "
+            f"(ADR-027 D7 pinned oneOf enum requires @2022 suffix, #343)"
+        )
+
+    @pytest.mark.parametrize("legacy_id", EU_AI_ACT_LEGACY_INVALID)
+    def test_eu_ai_act_legacy_rejected_in_risks(
+        self, risks_schema: dict, schemas_registry: Registry, legacy_id: str
+    ):
+        """
+        Test that eu-ai-act Article N values (without @2024) are rejected in risks.
+
+        Given: risks mappings schema with strict-pinned eu-ai-act wiring
+        When: {"eu-ai-act": [<Article N without @2024>]} is validated
+        Then: ValidationError — pinned pattern requires @2024 suffix
+
+        The base eu-ai-act pattern ^Article\\s\\d+(\\(\\d+\\))?$ had no version token;
+        eu-ai-act is now repointed to the pinned pattern requiring @2024 (#343).
+        """
+        mappings = _get_mappings_schema(risks_schema, "risk")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"eu-ai-act": [legacy_id]}))
+        assert errors, (
+            f"risks eu-ai-act legacy value {legacy_id!r} must be REJECTED "
+            f"(pinned pattern requires @2024, ADR-027 D3a, #343)"
+        )
+
+    @pytest.mark.parametrize("legacy_id", EU_AI_ACT_LEGACY_INVALID)
+    def test_eu_ai_act_legacy_rejected_in_controls(
+        self, controls_schema: dict, schemas_registry: Registry, legacy_id: str
+    ):
+        """Test that eu-ai-act Article N values (without @2024) are rejected in controls."""
+        mappings = _get_mappings_schema(controls_schema, "control")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"eu-ai-act": [legacy_id]}))
+        assert errors, (
+            f"controls eu-ai-act legacy value {legacy_id!r} must be REJECTED "
+            f"(pinned pattern requires @2024, ADR-027 D3a, #343)"
+        )
+
+
+# ============================================================================
+# Malformed values REJECTED (these should already fail; confirm regression)
+# ============================================================================
+
+
+class TestMalformedValuesRejected:
+    """
+    Malformed values that are structurally wrong must be rejected both before and
+    after the strict flip. This is a regression guard — if any of these start
+    passing, a schema regression has been introduced.
+    """
+
+    @pytest.mark.parametrize("invalid_id", MITRE_ATLAS_MALFORMED)
+    def test_mitre_atlas_malformed_rejected_in_risks(
+        self, risks_schema: dict, schemas_registry: Registry, invalid_id: str
+    ):
+        """
+        Test that structurally malformed mitre-atlas IDs are rejected in risks.
+
+        Given: risks mappings schema
+        When: {"mitre-atlas": [<malformed-id>]} is validated
+        Then: ValidationError — malformed forms fail both base and pinned patterns
+        """
+        mappings = _get_mappings_schema(risks_schema, "risk")
+        validator = Draft7Validator(mappings, registry=schemas_registry)
+        errors = list(validator.iter_errors({"mitre-atlas": [invalid_id]}))
+        assert errors, f"risks mitre-atlas malformed {invalid_id!r} must be rejected"
+
+    @pytest.mark.parametrize("invalid_id", MITRE_ATLAS_MALFORMED)
+    def test_mitre_atlas_malformed_rejected_in_controls(
+        self, controls_schema: dict, schemas_registry: Registry, invalid_id: str
+    ):
+        """Test that structurally malformed mitre-atlas IDs are rejected in controls."""
         mappings = _get_mappings_schema(controls_schema, "control")
         validator = Draft7Validator(mappings, registry=schemas_registry)
         errors = list(validator.iter_errors({"mitre-atlas": [invalid_id]}))
-        assert errors, f"controls mitre-atlas malformed ID {invalid_id!r} must be rejected"
+        assert errors, f"controls mitre-atlas malformed {invalid_id!r} must be rejected"
 
-
-# ============================================================================
-# iso-22989 and eu-ai-act strict wiring — valid / invalid behavioral tests
-# ============================================================================
-
-
-class TestIsoAndEuAiActStrictWiring:
-    """
-    iso-22989 uses bare string items with no pattern constraint (deliberately
-    permissive per A1 design — any non-empty string is valid). eu-ai-act items
-    must match ^Article\\s\\d+(\\(\\d+\\))?$ per ADR-022 D5b.
-
-    Both frameworks receive per-property strict wiring in the risks and controls
-    mappings schemas via $ref to framework-mapping-patterns in
-    frameworks.schema.json.
-    """
-
-    @pytest.mark.parametrize("valid_value", ISO_VALID)
-    def test_iso_22989_valid_accepted_in_risks(
-        self, risks_schema: dict, schemas_registry: Registry, valid_value: str
+    @pytest.mark.parametrize("off_enum_id", ISO_OFF_ENUM)
+    def test_iso_22989_off_enum_rejected_in_risks(
+        self, risks_schema: dict, schemas_registry: Registry, off_enum_id: str
     ):
         """
-        Test that iso-22989 bare-string descriptors pass in risks mappings.
+        Test that iso-22989 values not in the @2022 enum are rejected (pinned).
 
-        Given: risks mappings schema with iso-22989 strict wiring
-        When: {"iso-22989": [<valid_value>]} is validated
-        Then: No errors are raised (iso-22989 is permissive; any string is valid)
+        Given: risks mappings schema with strict-pinned iso-22989 wiring
+        When: {"iso-22989": [<value-not-in-2022-enum>]} is validated
+        Then: ValidationError — oneOf enum does not contain the value
+
+        The base iso-22989 was a bare string (accepted anything); the pinned block
+        now active restricts to the closed 2022 oneOf enum (#343).
         """
         mappings = _get_mappings_schema(risks_schema, "risk")
         validator = Draft7Validator(mappings, registry=schemas_registry)
-        errors = list(validator.iter_errors({"iso-22989": [valid_value]}))
-        assert not errors, f"risks iso-22989 {valid_value!r} must be accepted; got: {[e.message for e in errors]}"
+        errors = list(validator.iter_errors({"iso-22989": [off_enum_id]}))
+        assert errors, (
+            f"risks iso-22989 off-enum value {off_enum_id!r} must be REJECTED "
+            f"(pinned 2022 oneOf enum, ADR-027 D7/D8, #343)"
+        )
 
-    @pytest.mark.parametrize("valid_value", ISO_VALID)
-    def test_iso_22989_valid_accepted_in_controls(
-        self, controls_schema: dict, schemas_registry: Registry, valid_value: str
+    @pytest.mark.parametrize("off_enum_id", ISO_OFF_ENUM)
+    def test_iso_22989_off_enum_rejected_in_controls(
+        self, controls_schema: dict, schemas_registry: Registry, off_enum_id: str
     ):
-        """
-        Test that iso-22989 bare-string descriptors pass in controls mappings.
-
-        Given: controls mappings schema with iso-22989 strict wiring
-        When: {"iso-22989": [<valid_value>]} is validated
-        Then: No errors are raised
-        """
+        """Test that iso-22989 off-enum values are rejected in controls (pinned oneOf)."""
         mappings = _get_mappings_schema(controls_schema, "control")
         validator = Draft7Validator(mappings, registry=schemas_registry)
-        errors = list(validator.iter_errors({"iso-22989": [valid_value]}))
-        assert not errors, (
-            f"controls iso-22989 {valid_value!r} must be accepted; got: {[e.message for e in errors]}"
-        )
-
-    @pytest.mark.parametrize("valid_value", EU_AI_ACT_VALID)
-    def test_eu_ai_act_valid_accepted_in_risks(
-        self, risks_schema: dict, schemas_registry: Registry, valid_value: str
-    ):
-        """
-        Test that eu-ai-act Article-form values pass in risks mappings.
-
-        Given: risks mappings schema with eu-ai-act strict wiring
-        When: {"eu-ai-act": [<valid_value>]} in ^Article\\s\\d+(\\(\\d+\\))?$ form is validated
-        Then: No errors are raised
-        """
-        mappings = _get_mappings_schema(risks_schema, "risk")
-        validator = Draft7Validator(mappings, registry=schemas_registry)
-        errors = list(validator.iter_errors({"eu-ai-act": [valid_value]}))
-        assert not errors, f"risks eu-ai-act {valid_value!r} must be accepted; got: {[e.message for e in errors]}"
-
-    @pytest.mark.parametrize("valid_value", EU_AI_ACT_VALID)
-    def test_eu_ai_act_valid_accepted_in_controls(
-        self, controls_schema: dict, schemas_registry: Registry, valid_value: str
-    ):
-        """
-        Test that eu-ai-act Article-form values pass in controls mappings.
-
-        Given: controls mappings schema with eu-ai-act strict wiring
-        When: {"eu-ai-act": [<valid_value>]} is validated
-        Then: No errors are raised
-        """
-        mappings = _get_mappings_schema(controls_schema, "control")
-        validator = Draft7Validator(mappings, registry=schemas_registry)
-        errors = list(validator.iter_errors({"eu-ai-act": [valid_value]}))
-        assert not errors, (
-            f"controls eu-ai-act {valid_value!r} must be accepted; got: {[e.message for e in errors]}"
-        )
-
-    @pytest.mark.parametrize(
-        "invalid_value",
-        [
-            "Article",  # no article number
-            "article-5",  # lowercase-kebab form (rejected by strict pattern)
-            "Art 5",  # abbreviated prefix
-        ],
-    )
-    def test_eu_ai_act_invalid_rejected_in_risks(
-        self, risks_schema: dict, schemas_registry: Registry, invalid_value: str
-    ):
-        """
-        Test that malformed eu-ai-act values are rejected in risks mappings.
-
-        Given: risks mappings schema with eu-ai-act strict wiring
-        When: {"eu-ai-act": [<invalid_value>]} with a non-Article-form value is validated
-        Then: ValidationError is raised (strict pattern ^Article\\s\\d+(\\(\\d+\\))?$ rejects it)
-        """
-        mappings = _get_mappings_schema(risks_schema, "risk")
-        validator = Draft7Validator(mappings, registry=schemas_registry)
-        errors = list(validator.iter_errors({"eu-ai-act": [invalid_value]}))
-        assert errors, f"risks eu-ai-act malformed value {invalid_value!r} must be rejected"
-
-    @pytest.mark.parametrize(
-        "invalid_value",
-        [
-            "Article",  # no article number
-            "article-5",  # lowercase-kebab form (rejected by strict pattern)
-            "Art 5",  # abbreviated prefix
-        ],
-    )
-    def test_eu_ai_act_invalid_rejected_in_controls(
-        self, controls_schema: dict, schemas_registry: Registry, invalid_value: str
-    ):
-        """
-        Test that malformed eu-ai-act values are rejected in controls mappings.
-
-        Given: controls mappings schema with eu-ai-act strict wiring
-        When: {"eu-ai-act": [<invalid_value>]} is validated
-        Then: ValidationError is raised
-        """
-        mappings = _get_mappings_schema(controls_schema, "control")
-        validator = Draft7Validator(mappings, registry=schemas_registry)
-        errors = list(validator.iter_errors({"eu-ai-act": [invalid_value]}))
-        assert errors, f"controls eu-ai-act malformed value {invalid_value!r} must be rejected"
-
-
-# ============================================================================
-# Loose frameworks — current content must still pass via catch-all
-# ============================================================================
-
-
-class TestLooseFrameworksPassThrough:
-    """
-    stride, nist-ai-rmf, and owasp-top10-llm fall through to the loose
-    additionalProperties catch-all. Their current YAML content does not match
-    the ADR-022 D5b canonical regexes and will be normalised by subsequent
-    content fixes.
-    """
-
-    @pytest.mark.parametrize("value", STRIDE_LOOSE_VALID)
-    def test_stride_current_content_accepted_in_risks(
-        self, risks_schema: dict, schemas_registry: Registry, value: str
-    ):
-        """
-        Test that current stride values (lowercase-kebab) pass via the catch-all.
-
-        Given: risks mappings with stride pointing to loose catch-all
-        When: {"stride": [<value>]} is validated
-        Then: No errors are raised (loose path; subsequent content fixes will normalise)
-        """
-        mappings = _get_mappings_schema(risks_schema, "risk")
-        validator = Draft7Validator(mappings, registry=schemas_registry)
-        errors = list(validator.iter_errors({"stride": [value]}))
-        assert not errors, (
-            f"stride value {value!r} must be accepted via loose catch-all; got: {[e.message for e in errors]}"
-        )
-
-    @pytest.mark.parametrize("value", NIST_LOOSE_VALID)
-    def test_nist_ai_rmf_current_content_accepted_in_risks(
-        self, risks_schema: dict, schemas_registry: Registry, value: str
-    ):
-        """
-        Test that current nist-ai-rmf values (short prefix form) pass via the catch-all.
-
-        Given: risks mappings with nist-ai-rmf pointing to loose catch-all
-        When: {"nist-ai-rmf": [<value>]} is validated
-        Then: No errors are raised
-        """
-        mappings = _get_mappings_schema(risks_schema, "risk")
-        validator = Draft7Validator(mappings, registry=schemas_registry)
-        errors = list(validator.iter_errors({"nist-ai-rmf": [value]}))
-        assert not errors, (
-            f"nist-ai-rmf value {value!r} must be accepted via loose catch-all; got: {[e.message for e in errors]}"
-        )
-
-    @pytest.mark.parametrize("value", OWASP_LOOSE_VALID)
-    def test_owasp_top10_llm_current_content_accepted_in_risks(
-        self, risks_schema: dict, schemas_registry: Registry, value: str
-    ):
-        """
-        Test that current owasp-top10-llm values (no version year) pass via catch-all.
-
-        Given: risks mappings with owasp-top10-llm pointing to loose catch-all
-        When: {"owasp-top10-llm": [<value>]} is validated
-        Then: No errors are raised
-        """
-        mappings = _get_mappings_schema(risks_schema, "risk")
-        validator = Draft7Validator(mappings, registry=schemas_registry)
-        errors = list(validator.iter_errors({"owasp-top10-llm": [value]}))
-        assert not errors, (
-            f"owasp-top10-llm value {value!r} must be accepted via loose catch-all; "
-            f"got: {[e.message for e in errors]}"
-        )
-
-    @pytest.mark.parametrize("value", STRIDE_LOOSE_VALID)
-    def test_stride_current_content_accepted_in_controls(
-        self, controls_schema: dict, schemas_registry: Registry, value: str
-    ):
-        """
-        Test that current stride values (lowercase-kebab) pass via the controls catch-all.
-
-        Given: controls mappings with stride pointing to loose catch-all
-        When: {"stride": [<value>]} is validated
-        Then: No errors are raised (controls hybrid wiring)
-        """
-        mappings = _get_mappings_schema(controls_schema, "control")
-        validator = Draft7Validator(mappings, registry=schemas_registry)
-        errors = list(validator.iter_errors({"stride": [value]}))
-        assert not errors, (
-            f"controls stride value {value!r} must be accepted via loose catch-all; "
-            f"got: {[e.message for e in errors]}"
-        )
-
-    @pytest.mark.parametrize("value", NIST_LOOSE_VALID)
-    def test_nist_ai_rmf_current_content_accepted_in_controls(
-        self, controls_schema: dict, schemas_registry: Registry, value: str
-    ):
-        """
-        Test that current nist-ai-rmf values (short prefix form) pass via the controls catch-all.
-
-        Given: controls mappings with nist-ai-rmf pointing to loose catch-all
-        When: {"nist-ai-rmf": [<value>]} is validated
-        Then: No errors are raised
-        """
-        mappings = _get_mappings_schema(controls_schema, "control")
-        validator = Draft7Validator(mappings, registry=schemas_registry)
-        errors = list(validator.iter_errors({"nist-ai-rmf": [value]}))
-        assert not errors, (
-            f"controls nist-ai-rmf value {value!r} must be accepted via loose catch-all; "
-            f"got: {[e.message for e in errors]}"
-        )
-
-    @pytest.mark.parametrize("value", OWASP_LOOSE_VALID)
-    def test_owasp_top10_llm_current_content_accepted_in_controls(
-        self, controls_schema: dict, schemas_registry: Registry, value: str
-    ):
-        """
-        Test that current owasp-top10-llm values (no version year) pass via controls catch-all.
-
-        Given: controls mappings with owasp-top10-llm pointing to loose catch-all
-        When: {"owasp-top10-llm": [<value>]} is validated
-        Then: No errors are raised
-        """
-        mappings = _get_mappings_schema(controls_schema, "control")
-        validator = Draft7Validator(mappings, registry=schemas_registry)
-        errors = list(validator.iter_errors({"owasp-top10-llm": [value]}))
-        assert not errors, (
-            f"controls owasp-top10-llm value {value!r} must be accepted via loose catch-all; "
-            f"got: {[e.message for e in errors]}"
+        errors = list(validator.iter_errors({"iso-22989": [off_enum_id]}))
+        assert errors, (
+            f"controls iso-22989 off-enum value {off_enum_id!r} must be REJECTED "
+            f"(pinned 2022 oneOf enum, ADR-027 D7/D8, #343)"
         )
 
 
 # ============================================================================
-# Unknown framework key rejected via propertyNames
+# Unknown framework key rejected via propertyNames + additionalProperties:false
 # ============================================================================
 
 
 class TestUnknownFrameworkRejected:
-    """Unknown framework keys must be rejected via propertyNames."""
+    """Unknown framework keys must be rejected; additionalProperties:false closes the door."""
 
     @pytest.mark.parametrize("schema_file,entity_key", CONSUMER_SCHEMAS, ids=["risks", "controls"])
     def test_unknown_framework_key_rejected(
@@ -558,35 +810,43 @@ class TestUnknownFrameworkRejected:
 
         Given: A mappings object with made-up-framework: ["some-value"]
         When: It is validated against the mappings schema
-        Then: ValidationError is raised (propertyNames constraint)
+        Then: ValidationError (propertyNames constraint + additionalProperties:false)
+
+        This already passes via propertyNames; additionalProperties:false provides
+        defense-in-depth after the flip.
         """
         schema = _load_schema(risk_map_schemas_dir, schema_file)
         mappings = _get_mappings_schema(schema, entity_key)
         validator = Draft7Validator(mappings, registry=schemas_registry)
         errors = list(validator.iter_errors({"made-up-framework": ["some-value"]}))
         assert errors, (
-            f"{schema_file}: unknown framework key 'made-up-framework' must be rejected via propertyNames"
+            f"{schema_file}: unknown framework key 'made-up-framework' must be rejected "
+            f"via propertyNames + additionalProperties:false"
         )
 
 
 # ============================================================================
-# Regression — current YAML files still validate
+# Regression — current YAML files still validate (live corpus guard)
 # ============================================================================
 
 
+@pytest.mark.live_corpus
 class TestCurrentYamlStillValid:
     """
-    Current risks.yaml and controls.yaml must continue to pass check-jsonschema
-    (the hybrid wiring is additive and backward-compatible).
+    Current risks.yaml and controls.yaml must still pass check-jsonschema after
+    the Phase-2 strict flip + Phase-2 content migration.
+
+    This class is marked @pytest.mark.live_corpus. Both the schema flip and
+    content migration to pinned forms are complete (#343).
     """
 
     def test_risks_yaml_passes_check_jsonschema(self, risk_map_schemas_dir: Path, risk_map_yaml_dir: Path):
         """
-        Test that risks.yaml continues to validate against risks.schema.json.
+        Test that risks.yaml continues to validate against the strict risks.schema.json.
 
         Given: The current risks.yaml on disk
         When: check-jsonschema is run with risks.schema.json
-        Then: Exit code is 0
+        Then: Exit code is 0 (content migrated to pinned forms, strict schema active)
         """
         result = subprocess.run(
             [
@@ -601,17 +861,18 @@ class TestCurrentYamlStillValid:
             text=True,
         )
         assert result.returncode == 0, (
-            f"risks.yaml must remain valid against risks.schema.json:\n"
+            f"risks.yaml must remain valid against strict risks.schema.json "
+            f"(#343 Phase 2 complete — content migrated to pinned forms):\n"
             f"stdout: {result.stdout}\nstderr: {result.stderr}"
         )
 
     def test_controls_yaml_passes_check_jsonschema(self, risk_map_schemas_dir: Path, risk_map_yaml_dir: Path):
         """
-        Test that controls.yaml continues to validate against controls.schema.json.
+        Test that controls.yaml continues to validate against the strict controls.schema.json.
 
         Given: The current controls.yaml on disk
         When: check-jsonschema is run with controls.schema.json
-        Then: Exit code is 0
+        Then: Exit code is 0 (content migrated to pinned forms, strict schema active)
         """
         result = subprocess.run(
             [
@@ -626,7 +887,8 @@ class TestCurrentYamlStillValid:
             text=True,
         )
         assert result.returncode == 0, (
-            f"controls.yaml must remain valid against controls.schema.json:\n"
+            f"controls.yaml must remain valid against strict controls.schema.json "
+            f"(#343 Phase 2 complete — content migrated to pinned forms):\n"
             f"stdout: {result.stdout}\nstderr: {result.stderr}"
         )
 
@@ -635,33 +897,26 @@ class TestCurrentYamlStillValid:
 # Test summary
 # ============================================================================
 """
-Test Summary
-============
-Test classes: 8
+Test Summary (Phase 2 strict wiring — #343 ADR-027 D3a/D7)
+===========================================================
+Test classes: 7
 
-- TestSchemaMetaValidity (2)              — risks + controls valid Draft-07
-- TestMappingsStructure                   — catch-all present, strictly-wired
-                                            keys declared (parametrized × 2 schemas
-                                            × 3 frameworks)
-- TestMitreAtlasStrictWiring              — parametrized: 3 valid + 3 invalid ×
-                                            risks + controls (12 cases)
-- TestIsoAndEuAiActStrictWiring           — iso-22989: 3 valid × risks + controls;
-                                            eu-ai-act: 3 valid × risks + controls;
-                                            eu-ai-act: 3 invalid × risks + controls
-                                            (18 cases)
-- TestLooseFrameworksPassThrough          — stride/nist-ai-rmf/owasp-top10-llm
-                                            current content accepted for BOTH
-                                            risks and controls (22 cases)
-- TestUnknownFrameworkRejected (2)        — propertyNames rejects unknown key
-                                            (parametrized × 2 schemas)
-- TestCurrentYamlStillValid (2)           — risks.yaml + controls.yaml still pass
+- TestSchemaMetaValidity (2)            — risks + controls valid Draft-07
+- TestMappingsStrictWiringShape         — additionalProperties:false + all-six in
+                                          properties + items $ref → pinned block
+                                          (parametrized × 2 schemas × 6 frameworks = 26)
+- TestPinnedValuesAccepted              — per-framework pinned forms accepted
+                                          (6 fw × 2 schemas × multiple values ≈ 48)
+- TestLegacyFormsRejected               — legacy/unversioned forms rejected after flip
+                                          (6 fw × 2 schemas × multiple values ≈ 44)
+- TestMalformedValuesRejected           — structurally bad forms still rejected (10)
+- TestUnknownFrameworkRejected (2)      — propertyNames + additionalProperties:false
+- TestCurrentYamlStillValid (2)         — live corpus regression guard (live_corpus mark)
+
+All tests are GREEN: the strict schema is active and content has been migrated (#343).
 
 Coverage areas:
-- Hybrid wiring shape: strict per-property entries + loose catch-all
-- Strict frameworks: mitre-atlas, iso-22989, eu-ai-act
-- Loose frameworks: stride, nist-ai-rmf, owasp-top10-llm (pending content
-  normalisation to canonical forms)
-- Behavioral: valid/invalid for all strictly-wired frameworks × risks + controls;
-              loose pass-through × risks + controls; unknown key rejected
-- Regression: current YAML backward-compatible
+- Strict structural shape: additionalProperties:false, all-six properties, pinned $refs
+- Behavioral: pinned accepted / legacy rejected / malformed rejected (per fw × per schema)
+- Regression: live corpus validates clean after both schema flip + content migration
 """

@@ -32,10 +32,9 @@ Coverage:
 - Each entity definition rejects a synthetic entry carrying a stray field.
 - The pre-existing framework-mapping-patterns additionalProperties:false
   is preserved.
-- The mappings.additionalProperties sub-block (catch-all array shape in
-  risks/controls/components/personas) remains a schema object {type:array,...}
-  — the Decision-2 sibling at the entity level must not collapse it to
-  boolean false.
+- Phase-2 (#343 ADR-027 D3a): mappings.additionalProperties is the BOOLEAN FALSE
+  for all four consumer schemas (risks/controls/components/personas). The former
+  loose catch-all schema object was removed by the Phase-2 schema flip (#343).
 - The live risks.yaml corpus validates clean against definitions/risk under
   the combined D1+D2 state — ordering guard so D1 lands before D2.
 """
@@ -399,22 +398,31 @@ class TestFrameworkMappingPatternsPreservesAdditionalPropertiesFalse:
 
 
 # ============================================================================
-# Preservation guard — mappings.additionalProperties catch-all is NOT boolean false
+# Phase-2 strict flip — mappings.additionalProperties is false for all four consumers
 # ============================================================================
 
 
-class TestMappingsAdditionalPropertiesIsNotBoolean:
+class TestMappingsAdditionalPropertiesIsFalse:
     """
-    The mappings field inside risk/control/component/persona entities uses
-    a sub-block:
+    After the Phase-2 strict flip (#343 ADR-027 D3a), the mappings field inside
+    all four consumer entities (risk, control, component, persona) must have:
+
+        additionalProperties: false
+
+    The loose schema-object catch-all
         additionalProperties: {type: array, items: {type: string}}
-    This is a schema-object catch-all for loose frameworks (stride, nist-ai-rmf,
-    owasp-top10-llm), NOT the boolean false. Decision 2 adds
-    additionalProperties:false at the definitions/<entity> level — that sibling
-    must not collapse or replace the mappings.additionalProperties catch-all.
+    that previously allowed stride/nist-ai-rmf/owasp-top10-llm legacy forms
+    to pass through is REMOVED. All frameworks are now explicitly wired via
+    per-property entries pointing at framework-mapping-patterns-pinned.
+
+    This class replaces the former TestMappingsAdditionalPropertiesIsNotBoolean
+    which asserted the opposite invariant (catch-all present). That invariant is
+    gone after Phase 2.
+
+    These tests assert the strict ADR-027 D3a wiring now enforced by the schema (#343).
     """
 
-    # Schemas that have a mappings field with additionalProperties catch-all.
+    # All four consumer schemas that host a mappings field.
     _MAPPINGS_HOSTS: list[tuple[str, str]] = [
         ("risks.schema.json", "risk"),
         ("controls.schema.json", "control"),
@@ -427,40 +435,37 @@ class TestMappingsAdditionalPropertiesIsNotBoolean:
         _MAPPINGS_HOSTS,
         ids=[f"{s}/{e}" for s, e in _MAPPINGS_HOSTS],
     )
-    def test_mappings_additional_properties_is_schema_object_not_false(
+    def test_mappings_additional_properties_is_false(
         self,
         schemas_dir: Path,
         schema_file: str,
         entity_key: str,
     ):
         """
-        Test that mappings.additionalProperties is a schema object (catch-all), not false.
+        Test that mappings.additionalProperties is exactly the boolean false.
 
-        Given: definitions/<entity>/properties/mappings in a consumer schema
+        Given: definitions/<entity>/properties/mappings in a consumer schema (#343)
         When: Its additionalProperties value is inspected
-        Then: It is a dict (schema object), not the boolean false
+        Then: It is the boolean false — NOT a schema-object catch-all
 
-        This pins the invariant that Decision-2 edits cannot accidentally replace the
-        mappings catch-all with boolean false, which would break all loose-framework
-        entries (stride, nist-ai-rmf, owasp-top10-llm).
+        ADR-027 D3a: the loose catch-all for stride/nist-ai-rmf/owasp-top10-llm
+        was removed after content migration; additionalProperties: false is now
+        set on all four consumer mappings blocks.
+
+        Formerly this test class (then named TestMappingsAdditionalPropertiesIsNotBoolean)
+        asserted the opposite — that the catch-all was a schema object, not false.
+        That invariant was removed by the Phase-2 schema flip (#343).
         """
         schema = _load_schema(schemas_dir, schema_file)
         entity_defn = schema.get("definitions", {}).get(entity_key, {})
-        # personas.schema.json personas may have mappings at different nesting
         mappings = entity_defn.get("properties", {}).get("mappings")
         if mappings is None:
-            # Not all entities have mappings — skip gracefully with explanation.
             pytest.skip(f"{schema_file} definitions/{entity_key} has no mappings property")
         ap = mappings.get("additionalProperties", "<MISSING>")
-        assert isinstance(ap, dict), (
+        assert ap is False, (
             f"{schema_file} definitions/{entity_key}/properties/mappings/additionalProperties "
-            f"must be a schema object (catch-all array), not {ap!r}; "
-            "Decision-2 must not replace the mappings catch-all with boolean false"
-        )
-        # Confirm the catch-all shape: type:array with string items.
-        assert ap.get("type") == "array", (
-            f"mappings.additionalProperties in {schema_file}/{entity_key} must be type:array "
-            f"(loose-framework catch-all); got type={ap.get('type')!r}"
+            f"must be the boolean false (strict schema, #343 ADR-027 D3a); "
+            f"got: {ap!r}. The loose catch-all schema object must be replaced with false."
         )
 
 
@@ -540,14 +545,19 @@ Test classes: 5
   stray-field entries rejected; minimal valid entries accepted (baseline).
 - TestFrameworkMappingPatternsPreservesAdditionalPropertiesFalse (1) —
   pre-existing additionalProperties:false (ADR-022 D5b) preserved.
-- TestMappingsAdditionalPropertiesIsNotBoolean (4) — per-entity mappings
-  catch-all remains a schema object {type:array,...}, not boolean false.
+- TestMappingsAdditionalPropertiesIsFalse (4) — Phase-2 (#343 ADR-027 D3a):
+  mappings.additionalProperties is the boolean false for all four consumer
+  schemas (strict schema now active).
+  (Replaced former TestMappingsAdditionalPropertiesIsNotBoolean which
+  asserted the loose catch-all schema object was NOT false — that invariant
+  was removed by the Phase-2 schema flip.)
 - TestRisksYamlValidatesCleanPostTightening (1) — risks.yaml validates
   clean under combined D1+D2 (Risk R10 ordering invariant).
 
 Coverage areas:
 - Structural: additionalProperties:false declared on all 12 new sites
 - Behavioral: stray fields rejected, valid entries accepted
-- Preservation: framework-mapping-patterns intact, mappings catch-all intact
+- Preservation: framework-mapping-patterns intact
+- Phase-2 strict flip: mappings.additionalProperties is false (not a catch-all)
 - Ordering guard: corpus clean under combined D1+D2
 """

@@ -10,6 +10,7 @@ Subcommands:
     add     Compose and append a pinned mapping value to an entity.
     remove  Remove a mapping value addressed by its derivable mappingId (D4b).
     update  Re-pin an existing mapping to a new version (re-pin interpretation).
+    migrate Migrate all legacy mapping values in content files to pinned form (#343).
 
 Usage:
     framework_mapping_maintainer.py [add|update|remove]
@@ -54,6 +55,7 @@ from scripts.hooks.precommit.framework_mapping import (  # noqa: E402
     derive_mapping_id,
     load_pinned_patterns,
     load_registry,
+    migrate_legacy_value,
     split_pinned_value,
 )
 
@@ -466,12 +468,237 @@ def _cmd_update(args: argparse.Namespace) -> None:
 
 
 # ---------------------------------------------------------------------------
+# subcommand: migrate
+# ---------------------------------------------------------------------------
+
+# Known wrapper keys in the consumer YAML files, in the order we check.
+_WRAPPER_KEYS = ("risks", "controls", "components", "personas")
+
+# Default content files for migrate when --content-file is not specified.
+_DEFAULT_CONTENT_FILES = [
+    _CONTENT_DIR / "risks.yaml",
+    _CONTENT_DIR / "controls.yaml",
+    _CONTENT_DIR / "components.yaml",
+    _CONTENT_DIR / "personas.yaml",
+]
+
+
+def _collect_wrapper_list(data: Any) -> list:
+    """
+    Return the first recognized entity list found in data, or an empty list.
+
+    Tries each wrapper key in order; the first match wins.
+    """
+    for wk in _WRAPPER_KEYS:
+        if wk in data and isinstance(data[wk], list):
+            return data[wk]
+    return []
+
+
+def _cmd_migrate(args: argparse.Namespace) -> None:
+    """
+    Migrate all legacy mapping values in content files to their pinned form.
+
+    Two modes:
+      --report-legacy: read-only audit; prints per-framework inventory and
+                       total block/value counts; exits 0 without writing.
+      default / --dry-run: two-pass to guarantee no partial writes on error.
+        Pass 1 (compute): walk all files, call migrate_legacy_value for each
+                          value. On any FrameworkMappingError, _die() immediately
+                          with a diagnostic — before writing any file.
+        Pass 2 (write):   only reached if pass 1 succeeds. --dry-run prints a
+                          per-file summary without writing; otherwise writes
+                          changed files and skips byte-identical ones.
+
+    ADR-027 D4 / #343 Decision 2.
+    """
+    content_files: list[Path] = args.content_file if args.content_file else _DEFAULT_CONTENT_FILES
+    registry = load_registry(args.frameworks_file)
+    pinned_patterns = load_pinned_patterns(args.schema_file)
+
+    # --report-legacy: read-only audit mode.
+    if args.report_legacy:
+        _run_report_legacy(content_files, registry, pinned_patterns)
+        return
+
+    # Two-pass migrate: pass 1 computes all mutations, pass 2 writes.
+    _run_migrate(content_files, registry, pinned_patterns, dry_run=args.dry_run)
+
+
+def _run_report_legacy(
+    content_files: list[Path],
+    registry: dict,
+    pinned_patterns: dict,
+) -> None:
+    """
+    Print a per-file, per-framework inventory of legacy vs pinned values.
+
+    Counts framework-sub-blocks (one per entity×framework list present) and
+    total values across all files. Unmappable legacy values are tallied under
+    'legacy' without raising — report mode is a read-only audit.
+
+    The output always includes a final 'TOTAL: <N> blocks / <M> values' line
+    so tests can assert the aggregate numbers.
+    """
+    total_blocks = 0
+    total_values = 0
+
+    for fpath in content_files:
+        raw_text = fpath.read_text(encoding="utf-8")
+        y = _make_yaml()
+        data = y.load(raw_text)
+        wrapper_list = _collect_wrapper_list(data)
+
+        # Per-file accumulators.
+        file_blocks = 0
+        file_values = 0
+        # Per-framework counters: {fw_id: {"legacy": N, "pinned": N}}.
+        fw_counts: dict[str, dict[str, int]] = {}
+
+        for entity in wrapper_list:
+            if not isinstance(entity, dict):
+                continue
+            mappings = entity.get("mappings") or {}
+            for fw_id, fw_vals in mappings.items():
+                if not isinstance(fw_vals, list) or not fw_vals:
+                    continue
+                file_blocks += 1
+                total_blocks += 1
+                if fw_id not in fw_counts:
+                    fw_counts[fw_id] = {"legacy": 0, "pinned": 0}
+                for val in fw_vals:
+                    file_values += 1
+                    total_values += 1
+                    # Classify: try migrate_legacy_value in report mode —
+                    # on error just count as legacy (report is read-only).
+                    try:
+                        _, changed = migrate_legacy_value(
+                            fw_id,
+                            val,
+                            registry=registry,
+                            pinned_patterns=pinned_patterns,
+                        )
+                        if changed:
+                            fw_counts[fw_id]["legacy"] += 1
+                        else:
+                            fw_counts[fw_id]["pinned"] += 1
+                    except FrameworkMappingError:
+                        fw_counts[fw_id]["legacy"] += 1
+
+        print(f"\n{fpath.name}: {file_blocks} blocks / {file_values} values")
+        for fw_id, counts in sorted(fw_counts.items()):
+            print(f"  {fw_id}: legacy={counts['legacy']} pinned={counts['pinned']}")
+
+    print(f"\nTOTAL: {total_blocks} blocks / {total_values} values")
+
+
+def _run_migrate(
+    content_files: list[Path],
+    registry: dict,
+    pinned_patterns: dict,
+    dry_run: bool,
+) -> None:
+    """
+    Two-pass migrate: compute all edits (pass 1), then apply them (pass 2).
+
+    The write path is LINE-ANCHORED, not a whole-file YAML re-emit. ruamel cannot
+    losslessly round-trip the live corpus (re-emitting re-folds folded-scalar prose
+    regardless of the configured width), so a full dump would inflate the diff with
+    spurious prose re-wraps. Instead we use each value's (line, col) from ruamel's
+    lc data to replace ONLY the value token on its own source line, copying every
+    other byte verbatim — a value-only diff.
+
+    Pass 1 loads every file read-only and records (line, col, old, new) edits per
+    changed value. If any migrate_legacy_value call raises FrameworkMappingError,
+    _die() is called immediately with a diagnostic — no file is written. A changed
+    value with no resolvable source line (e.g. a flow-style sequence) also _die()s
+    rather than being silently skipped.
+
+    Pass 2 is only reached after a clean pass 1. In dry-run mode it prints per-file
+    summaries without writing. Otherwise it rewrites files that have edits (a file
+    with zero edits is left byte-identical, giving idempotency).
+    """
+    # Pass 1: load all files read-only, compute (line, col, old, new) edits.
+    file_results: list[tuple[Path, str, list[tuple[int, int, str, str]]]] = []
+
+    for fpath in content_files:
+        raw_text = fpath.read_text(encoding="utf-8")
+        y = _make_yaml()
+        data = y.load(raw_text)
+        wrapper_list = _collect_wrapper_list(data)
+        edits: list[tuple[int, int, str, str]] = []
+
+        for entity in wrapper_list:
+            if not isinstance(entity, dict):
+                continue
+            entity_id = entity.get("id", "<unknown>")
+            mappings = entity.get("mappings") or {}
+            for fw_id, fw_vals in mappings.items():
+                if not isinstance(fw_vals, list):
+                    continue
+                for i, val in enumerate(fw_vals):
+                    try:
+                        new_val, changed = migrate_legacy_value(
+                            fw_id,
+                            val,
+                            registry=registry,
+                            pinned_patterns=pinned_patterns,
+                        )
+                    except FrameworkMappingError as exc:
+                        _die(f"{fpath.name}: entity {entity_id!r}, framework {fw_id!r}, value {val!r}: {exc}")
+                    if not changed:
+                        continue
+                    # Resolve the value's source line via ruamel lc data. A changed
+                    # value with no location is a fail-loud error, never a silent skip.
+                    lc = getattr(fw_vals, "lc", None)
+                    item_lc = lc.data.get(i) if lc is not None and lc.data else None
+                    if item_lc is None:
+                        _die(
+                            f"{fpath.name}: entity {entity_id!r}, framework {fw_id!r}, value {val!r}: "
+                            "cannot locate source line (flow-style sequences are not supported by migrate)"
+                        )
+                    edits.append((item_lc[0], item_lc[1], val, new_val))
+
+        file_results.append((fpath, raw_text, edits))
+
+    # Pass 2: apply edits or report.
+    for fpath, raw_text, edits in file_results:
+        if dry_run:
+            print(f"{fpath.name}: {len(edits)} value(s) would be changed")
+            continue
+        if not edits:
+            # Idempotent: no changed values -> leave the file byte-identical.
+            continue
+        # keepends preserves each line's terminator (and the final-newline state)
+        # so only the value token on each edited line changes.
+        lines = raw_text.splitlines(keepends=True)
+        for line_idx, col, old, new in edits:
+            line = lines[line_idx]
+            head, tail = line[:col], line[col:]
+            if old not in tail:
+                _die(
+                    f"{fpath.name}: line {line_idx + 1}: expected value {old!r} at column {col} "
+                    f"but found {tail!r} — refusing to write a mislocated edit"
+                )
+            lines[line_idx] = head + tail.replace(old, new, 1)
+        fpath.write_text("".join(lines), encoding="utf-8")
+
+    if dry_run:
+        total_would_change = sum(len(e) for _, _, e in file_results)
+        print(f"dry-run: {total_would_change} total value(s) would be changed across {len(file_results)} file(s)")
+    else:
+        total_changed = sum(len(e) for _, _, e in file_results)
+        changed_files = sum(1 for _, _, e in file_results if e)
+        print(f"migrate: {total_changed} value(s) updated in {changed_files} file(s)")
+
+
+# ---------------------------------------------------------------------------
 # CLI argument parser
 # ---------------------------------------------------------------------------
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    """Construct the argparse parser with subcommands add / update / remove."""
+    """Construct the argparse parser with subcommands add / update / remove / migrate."""
     parser = argparse.ArgumentParser(
         prog="framework_mapping_maintainer.py",
         description=(
@@ -548,6 +775,48 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Re-pin a mapping to a new version (re-pin interpretation).",
     )
 
+    # migrate does not share the parent parser (no --cosai-id / --framework / etc.).
+    migrate_p = subs.add_parser(
+        "migrate",
+        help="Migrate all legacy mapping values in content files to pinned form (#343).",
+    )
+    migrate_p.add_argument(
+        "--content-file",
+        type=Path,
+        action="append",
+        default=None,
+        metavar="FILE",
+        help=(
+            "Content YAML file to migrate. May be repeated. Defaults to all 4 consumer YAMLs under risk-map/yaml/."
+        ),
+    )
+    migrate_p.add_argument(
+        "--frameworks-file",
+        type=Path,
+        default=DEFAULT_FRAMEWORKS_PATH,
+        metavar="FILE",
+        help=f"Path to frameworks.yaml (default: {DEFAULT_FRAMEWORKS_PATH}).",
+    )
+    migrate_p.add_argument(
+        "--schema-file",
+        type=Path,
+        default=DEFAULT_SCHEMA_PATH,
+        metavar="FILE",
+        help=f"Path to frameworks.schema.json (default: {DEFAULT_SCHEMA_PATH}).",
+    )
+    migrate_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=False,
+        help="Print a per-file summary of what would change without writing.",
+    )
+    migrate_p.add_argument(
+        "--report-legacy",
+        action="store_true",
+        default=False,
+        help="Print a read-only inventory of legacy vs pinned values and exit 0.",
+    )
+
     return parser
 
 
@@ -574,6 +843,7 @@ def main(argv: list[str] | None = None) -> int:
         "add": _cmd_add,
         "remove": _cmd_remove,
         "update": _cmd_update,
+        "migrate": _cmd_migrate,
     }
     dispatch[args.subcommand](args)
     return 0

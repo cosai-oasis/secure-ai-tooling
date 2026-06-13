@@ -7,6 +7,11 @@ This document describes the methodology, conventions, and rationale used for pop
 **Phase:** Phase 2 - Initial Data Population
 **Status:** Completed (15 risks, 8 controls)
 
+> **Forward note (#343):** the mapping values in the tables below are the
+> as-authored Phase-2 legacy forms, retained as a provenance record. The live
+> corpus has since been migrated to the ADR-027 version-pinned form (e.g.
+> `AML.T0020@5.0.1`). See the [framework mappings style guide](../contributing/framework-mappings-style-guide.md).
+
 ---
 
 ## Table of Contents

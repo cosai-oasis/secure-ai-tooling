@@ -96,16 +96,16 @@ risks:
           mechanisms to ensure data and model integrity.
     mappings:
       mitre-atlas:
-        - AML.T0020
-        - AML.T0019
-        - AML.T0010.002
-        - AML.T0043
-        - AML.T0059
-        - AML.T0008.002
+        - AML.T0020@5.0.1
+        - AML.T0019@5.0.1
+        - AML.T0010.002@5.0.1
+        - AML.T0043@5.0.1
+        - AML.T0059@5.0.1
+        - AML.T0008.002@5.0.1
       stride:
-        - tampering
+        - Tampering
       owasp-top10-llm:
-        - LLM04
+        - LLM04:2025
     lifecycleStage:
       - data-preparation
       - model-training
@@ -173,9 +173,9 @@ risks:
           and evaluation during training to catch any lingering issues.
     mappings:
       mitre-atlas:
-        - AML.T0010.002
+        - AML.T0010.002@5.0.1
       stride:
-        - information-disclosure
+        - InformationDisclosure
     lifecycleStage:
       - planning
       - data-preparation
@@ -255,14 +255,14 @@ risks:
           infrastructure tools.
     mappings:
       mitre-atlas:
-        - AML.T0010.001
-        - AML.T0010.003
-        - AML.T0018
+        - AML.T0010.001@5.0.1
+        - AML.T0010.003@5.0.1
+        - AML.T0018@5.0.1
       stride:
-        - tampering
-        - elevation-of-privilege
+        - Tampering
+        - ElevationOfPrivilege
       owasp-top10-llm:
-        - LLM03
+        - LLM03:2025
     lifecycleStage:
       - development
       - model-training
@@ -332,9 +332,9 @@ risks:
           to comply with retention policies.
     mappings:
       stride:
-        - information-disclosure
+        - InformationDisclosure
       owasp-top10-llm:
-        - LLM02
+        - LLM02:2025
     lifecycleStage:
       - data-preparation
       - model-training
@@ -401,9 +401,9 @@ risks:
           strict data handling and retention policies for all runtime data.
     mappings:
       stride:
-        - information-disclosure
+        - InformationDisclosure
       owasp-top10-llm:
-        - LLM02
+        - LLM02:2025
     lifecycleStage:
       - runtime
       - maintenance
@@ -472,11 +472,11 @@ risks:
           unauthorized access and protect against model theft.
     mappings:
       mitre-atlas:
-        - AML.T0024.002
-        - AML.T0025
-        - AML.T0048.004
+        - AML.T0024.002@5.0.1
+        - AML.T0025@5.0.1
+        - AML.T0048.004@5.0.1
       stride:
-        - information-disclosure
+        - InformationDisclosure
     lifecycleStage:
       - deployment
       - runtime
@@ -555,15 +555,15 @@ risks:
           tooling.
     mappings:
       mitre-atlas:
-        - AML.T0010.003
-        - AML.T0049
-        - AML.T0051
+        - AML.T0010.003@5.0.1
+        - AML.T0049@5.0.1
+        - AML.T0051@5.0.1
       stride:
-        - tampering
-        - elevation-of-privilege
+        - Tampering
+        - ElevationOfPrivilege
       owasp-top10-llm:
-        - LLM03
-        - LLM01
+        - LLM03:2025
+        - LLM01:2025
     lifecycleStage:
       - deployment
       - runtime
@@ -645,12 +645,12 @@ risks:
           rate limiting and load balancing to control the volume of calls to the model.
     mappings:
       mitre-atlas:
-        - AML.T0029
-        - AML.T0034
+        - AML.T0029@5.0.1
+        - AML.T0034@5.0.1
       stride:
-        - denial-of-service
+        - DenialOfService
       owasp-top10-llm:
-        - LLM10
+        - LLM10:2025
     lifecycleStage:
       - runtime
     impactType:
@@ -717,11 +717,11 @@ risks:
           model access.
     mappings:
       mitre-atlas:
-        - AML.T0024.002
-        - AML.T0005
-        - AML.T0048.004
+        - AML.T0024.002@5.0.1
+        - AML.T0005@5.0.1
+        - AML.T0048.004@5.0.1
       stride:
-        - information-disclosure
+        - InformationDisclosure
     lifecycleStage:
       - runtime
     impactType:
@@ -831,14 +831,14 @@ risks:
           and plugins.
     mappings:
       mitre-atlas:
-        - AML.T0051
-        - AML.T0049
+        - AML.T0051@5.0.1
+        - AML.T0049@5.0.1
       stride:
-        - tampering
-        - elevation-of-privilege
+        - Tampering
+        - ElevationOfPrivilege
       owasp-top10-llm:
-        - LLM03
-        - LLM06
+        - LLM03:2025
+        - LLM06:2025
     lifecycleStage:
       - development
       - deployment
@@ -925,12 +925,12 @@ risks:
           the model against prompt injection attacks.
     mappings:
       mitre-atlas:
-        - AML.T0051
+        - AML.T0051@5.0.1
       stride:
-        - tampering
-        - elevation-of-privilege
+        - Tampering
+        - ElevationOfPrivilege
       owasp-top10-llm:
-        - LLM01
+        - LLM01:2025
     lifecycleStage:
       - runtime
     impactType:
@@ -1020,12 +1020,12 @@ risks:
           such attacks.
     mappings:
       mitre-atlas:
-        - AML.T0015
-        - AML.T0043
+        - AML.T0015@5.0.1
+        - AML.T0043@5.0.1
       stride:
-        - tampering
+        - Tampering
       owasp-top10-llm:
-        - LLM01
+        - LLM01:2025
     lifecycleStage:
       - evaluation
       - runtime
@@ -1164,12 +1164,12 @@ risks:
           it's used for training.
     mappings:
       mitre-atlas:
-        - AML.T0024
+        - AML.T0024@5.0.1
       stride:
-        - information-disclosure
+        - InformationDisclosure
       owasp-top10-llm:
-        - LLM02
-        - LLM07
+        - LLM02:2025
+        - LLM07:2025
     lifecycleStage:
       - model-training
       - evaluation
@@ -1253,10 +1253,10 @@ risks:
           and processing before training.
     mappings:
       stride:
-        - information-disclosure
+        - InformationDisclosure
       owasp-top10-llm:
-        - LLM02
-        - LLM09
+        - LLM02:2025
+        - LLM09:2025
     lifecycleStage:
       - runtime
     impactType:
@@ -1322,10 +1322,10 @@ risks:
           the model output handling component to screen and filter for insecure responses.
     mappings:
       stride:
-        - tampering
+        - Tampering
       owasp-top10-llm:
-        - LLM05
-        - LLM09
+        - LLM05:2025
+        - LLM09:2025
     lifecycleStage:
       - runtime
     impactType:
@@ -1439,13 +1439,13 @@ risks:
           amplification across trust boundaries.
     mappings:
       mitre-atlas:
-        - AML.T0051
-        - AML.T0086
+        - AML.T0051@5.0.1
+        - AML.T0086@5.0.1
       stride:
-        - tampering
-        - elevation-of-privilege
+        - Tampering
+        - ElevationOfPrivilege
       owasp-top10-llm:
-        - LLM06
+        - LLM06:2025
     lifecycleStage:
       - runtime
     impactType:
@@ -1877,11 +1877,11 @@ risks:
           for registry infrastructure.
     mappings:
       mitre-atlas:
-        - AML.T0010.004
+        - AML.T0010.004@5.0.1
       stride:
-        - tampering
+        - Tampering
       owasp-top10-llm:
-        - LLM06
+        - LLM06:2025
     lifecycleStage:
       - deployment
       - runtime
@@ -2307,12 +2307,12 @@ risks:
           typosquatting, and least-privilege tool access policies.
     mappings:
       mitre-atlas:
-        - AML.T0010.001
+        - AML.T0010.001@5.0.1
       stride:
-        - spoofing
+        - Spoofing
       owasp-top10-llm:
-        - LLM03
-        - LLM06
+        - LLM03:2025
+        - LLM06:2025
     lifecycleStage:
       - development
       - deployment
@@ -2591,7 +2591,7 @@ risks:
           reconstruction to in-flight chain integrity monitoring.
     mappings:
       stride:
-        - repudiation
+        - Repudiation
     lifecycleStage:
       - deployment
       - runtime
@@ -2705,9 +2705,9 @@ risks:
           change to the bound model artifact.
     mappings:
       stride:
-        - spoofing
+        - Spoofing
       mitre-atlas:
-        - AML.T0012
+        - AML.T0012@5.0.1
     lifecycleStage:
       - deployment
       - runtime
@@ -2824,8 +2824,8 @@ risks:
           sessions.
     mappings:
       stride:
-        - tampering
-        - information-disclosure
+        - Tampering
+        - InformationDisclosure
     lifecycleStage:
       - deployment
       - runtime
@@ -2933,10 +2933,10 @@ risks:
           revocation on lifecycle state changes.
     mappings:
       stride:
-        - spoofing
-        - repudiation
+        - Spoofing
+        - Repudiation
       mitre-atlas:
-        - AML.T0012
+        - AML.T0012@5.0.1
     lifecycleStage:
       - deployment
       - runtime
@@ -3047,11 +3047,11 @@ risks:
           cumulative resource thresholds are exceeded.
     mappings:
       stride:
-        - denial-of-service
+        - DenialOfService
       mitre-atlas:
-        - AML.T0034.002
+        - AML.T0034.002@5.0.1
       owasp-top10-llm:
-        - LLM10
+        - LLM10:2025
     lifecycleStage:
       - runtime
     impactType:
@@ -3176,12 +3176,12 @@ risks:
           delegation hop.
     mappings:
       stride:
-        - elevation-of-privilege
-        - spoofing
+        - ElevationOfPrivilege
+        - Spoofing
       mitre-atlas:
-        - AML.T0053
+        - AML.T0053@5.0.1
       owasp-top10-llm:
-        - LLM06
+        - LLM06:2025
     lifecycleStage:
       - deployment
       - runtime
@@ -3317,13 +3317,13 @@ risks:
           caches, and MCP endpoints per tenant.
     mappings:
       stride:
-        - elevation-of-privilege
-        - information-disclosure
+        - ElevationOfPrivilege
+        - InformationDisclosure
       mitre-atlas:
-        - AML.T0012
-        - AML.T0055
+        - AML.T0012@5.0.1
+        - AML.T0055@5.0.1
       owasp-top10-llm:
-        - LLM06
+        - LLM06:2025
     lifecycleStage:
       - deployment
       - runtime
@@ -3464,13 +3464,13 @@ risks:
           calls to unresponsive or unverified endpoints.
     mappings:
       stride:
-        - spoofing
-        - tampering
-        - information-disclosure
+        - Spoofing
+        - Tampering
+        - InformationDisclosure
       mitre-atlas:
-        - AML.T0010.001
+        - AML.T0010.001@5.0.1
       owasp-top10-llm:
-        - LLM03
+        - LLM03:2025
     lifecycleStage:
       - deployment
       - runtime

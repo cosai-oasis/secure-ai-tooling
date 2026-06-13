@@ -57,6 +57,8 @@ import yaml
 from precommit.framework_mapping import (
     DEFAULT_FRAMEWORKS_PATH,
     DEFAULT_SCHEMA_PATH,
+    LEGACY_NIST_PREFIX_MAP,
+    LEGACY_STRIDE_KEBAB_MAP,
     FrameworkMappingError,
     InvalidRefError,
     UnknownFrameworkError,
@@ -66,6 +68,7 @@ from precommit.framework_mapping import (
     known_versions,
     load_pinned_patterns,
     load_registry,
+    migrate_legacy_value,
     split_pinned_value,
 )
 
@@ -2046,10 +2049,1347 @@ class TestComposePinnedValueUnversionedWarning:
 
 
 # ===========================================================================
+# 14. migrate_legacy_value — per-framework legacy→pinned transforms
+# ===========================================================================
+
+
+class TestMigrateLegacyValueTransforms:
+    """
+    migrate_legacy_value maps each framework's legacy representation to its
+    ADR-027 pinned form, using compose_pinned_value as the canonical compose path.
+
+    ADR-027 D3 / D3a / D4 / D6 / D8: pinned form = spec-native canonical ref +
+    version token (or bare PascalCase for STRIDE). The migration function never
+    hand-spells the output — it routes through compose_pinned_value.
+
+    #343 fail-loud rule: the function must raise FrameworkMappingError (or a
+    subclass) for any value it cannot map; it never silently passes through.
+    """
+
+    # --- mitre-atlas: append @5.0.1 token only ---
+
+    def test_mitre_atlas_technique_legacy_to_pinned(self):
+        """
+        A bare ATLAS technique ref gains the @5.0.1 token.
+
+        Given: mitre-atlas legacy value 'AML.T0020' (no version token)
+        When:  migrate_legacy_value is called
+        Then:  returns ('AML.T0020@5.0.1', True)
+
+        ADR-027 D3 / D4: migration routes through compose_pinned_value;
+        the only transform for ATLAS is appending the current version token.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "mitre-atlas",
+            "AML.T0020",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "AML.T0020@5.0.1"
+        assert changed is True
+
+    def test_mitre_atlas_mitigation_legacy_to_pinned(self):
+        """
+        A bare ATLAS mitigation ref (M-prefix) gains the @5.0.1 token.
+
+        Given: mitre-atlas legacy value 'AML.M0003'
+        When:  migrate_legacy_value is called
+        Then:  returns ('AML.M0003@5.0.1', True)
+
+        ADR-027 D3 / D4: the ATLAS pattern covers both T and M prefixes.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "mitre-atlas",
+            "AML.M0003",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "AML.M0003@5.0.1"
+        assert changed is True
+
+    def test_mitre_atlas_subtechnique_legacy_to_pinned(self):
+        """
+        A bare ATLAS sub-technique ref (T####.###) gains the @5.0.1 token.
+
+        Given: mitre-atlas legacy value 'AML.T0010.001'
+        When:  migrate_legacy_value is called
+        Then:  returns ('AML.T0010.001@5.0.1', True)
+
+        ADR-027 D3: the ATLAS pinned pattern includes optional .### sub-id.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "mitre-atlas",
+            "AML.T0010.001",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "AML.T0010.001@5.0.1"
+        assert changed is True
+
+    # --- nist-ai-rmf: respell prefix + append @1.0 ---
+
+    def test_nist_gv_prefix_to_govern(self):
+        """
+        Legacy NIST GV prefix is respelled to GOVERN and token @1.0 is appended.
+
+        Given: nist-ai-rmf legacy value 'GV-6.2'
+        When:  migrate_legacy_value is called
+        Then:  returns ('GOVERN-6.2@1.0', True)
+
+        ADR-027 D3 / D4: LEGACY_NIST_PREFIX_MAP GV→GOVERN; compose adds @1.0.
+        #343 plan: NIST is lossy if the prefix map is incomplete → fail-loud required.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "nist-ai-rmf",
+            "GV-6.2",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "GOVERN-6.2@1.0"
+        assert changed is True
+
+    def test_nist_ms_prefix_to_measure(self):
+        """
+        Legacy NIST MS prefix is respelled to MEASURE.
+
+        Given: nist-ai-rmf legacy value 'MS-2.3'
+        When:  migrate_legacy_value is called
+        Then:  returns ('MEASURE-2.3@1.0', True)
+
+        ADR-027 D3 / D4: LEGACY_NIST_PREFIX_MAP MS→MEASURE.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "nist-ai-rmf",
+            "MS-2.3",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "MEASURE-2.3@1.0"
+        assert changed is True
+
+    def test_nist_mp_prefix_to_map(self):
+        """
+        Legacy NIST MP prefix is respelled to MAP.
+
+        Given: nist-ai-rmf legacy value 'MP-3.4'
+        When:  migrate_legacy_value is called
+        Then:  returns ('MAP-3.4@1.0', True)
+
+        ADR-027 D3 / D4: LEGACY_NIST_PREFIX_MAP MP→MAP.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "nist-ai-rmf",
+            "MP-3.4",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "MAP-3.4@1.0"
+        assert changed is True
+
+    def test_nist_mg_prefix_to_manage(self):
+        """
+        Legacy NIST MG prefix is respelled to MANAGE.
+
+        Given: nist-ai-rmf legacy value 'MG-2.1'
+        When:  migrate_legacy_value is called
+        Then:  returns ('MANAGE-2.1@1.0', True)
+
+        ADR-027 D3 / D4: LEGACY_NIST_PREFIX_MAP MG→MANAGE.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "nist-ai-rmf",
+            "MG-2.1",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "MANAGE-2.1@1.0"
+        assert changed is True
+
+    def test_nist_ms_multi_dot_rest(self):
+        """
+        Legacy NIST value with a multi-part sub-id (e.g. MS-2.10) is correctly
+        mapped: only the prefix portion before the FIRST '-' is respelled.
+
+        Given: nist-ai-rmf legacy value 'MS-2.10'
+        When:  migrate_legacy_value is called
+        Then:  returns ('MEASURE-2.10@1.0', True)
+
+        ADR-027 D3 / D4: split on FIRST '-' only; remainder '2.10' is preserved.
+        #343 plan: a naive split on last '-' would corrupt the sub-id.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "nist-ai-rmf",
+            "MS-2.10",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "MEASURE-2.10@1.0"
+        assert changed is True
+
+    # --- owasp-top10-llm: append :2025 token (colon delimiter) ---
+
+    def test_owasp_legacy_to_pinned(self):
+        """
+        A bare OWASP LLM ref gains the :2025 token (colon delimiter, not @).
+
+        Given: owasp-top10-llm legacy value 'LLM06'
+        When:  migrate_legacy_value is called
+        Then:  returns ('LLM06:2025', True)
+
+        ADR-027 D6 / D3: OWASP uses the : delimiter; Decision 1 locks to :2025.
+        The issue body's ':2024' is a stale erratum — migrate to ':2025' per
+        frameworks.yaml source of truth.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "owasp-top10-llm",
+            "LLM06",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "LLM06:2025"
+        assert changed is True
+
+    # --- stride: respell kebab to PascalCase (no version token — D6) ---
+
+    def test_stride_information_disclosure_to_pascal(self):
+        """
+        Stride kebab 'information-disclosure' becomes bare PascalCase 'InformationDisclosure'.
+
+        Given: stride legacy value 'information-disclosure'
+        When:  migrate_legacy_value is called
+        Then:  returns ('InformationDisclosure', True)
+
+        ADR-027 D6: STRIDE is unversioned; the migrated value is bare PascalCase.
+        LEGACY_STRIDE_KEBAB_MAP encodes the canonical respelling.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "stride",
+            "information-disclosure",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "InformationDisclosure"
+        assert changed is True
+
+    def test_stride_denial_of_service_to_pascal(self):
+        """
+        Stride kebab 'denial-of-service' becomes 'DenialOfService'.
+
+        Given: stride legacy value 'denial-of-service'
+        When:  migrate_legacy_value is called
+        Then:  returns ('DenialOfService', True)
+
+        ADR-027 D6 / #343 plan.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "stride",
+            "denial-of-service",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "DenialOfService"
+        assert changed is True
+
+    def test_stride_elevation_of_privilege_to_pascal(self):
+        """
+        Stride kebab 'elevation-of-privilege' becomes 'ElevationOfPrivilege'.
+
+        Given: stride legacy value 'elevation-of-privilege'
+        When:  migrate_legacy_value is called
+        Then:  returns ('ElevationOfPrivilege', True)
+
+        ADR-027 D6 / #343 plan.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "stride",
+            "elevation-of-privilege",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "ElevationOfPrivilege"
+        assert changed is True
+
+    def test_stride_spoofing_to_pascal(self):
+        """
+        Stride kebab 'spoofing' becomes 'Spoofing'.
+
+        Given: stride legacy value 'spoofing'
+        When:  migrate_legacy_value is called
+        Then:  returns ('Spoofing', True)
+
+        ADR-027 D6 / #343 plan.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "stride",
+            "spoofing",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "Spoofing"
+        assert changed is True
+
+    def test_stride_tampering_to_pascal(self):
+        """
+        Stride kebab 'tampering' becomes 'Tampering'.
+
+        Given: stride legacy value 'tampering'
+        When:  migrate_legacy_value is called
+        Then:  returns ('Tampering', True)
+
+        ADR-027 D6 / #343 plan.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "stride",
+            "tampering",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "Tampering"
+        assert changed is True
+
+    def test_stride_repudiation_to_pascal(self):
+        """
+        Stride kebab 'repudiation' becomes 'Repudiation'.
+
+        Given: stride legacy value 'repudiation'
+        When:  migrate_legacy_value is called
+        Then:  returns ('Repudiation', True)
+
+        ADR-027 D6 / #343 plan.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "stride",
+            "repudiation",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "Repudiation"
+        assert changed is True
+
+    # --- iso-22989: bare phrase → enum@2022 ---
+
+    def test_iso_ai_producer_to_pinned(self):
+        """
+        ISO 22989 bare role 'AI Producer' gains the @2022 token.
+
+        Given: iso-22989 legacy value 'AI Producer'
+        When:  migrate_legacy_value is called
+        Then:  returns ('AI Producer@2022', True)
+
+        ADR-027 D8: ISO 22989 uses a closed enum + @2022 token.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "iso-22989",
+            "AI Producer",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "AI Producer@2022"
+        assert changed is True
+
+    def test_iso_ai_partner_data_supplier_to_pinned(self):
+        """
+        ISO 22989 bare role 'AI Partner (data supplier)' gains the @2022 token.
+
+        Given: iso-22989 legacy value 'AI Partner (data supplier)'
+        When:  migrate_legacy_value is called
+        Then:  returns ('AI Partner (data supplier)@2022', True)
+
+        ADR-027 D8: spaces and parens in the role are preserved verbatim (D3a H3).
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "iso-22989",
+            "AI Partner (data supplier)",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "AI Partner (data supplier)@2022"
+        assert changed is True
+
+
+# ===========================================================================
+# 15. migrate_legacy_value — idempotency
+# ===========================================================================
+
+
+class TestMigrateLegacyValueIdempotency:
+    """
+    migrate_legacy_value returns (value, False) unchanged when the input
+    already validates against the framework's pinned subschema.
+
+    ADR-027 D3 / D4: the function is idempotent — running it twice on an
+    already-migrated corpus is a no-op. The 'changed' flag will be False.
+
+    #343 fail-loud rule: idempotency must not mask an error; a value that
+    looks pinned but is actually invalid must still raise, not silently pass.
+    """
+
+    def test_already_pinned_atlas_is_unchanged(self):
+        """
+        A value already in pinned form for ATLAS returns unchanged.
+
+        Given: mitre-atlas already-pinned value 'AML.T0020@5.0.1'
+        When:  migrate_legacy_value is called
+        Then:  returns ('AML.T0020@5.0.1', False)
+
+        ADR-027 D3 / D4: idempotency gate via schema validation.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "mitre-atlas",
+            "AML.T0020@5.0.1",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "AML.T0020@5.0.1"
+        assert changed is False
+
+    def test_already_pinned_nist_is_unchanged(self):
+        """
+        A value already in pinned NIST form returns unchanged.
+
+        Given: nist-ai-rmf already-pinned value 'GOVERN-6.2@1.0'
+        When:  migrate_legacy_value is called
+        Then:  returns ('GOVERN-6.2@1.0', False)
+
+        ADR-027 D3 / D4: idempotency — the canonical NIST form passes
+        the pinned subschema check and is left alone.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "nist-ai-rmf",
+            "GOVERN-6.2@1.0",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "GOVERN-6.2@1.0"
+        assert changed is False
+
+    def test_already_pinned_owasp_is_unchanged(self):
+        """
+        A value already in pinned OWASP form (colon delimiter) returns unchanged.
+
+        Given: owasp-top10-llm already-pinned value 'LLM06:2025'
+        When:  migrate_legacy_value is called
+        Then:  returns ('LLM06:2025', False)
+
+        ADR-027 D6 / D3: OWASP pinned form uses colon; already-correct values
+        must not be touched.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "owasp-top10-llm",
+            "LLM06:2025",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "LLM06:2025"
+        assert changed is False
+
+    def test_already_pinned_stride_is_unchanged(self):
+        """
+        A value already in PascalCase STRIDE form returns unchanged.
+
+        Given: stride already-pinned value 'InformationDisclosure'
+        When:  migrate_legacy_value is called
+        Then:  returns ('InformationDisclosure', False)
+
+        ADR-027 D6: STRIDE is unversioned; the bare PascalCase form is the
+        pinned form and must be left alone.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "stride",
+            "InformationDisclosure",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "InformationDisclosure"
+        assert changed is False
+
+    def test_already_pinned_iso_is_unchanged(self):
+        """
+        A value already in pinned ISO 22989 form returns unchanged.
+
+        Given: iso-22989 already-pinned value 'AI Producer@2022'
+        When:  migrate_legacy_value is called
+        Then:  returns ('AI Producer@2022', False)
+
+        ADR-027 D8: closed enum @2022 form is the pinned form.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        result, changed = migrate_legacy_value(
+            "iso-22989",
+            "AI Producer@2022",
+            registry=registry,
+            pinned_patterns=pinned_patterns,
+        )
+        assert result == "AI Producer@2022"
+        assert changed is False
+
+
+# ===========================================================================
+# 16. migrate_legacy_value — fail-loud (never silent pass-through)
+# ===========================================================================
+
+
+class TestMigrateLegacyValueFailLoud:
+    """
+    migrate_legacy_value raises FrameworkMappingError (or a specific subclass)
+    for any value it cannot map. It NEVER silently returns an unmappable value.
+
+    This mirrors the #347 P4 silent-skip bug. The #343 plan states:
+    "the migrate tool must fail loud on any legacy value it can't map,
+    never silently skip."
+
+    ADR-027 D3 / D4: the function is the single compose path; an unmappable
+    value indicates a data integrity problem that must surface immediately.
+    """
+
+    def test_nist_unknown_prefix_raises(self):
+        """
+        A NIST legacy value with a prefix not in LEGACY_NIST_PREFIX_MAP raises.
+
+        Given: nist-ai-rmf value 'XY-1.2' (prefix 'XY' not in the map)
+        When:  migrate_legacy_value is called
+        Then:  raises InvalidRefError
+
+        #343 fail-loud rule: an incomplete prefix map must never silently
+        pass through — it must raise so the data problem surfaces.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        with pytest.raises(InvalidRefError):
+            migrate_legacy_value(
+                "nist-ai-rmf",
+                "XY-1.2",
+                registry=registry,
+                pinned_patterns=pinned_patterns,
+            )
+
+    def test_stride_unknown_kebab_raises(self):
+        """
+        A STRIDE legacy value not in LEGACY_STRIDE_KEBAB_MAP raises.
+
+        Given: stride value 'unknown-category' (not a valid STRIDE kebab form)
+        When:  migrate_legacy_value is called
+        Then:  raises InvalidRefError
+
+        #343 fail-loud rule: any unrecognized STRIDE kebab form must raise,
+        never be passed through silently or mapped to a guess.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        with pytest.raises(InvalidRefError):
+            migrate_legacy_value(
+                "stride",
+                "unknown-category",
+                registry=registry,
+                pinned_patterns=pinned_patterns,
+            )
+
+    def test_mitre_off_pattern_raises(self):
+        """
+        A MITRE ATLAS value that does not match the expected pattern raises.
+
+        Given: mitre-atlas value 'GARBAGE' (no AML prefix, no pattern match)
+        When:  migrate_legacy_value is called
+        Then:  raises InvalidRefError (compose_pinned_value rejects the ref)
+
+        ADR-027 D4a step 3: spec-native regex rejects refs that don't match.
+        #343 fail-loud rule: off-pattern refs must never silently pass through.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        with pytest.raises(InvalidRefError):
+            migrate_legacy_value(
+                "mitre-atlas",
+                "GARBAGE",
+                registry=registry,
+                pinned_patterns=pinned_patterns,
+            )
+
+    def test_unknown_framework_raises(self):
+        """
+        A framework key not in the registry raises UnknownFrameworkError.
+
+        Given: framework 'not-a-framework' (not in registry) with any value
+        When:  migrate_legacy_value is called
+        Then:  raises UnknownFrameworkError
+
+        ADR-027 D4a step 1: framework id is validated against the registry.
+        #343 fail-loud rule: an unknown framework key must raise immediately.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        with pytest.raises(UnknownFrameworkError):
+            migrate_legacy_value(
+                "not-a-framework",
+                "SOME-VALUE",
+                registry=registry,
+                pinned_patterns=pinned_patterns,
+            )
+
+    def test_fail_loud_is_framework_mapping_error_subclass(self):
+        """
+        All migrate_legacy_value failures are catchable as FrameworkMappingError.
+
+        This checks the exception hierarchy guarantees that callers catching the
+        base type will catch both InvalidRefError and UnknownFrameworkError.
+
+        ADR-027 D4a / exception hierarchy.
+        """
+        registry = _get_registry()
+        pinned_patterns = _get_pinned_patterns()
+        with pytest.raises(FrameworkMappingError):
+            migrate_legacy_value(
+                "not-a-framework",
+                "ANY-VALUE",
+                registry=registry,
+                pinned_patterns=pinned_patterns,
+            )
+
+
+# ===========================================================================
+# 17. LEGACY_NIST_PREFIX_MAP and LEGACY_STRIDE_KEBAB_MAP constants
+# ===========================================================================
+
+
+class TestMigrateLookupTables:
+    """
+    The lookup-table constants must have exactly the expected keys and values.
+
+    An incomplete table causes silent lossy migration (a NIST prefix with no
+    entry would cause compose to receive a wrong base-ref, or the fail-loud
+    path to miss valid legacy values). The #343 plan specifically flags this
+    as a risk.
+
+    ADR-027 D3 / D4 / #343 plan §5: "NIST/STRIDE respelling is lossy if the
+    lookup tables are incomplete — the migrate tool must fail loud on any
+    legacy value it can't map."
+    """
+
+    def test_nist_prefix_map_has_exactly_four_entries(self):
+        """
+        LEGACY_NIST_PREFIX_MAP must have exactly 4 entries.
+
+        Given: the four NIST AI RMF function prefixes in the live corpus:
+               GV (GOVERN), MS (MEASURE), MP (MAP), MG (MANAGE)
+        Then:  LEGACY_NIST_PREFIX_MAP has exactly those four keys.
+
+        An entry count != 4 signals either an incomplete or incorrectly expanded map.
+        """
+        assert len(LEGACY_NIST_PREFIX_MAP) == 4, (
+            f"LEGACY_NIST_PREFIX_MAP must have exactly 4 entries; "
+            f"got {len(LEGACY_NIST_PREFIX_MAP)}: {LEGACY_NIST_PREFIX_MAP}"
+        )
+
+    def test_nist_prefix_map_gv_maps_to_govern(self):
+        """
+        LEGACY_NIST_PREFIX_MAP['GV'] must be 'GOVERN'.
+
+        ADR-027 D3 / D4: GV→GOVERN is the canonical NIST AI RMF function name.
+        """
+        assert LEGACY_NIST_PREFIX_MAP["GV"] == "GOVERN"
+
+    def test_nist_prefix_map_ms_maps_to_measure(self):
+        """LEGACY_NIST_PREFIX_MAP['MS'] must be 'MEASURE'."""
+        assert LEGACY_NIST_PREFIX_MAP["MS"] == "MEASURE"
+
+    def test_nist_prefix_map_mp_maps_to_map(self):
+        """LEGACY_NIST_PREFIX_MAP['MP'] must be 'MAP'."""
+        assert LEGACY_NIST_PREFIX_MAP["MP"] == "MAP"
+
+    def test_nist_prefix_map_mg_maps_to_manage(self):
+        """LEGACY_NIST_PREFIX_MAP['MG'] must be 'MANAGE'."""
+        assert LEGACY_NIST_PREFIX_MAP["MG"] == "MANAGE"
+
+    def test_stride_kebab_map_has_exactly_six_entries(self):
+        """
+        LEGACY_STRIDE_KEBAB_MAP must have exactly 6 entries — one per STRIDE threat.
+
+        Given: the six STRIDE threat categories in the live corpus:
+               spoofing, tampering, repudiation, information-disclosure,
+               denial-of-service, elevation-of-privilege
+        Then:  LEGACY_STRIDE_KEBAB_MAP has exactly those six keys.
+
+        #343 plan §5: an incomplete STRIDE map causes fail-loud failures
+        on valid legacy values (desired), but a map that is too large
+        would silently admit invalid kebab forms.
+        """
+        assert len(LEGACY_STRIDE_KEBAB_MAP) == 6, (
+            f"LEGACY_STRIDE_KEBAB_MAP must have exactly 6 entries; "
+            f"got {len(LEGACY_STRIDE_KEBAB_MAP)}: {LEGACY_STRIDE_KEBAB_MAP}"
+        )
+
+    def test_stride_kebab_map_all_values(self):
+        """
+        LEGACY_STRIDE_KEBAB_MAP maps all six kebab forms to the correct PascalCase.
+
+        ADR-027 D6 / #343 plan: the canonical PascalCase forms are those accepted
+        by the pinned STRIDE subschema (closed enum).
+        """
+        expected = {
+            "spoofing": "Spoofing",
+            "tampering": "Tampering",
+            "repudiation": "Repudiation",
+            "information-disclosure": "InformationDisclosure",
+            "denial-of-service": "DenialOfService",
+            "elevation-of-privilege": "ElevationOfPrivilege",
+        }
+        assert LEGACY_STRIDE_KEBAB_MAP == expected, (
+            f"LEGACY_STRIDE_KEBAB_MAP mismatch.\nExpected: {expected}\nGot:      {LEGACY_STRIDE_KEBAB_MAP}"
+        )
+
+
+# ===========================================================================
+# 18. CLI `migrate` subcommand — subprocess tests
+# ===========================================================================
+
+
+def _make_legacy_controls_fixture(tmp_path: Path) -> Path:
+    """
+    Build a small controls.yaml fixture with LEGACY values for migrate tests.
+
+    Contains:
+      - controlLegacy: four legacy mappings (nist GV-1.6, stride information-disclosure,
+        owasp LLM06, mitre AML.T0020) plus a comment to test preservation.
+      - controlAlreadyPinned: one already-pinned mitre value (sibling preservation).
+
+    The fixture is self-contained — not reusing _make_controls_fixture() because
+    the migrate subcommand operates on the mappings values themselves, not on
+    adding/removing individual entries.
+    """
+    dst = tmp_path / "controls_legacy.yaml"
+    _write_consumer_fixture(
+        dst,
+        """\
+        # Copyright notice preserved
+        title: Controls
+        description:
+          - >
+            Legacy controls fixture for migrate subcommand tests.
+        categories:
+          - id: controlsData
+            title: Data Controls
+        controls:
+          - id: controlLegacy
+            title: Legacy Control
+            description:
+              - Control with legacy mapping values.
+            # sibling comment preserved
+            category: controlsData
+            personas: []
+            components: []
+            risks: []
+            mappings:
+              nist-ai-rmf:
+                - GV-1.6
+              stride:
+                - information-disclosure
+              owasp-top10-llm:
+                - LLM06
+              mitre-atlas:
+                - AML.T0020
+
+          - id: controlAlreadyPinned
+            title: Already Pinned Control
+            description:
+              - Control with an already-pinned mapping value (sibling).
+            category: controlsData
+            personas: []
+            components: []
+            risks: []
+            mappings:
+              mitre-atlas:
+                - AML.T0043@5.0.1
+        """,
+    )
+    return dst
+
+
+def _make_unmappable_controls_fixture(tmp_path: Path) -> Path:
+    """
+    Build a controls.yaml fixture containing an unmappable NIST legacy value (XY-9.9).
+
+    Used to test the fail-loud path: migrate must exit non-zero and not write
+    a partially migrated file silently.
+    """
+    dst = tmp_path / "controls_unmappable.yaml"
+    _write_consumer_fixture(
+        dst,
+        """\
+        title: Controls
+        description:
+          - Unmappable fixture.
+        categories:
+          - id: controlsData
+            title: Data Controls
+        controls:
+          - id: controlUnmappable
+            title: Unmappable Control
+            description:
+              - Has a NIST value with an unknown prefix.
+            category: controlsData
+            personas: []
+            components: []
+            risks: []
+            mappings:
+              nist-ai-rmf:
+                - XY-9.9
+        """,
+    )
+    return dst
+
+
+def _make_long_prose_fixture(tmp_path: Path) -> Path:
+    """
+    Build a controls fixture with a long single-line folded-scalar description
+    and exactly one legacy mapping value.
+
+    The description line is far wider than ruamel's default 80-column wrap, so a
+    full YAML re-emit would re-fold it. The migrate tool must change ONLY the
+    mapping value and leave every prose byte untouched (value-only diff).
+    """
+    dst = tmp_path / "controls_long_prose.yaml"
+    long_line = (
+        "This is a deliberately long single physical line of folded prose that exceeds "
+        "the default eighty column ruamel wrap width so a naive full re-emit would re-fold it."
+    )
+    _write_consumer_fixture(
+        dst,
+        f"""\
+        title: Controls
+        description:
+          - Long-prose migrate fixture.
+        categories:
+          - id: controlsData
+            title: Data Controls
+        controls:
+          - id: controlLongProse
+            title: Long Prose Control
+            description:
+              - >
+                {long_line}
+            category: controlsData
+            personas: []
+            components: []
+            risks: []
+            mappings:
+              nist-ai-rmf:
+                - GV-1.6
+        """,
+    )
+    return dst
+
+
+class TestCLIMigrate:
+    """
+    CLI `migrate` subcommand subprocess tests.
+
+    Tests: happy-path migration, idempotency, --dry-run, comment/sibling
+    preservation, and fail-loud on unmappable values.
+
+    ADR-027 D3 / D4 / D6 / D8 / #343 Decision 2 / fail-loud rule.
+    """
+
+    def test_migrate_rewrites_legacy_values_to_pinned(self, tmp_path: Path):
+        """
+        `migrate` rewrites each legacy value in the fixture to its pinned form.
+
+        Given: a controls fixture with legacy values for nist, stride, owasp, mitre
+        When:  migrate --content-file <fixture> is run
+        Then:  exits 0 and each legacy value is replaced with its pinned form
+
+        ADR-027 D3 / D4 / #343 Decision 2: migrate routes through
+        compose_pinned_value; the tool must never hand-spell pinned values.
+        """
+        fixture = _make_legacy_controls_fixture(tmp_path)
+        result = _run(
+            "migrate",
+            "--content-file",
+            str(fixture),
+            "--frameworks-file",
+            str(FRAMEWORKS_YAML),
+            "--schema-file",
+            str(FRAMEWORKS_SCHEMA),
+        )
+        assert result.returncode == 0, (
+            f"migrate must succeed on a valid legacy fixture; stderr=\n{result.stderr}\nstdout=\n{result.stdout}"
+        )
+        data = _load_yaml(fixture)
+        controls = {c["id"]: c for c in data["controls"]}
+        mappings = controls["controlLegacy"]["mappings"]
+        # NIST GV-1.6 → GOVERN-1.6@1.0
+        assert "GOVERN-1.6@1.0" in mappings["nist-ai-rmf"]
+        assert "GV-1.6" not in mappings["nist-ai-rmf"]
+        # stride information-disclosure → InformationDisclosure
+        assert "InformationDisclosure" in mappings["stride"]
+        assert "information-disclosure" not in mappings["stride"]
+        # OWASP LLM06 → LLM06:2025
+        assert "LLM06:2025" in mappings["owasp-top10-llm"]
+        assert "LLM06" not in mappings["owasp-top10-llm"]
+        # ATLAS AML.T0020 → AML.T0020@5.0.1
+        assert "AML.T0020@5.0.1" in mappings["mitre-atlas"]
+        assert "AML.T0020" not in mappings["mitre-atlas"]
+
+    def test_migrate_is_idempotent(self, tmp_path: Path):
+        """
+        Running `migrate` twice produces byte-identical output on the second run.
+
+        Given: a controls fixture with legacy values
+        When:  migrate is run twice
+        Then:  file bytes after first run == file bytes after second run
+
+        ADR-027 D4 / #343 Decision 2: a second migrate pass on an already-migrated
+        corpus must be a byte-level no-op.
+        """
+        fixture = _make_legacy_controls_fixture(tmp_path)
+        first = _run(
+            "migrate",
+            "--content-file",
+            str(fixture),
+            "--frameworks-file",
+            str(FRAMEWORKS_YAML),
+            "--schema-file",
+            str(FRAMEWORKS_SCHEMA),
+        )
+        assert first.returncode == 0, f"first migrate run must succeed; stderr=\n{first.stderr}"
+        bytes_after_first = fixture.read_bytes()
+
+        second = _run(
+            "migrate",
+            "--content-file",
+            str(fixture),
+            "--frameworks-file",
+            str(FRAMEWORKS_YAML),
+            "--schema-file",
+            str(FRAMEWORKS_SCHEMA),
+        )
+        assert second.returncode == 0, f"second migrate run must succeed; stderr=\n{second.stderr}"
+        bytes_after_second = fixture.read_bytes()
+
+        assert bytes_after_second == bytes_after_first, (
+            "migrate must be idempotent: a second run on an already-migrated file "
+            "must produce byte-identical output"
+        )
+
+    def test_migrate_dry_run_does_not_write(self, tmp_path: Path):
+        """
+        `migrate --dry-run` exits 0, does NOT modify the file, and prints a summary.
+
+        Given: a controls fixture with legacy values
+        When:  migrate --dry-run is run
+        Then:  exits 0; file bytes unchanged; stdout is non-empty (summary printed)
+
+        ADR-027 D4 / #343 Decision 2: --dry-run is an observability mode that
+        shows what would change without writing.
+        """
+        fixture = _make_legacy_controls_fixture(tmp_path)
+        original_bytes = fixture.read_bytes()
+
+        result = _run(
+            "migrate",
+            "--content-file",
+            str(fixture),
+            "--frameworks-file",
+            str(FRAMEWORKS_YAML),
+            "--schema-file",
+            str(FRAMEWORKS_SCHEMA),
+            "--dry-run",
+        )
+        assert result.returncode == 0, (
+            f"migrate --dry-run must exit 0; stderr=\n{result.stderr}\nstdout=\n{result.stdout}"
+        )
+        assert fixture.read_bytes() == original_bytes, (
+            "migrate --dry-run must NOT write the file; file was modified"
+        )
+        assert result.stdout.strip(), "migrate --dry-run must print a non-empty summary to stdout"
+
+    def test_migrate_preserves_comments_and_already_pinned_sibling(self, tmp_path: Path):
+        """
+        After `migrate`, comments in the fixture survive and the already-pinned
+        sibling entity's mapping is unchanged.
+
+        Given: a controls fixture with comments and a pre-pinned sibling entity
+        When:  migrate runs
+        Then:  comment lines survive; sibling entity's pinned value is unchanged
+
+        ADR-027 D4: "writes must preserve YAML formatting/comments."
+        #343 Decision 2: migrate uses ruamel round-trip (same as add/remove/update).
+        """
+        fixture = _make_legacy_controls_fixture(tmp_path)
+        original_text = fixture.read_text(encoding="utf-8")
+        comment_lines = [ln for ln in original_text.splitlines() if ln.lstrip().startswith("#")]
+        assert comment_lines, "fixture must contain comments for this test to be meaningful"
+
+        result = _run(
+            "migrate",
+            "--content-file",
+            str(fixture),
+            "--frameworks-file",
+            str(FRAMEWORKS_YAML),
+            "--schema-file",
+            str(FRAMEWORKS_SCHEMA),
+        )
+        assert result.returncode == 0
+
+        rewritten_text = fixture.read_text(encoding="utf-8")
+        rewritten_comment_lines = [ln for ln in rewritten_text.splitlines() if ln.lstrip().startswith("#")]
+        missing_comments = [c for c in comment_lines if c not in rewritten_comment_lines]
+        assert not missing_comments, "all comment lines must survive migrate; missing:\n" + "\n".join(
+            missing_comments
+        )
+
+        # Already-pinned sibling must be unchanged.
+        data = _load_yaml(fixture)
+        controls = {c["id"]: c for c in data["controls"]}
+        assert controls["controlAlreadyPinned"]["mappings"]["mitre-atlas"] == ["AML.T0043@5.0.1"], (
+            "already-pinned sibling entity must not be modified by migrate"
+        )
+
+    def test_migrate_fail_loud_on_unmappable_value(self, tmp_path: Path):
+        """
+        `migrate` exits non-zero with a stderr diagnostic when it encounters an
+        unmappable legacy value; it must NOT silently write a partial file.
+
+        Given: a controls fixture containing NIST value 'XY-9.9' (unknown prefix)
+        When:  migrate is run
+        Then:  exits non-zero AND stderr is non-empty (diagnostic printed)
+
+        #343 fail-loud rule / mirrors #347 P4 silent-skip bug: the migrate tool
+        must NEVER silently pass through a value it cannot map.
+        ADR-027 D4: validation failures must surface as diagnostics, not silent skips.
+        """
+        fixture = _make_unmappable_controls_fixture(tmp_path)
+        result = _run(
+            "migrate",
+            "--content-file",
+            str(fixture),
+            "--frameworks-file",
+            str(FRAMEWORKS_YAML),
+            "--schema-file",
+            str(FRAMEWORKS_SCHEMA),
+        )
+        assert result.returncode != 0, "migrate must exit non-zero when it encounters an unmappable legacy value"
+        assert result.stderr.strip(), "migrate must emit a diagnostic to stderr for unmappable values (fail-loud)"
+
+    def test_migrate_does_not_reflow_prose(self, tmp_path: Path):
+        """
+        `migrate` changes ONLY the mapping value, never re-wraps surrounding prose.
+
+        Given: a fixture with a folded-scalar line far wider than ruamel's default
+               80-column wrap and exactly one legacy value (GV-1.6)
+        When:  migrate runs
+        Then:  the output equals the original with ONLY `GV-1.6` -> `GOVERN-1.6@1.0`
+               replaced; every other byte (including the long prose line) is intact
+
+        #343: a value migration is a value-only diff. A full YAML re-emit re-folds
+        folded scalars (ruamel cannot losslessly round-trip the live corpus's
+        prose), so the write path must be line-anchored, not a whole-file dump.
+        """
+        fixture = _make_long_prose_fixture(tmp_path)
+        original = fixture.read_text(encoding="utf-8")
+        result = _run(
+            "migrate",
+            "--content-file",
+            str(fixture),
+            "--frameworks-file",
+            str(FRAMEWORKS_YAML),
+            "--schema-file",
+            str(FRAMEWORKS_SCHEMA),
+        )
+        assert result.returncode == 0, f"migrate must succeed; stderr=\n{result.stderr}"
+        migrated = fixture.read_text(encoding="utf-8")
+        expected = original.replace("- GV-1.6", "- GOVERN-1.6@1.0")
+        assert migrated == expected, (
+            "migrate must produce a value-only diff (no prose re-wrap). "
+            f"Got:\n{migrated!r}\nExpected:\n{expected!r}"
+        )
+
+
+# ===========================================================================
+# 19. CLI `migrate --report-legacy` mode
+# ===========================================================================
+
+
+class TestCLIMigrateReportLegacy:
+    """
+    `migrate --report-legacy` prints a corpus inventory and exits 0 without
+    modifying any file.
+
+    ADR-027 D4 / #343 Decision 2: --report-legacy satisfies the Gap-B
+    audit enabler from draft-mapping-purity-audit-mode-issue: it allows
+    a maintainer to inspect the scope of the migration before running it.
+    """
+
+    def test_report_legacy_exits_zero(self, tmp_path: Path):
+        """
+        `migrate --report-legacy` exits 0.
+
+        Given: a controls fixture with legacy values
+        When:  migrate --report-legacy is run
+        Then:  exits 0
+
+        ADR-027 D4 / #343 Decision 2: report mode is read-only inventory.
+        """
+        fixture = _make_legacy_controls_fixture(tmp_path)
+        result = _run(
+            "migrate",
+            "--content-file",
+            str(fixture),
+            "--frameworks-file",
+            str(FRAMEWORKS_YAML),
+            "--schema-file",
+            str(FRAMEWORKS_SCHEMA),
+            "--report-legacy",
+        )
+        assert result.returncode == 0, (
+            f"migrate --report-legacy must exit 0; stderr=\n{result.stderr}\nstdout=\n{result.stdout}"
+        )
+
+    def test_report_legacy_does_not_modify_file(self, tmp_path: Path):
+        """
+        `migrate --report-legacy` does NOT modify the content file.
+
+        Given: a controls fixture with legacy values
+        When:  migrate --report-legacy is run
+        Then:  file bytes are unchanged
+
+        ADR-027 D4: --report-legacy is a read-only audit mode.
+        """
+        fixture = _make_legacy_controls_fixture(tmp_path)
+        original_bytes = fixture.read_bytes()
+        _run(
+            "migrate",
+            "--content-file",
+            str(fixture),
+            "--frameworks-file",
+            str(FRAMEWORKS_YAML),
+            "--schema-file",
+            str(FRAMEWORKS_SCHEMA),
+            "--report-legacy",
+        )
+        assert fixture.read_bytes() == original_bytes, "migrate --report-legacy must NOT write the file"
+
+    def test_report_legacy_prints_inventory_counts(self, tmp_path: Path):
+        """
+        `migrate --report-legacy` prints a non-empty inventory to stdout.
+
+        Given: a controls fixture with 4 legacy values across 4 frameworks
+        When:  migrate --report-legacy is run
+        Then:  stdout is non-empty (inventory printed)
+
+        ADR-027 D4 / #343 Decision 2: the report must contain per-framework
+        legacy vs already-pinned counts so a maintainer can assess scope.
+        """
+        fixture = _make_legacy_controls_fixture(tmp_path)
+        result = _run(
+            "migrate",
+            "--content-file",
+            str(fixture),
+            "--frameworks-file",
+            str(FRAMEWORKS_YAML),
+            "--schema-file",
+            str(FRAMEWORKS_SCHEMA),
+            "--report-legacy",
+        )
+        assert result.stdout.strip(), "migrate --report-legacy must print a non-empty inventory to stdout"
+
+
+# ===========================================================================
+# 20. Live corpus inventory (--report-legacy on real 4 consumer YAMLs)
+# ===========================================================================
+
+
+# Paths to all four live consumer YAMLs (default content-file set for migrate).
+_CONTENT_FILES = [
+    REPO_ROOT / "risk-map" / "yaml" / "risks.yaml",
+    REPO_ROOT / "risk-map" / "yaml" / "controls.yaml",
+    REPO_ROOT / "risk-map" / "yaml" / "personas.yaml",
+    REPO_ROOT / "risk-map" / "yaml" / "components.yaml",
+]
+
+
+@pytest.mark.live_corpus
+class TestLiveCorpusInventory:
+    """
+    Run `migrate --report-legacy` against the real 4 consumer YAMLs and assert
+    the corpus-scale counts and — the load-bearing guard — that the corpus is
+    FULLY MIGRATED (zero legacy values remaining).
+
+    The TOTAL line reports blocks/values across BOTH legacy and pinned classes,
+    so it stays `96 blocks / 146 values` after migration; those numbers are a
+    corpus-scale sanity check, not a migration-progress signal. The real
+    regression guard is per-framework `legacy=0`: if anyone reintroduces an
+    unpinned/off-pattern value, its framework's `legacy=` count goes positive and
+    test_live_corpus_fully_migrated_no_legacy fails.
+
+    Breakdown (verified in-worktree):
+      risks:      65 blocks / 100 values
+      controls:   25 blocks /  40 values
+      personas:    6 blocks /   6 values
+      components:  0 blocks /   0 values
+
+    ADR-027 D4 / #343 plan §1. The tests search for numbers in the report output
+    rather than matching exact whitespace, so the report format may evolve.
+    """
+
+    def test_live_corpus_report_exits_zero(self):
+        """
+        `migrate --report-legacy` on the real 4 consumer YAMLs exits 0.
+
+        ADR-027 D4 / #343 plan §1: the report mode must always succeed on a
+        valid corpus — it is a read-only audit, not a validation gate.
+        """
+        args = ["migrate", "--report-legacy"]
+        for f in _CONTENT_FILES:
+            args += ["--content-file", str(f)]
+        args += ["--frameworks-file", str(FRAMEWORKS_YAML), "--schema-file", str(FRAMEWORKS_SCHEMA)]
+        result = _run(*args)
+        assert result.returncode == 0, (
+            f"migrate --report-legacy on live corpus must exit 0; "
+            f"stderr=\n{result.stderr}\nstdout=\n{result.stdout}"
+        )
+
+    def test_live_corpus_report_contains_total_block_count(self):
+        """
+        The report output contains the total framework-sub-block count: 96.
+
+        Given: the 4 live consumer YAMLs
+        When:  migrate --report-legacy is run
+        Then:  the string '96' appears in the report output
+
+        #343 plan §1 / issue body: "96 framework-sub-blocks across 4 consumer YAMLs."
+        This is a corpus-scale sanity check — the TOTAL counts legacy + pinned, so
+        it stays 96 after migration. The migration-completeness guard is
+        test_live_corpus_fully_migrated_no_legacy.
+        """
+        args = ["migrate", "--report-legacy"]
+        for f in _CONTENT_FILES:
+            args += ["--content-file", str(f)]
+        args += ["--frameworks-file", str(FRAMEWORKS_YAML), "--schema-file", str(FRAMEWORKS_SCHEMA)]
+        result = _run(*args)
+        assert result.returncode == 0
+        combined_output = result.stdout + result.stderr
+        assert "96" in combined_output, (
+            f"Expected '96' (total legacy block count) in report output; got:\n{combined_output}"
+        )
+
+    def test_live_corpus_report_contains_total_value_count(self):
+        """
+        The report output contains the total value count: 146.
+
+        Given: the 4 live consumer YAMLs
+        When:  migrate --report-legacy is run
+        Then:  the string '146' appears in the report output
+
+        #343 plan §1 / issue body: "146 total values across 4 consumer YAMLs."
+        Corpus-scale sanity check (legacy + pinned); see
+        test_live_corpus_fully_migrated_no_legacy for the completeness guard.
+        """
+        args = ["migrate", "--report-legacy"]
+        for f in _CONTENT_FILES:
+            args += ["--content-file", str(f)]
+        args += ["--frameworks-file", str(FRAMEWORKS_YAML), "--schema-file", str(FRAMEWORKS_SCHEMA)]
+        result = _run(*args)
+        assert result.returncode == 0
+        combined_output = result.stdout + result.stderr
+        assert "146" in combined_output, (
+            f"Expected '146' (total legacy value count) in report output; got:\n{combined_output}"
+        )
+
+    def test_live_corpus_fully_migrated_no_legacy(self):
+        """
+        Every framework in the live corpus reports `legacy=0` — the corpus is
+        fully migrated to the pinned form and stays that way.
+
+        Given: the migrated 4 live consumer YAMLs
+        When:  migrate --report-legacy is run
+        Then:  no per-framework `legacy=N` line has N > 0
+
+        #343: the load-bearing regression guard. A newly-introduced unpinned /
+        off-pattern / out-of-enum value classifies as legacy, so its framework's
+        `legacy=` count goes positive and this test fails — catching corpus drift
+        away from the pinned form that the substring count checks cannot.
+        """
+        args = ["migrate", "--report-legacy"]
+        for f in _CONTENT_FILES:
+            args += ["--content-file", str(f)]
+        args += ["--frameworks-file", str(FRAMEWORKS_YAML), "--schema-file", str(FRAMEWORKS_SCHEMA)]
+        result = _run(*args)
+        assert result.returncode == 0, f"report-legacy must exit 0; stderr=\n{result.stderr}"
+        combined_output = result.stdout + result.stderr
+        nonzero_legacy = re.findall(r"legacy=([1-9]\d*)", combined_output)
+        assert not nonzero_legacy, (
+            "live corpus has unmigrated (legacy) framework-mapping values — every framework "
+            f"must report legacy=0. Offending legacy counts: {nonzero_legacy}\nReport:\n{combined_output}"
+        )
+
+    def test_live_corpus_report_does_not_modify_files(self):
+        """
+        `migrate --report-legacy` on the live corpus does not modify any file.
+
+        Given: the 4 live consumer YAMLs
+        When:  migrate --report-legacy is run
+        Then:  every file's bytes are unchanged
+
+        ADR-027 D4: --report-legacy is strictly read-only.
+        """
+        original_bytes = {f: f.read_bytes() for f in _CONTENT_FILES}
+        args = ["migrate", "--report-legacy"]
+        for f in _CONTENT_FILES:
+            args += ["--content-file", str(f)]
+        args += ["--frameworks-file", str(FRAMEWORKS_YAML), "--schema-file", str(FRAMEWORKS_SCHEMA)]
+        _run(*args)
+        for f in _CONTENT_FILES:
+            assert f.read_bytes() == original_bytes[f], f"migrate --report-legacy must NOT modify {f.name}"
+
+
+# ===========================================================================
 # Test Summary
 # ===========================================================================
 #
-# Total Tests: 73 + 3 (item 1 warning tests) = 76
+# Total Tests: 76 (pre-#343, from #347) + 49 (new #343 tests) = 125
 # - Artifacts exist:                    3
 # - compose_pinned_value happy path:    8
 # - compose delimiter correctness:      3
@@ -2064,22 +3404,29 @@ class TestComposePinnedValueUnversionedWarning:
 # - CLI update (re-pin interpretation): 3
 # - CLI rejection cases:                5
 # - Format preservation:                3
+# - migrate_legacy_value transforms:   17  [NEW — Phase 1 §14]
+# - migrate_legacy_value idempotency:   5  [NEW — Phase 1 §15]
+# - migrate_legacy_value fail-loud:     5  [NEW — Phase 1 §16]
+# - Lookup table constants:             8  [NEW — Phase 1 §17]
+# - CLI migrate (subprocess):           6  [NEW — Phase 1 §18, incl. prose-preservation]
+# - CLI migrate --report-legacy:        3  [NEW — Phase 1 §19]
+# - Live corpus inventory:              5  [NEW — Phase 1 §20, @live_corpus]
 #
-# Coverage areas:
-# - compose_pinned_value (all 6 current frameworks + delimiter + errors)
-# - split_pinned_value round-trips (all 6 frameworks)
-# - derive_mapping_id (determinism, uniqueness, charset, SHA-256 correctness)
-# - known_versions (versioned, unversioned, priorVersions union)
-# - Schema cross-check (all 6 frameworks; happy + rejection)
-# - load_registry / DEFAULT_* paths
-# - CLI add (round-trip, create mappings, create framework key, idempotency,
-#            sibling preservation, order preservation)
-# - CLI remove (round-trip, missing-value error, empty-list key removal)
-# - CLI update (re-pin semantic — labeled as interpretation of under-specified ADR point;
-#               nothing-to-update error; ambiguous error)
-# - CLI rejection (unknown framework, unknown version, out-of-vocab ISO,
-#                  entity-not-found, malformed ref)
-# - Format preservation (comment survival, YAML validity, structure intact)
+# New symbols under test (must be added to precommit/framework_mapping.py):
+#   LEGACY_NIST_PREFIX_MAP, LEGACY_STRIDE_KEBAB_MAP, migrate_legacy_value
+#
+# New CLI subcommand under test (must be added to framework_mapping_maintainer.py):
+#   migrate [--content-file FILE ...] [--frameworks-file F] [--schema-file F]
+#           [--dry-run] [--report-legacy]
+#
+# Coverage areas (new):
+# - migrate_legacy_value: all 6 frameworks, idempotency, fail-loud (4 error paths)
+# - LEGACY_NIST_PREFIX_MAP: exact key/value set (4 entries)
+# - LEGACY_STRIDE_KEBAB_MAP: exact key/value set (6 entries)
+# - CLI migrate: happy path, idempotency, dry-run, comment preservation,
+#                sibling preservation, fail-loud on unmappable value
+# - CLI migrate --report-legacy: exits 0, no-write, non-empty inventory
+# - Live corpus inventory: 96 blocks / 146 values count pins (#343 plan §1)
 #
 # Spec ambiguity noted: the `update` verb's resolution logic is not fully
 # specified in ADR-027 D4a. The tests implement and test the "re-pin by

@@ -134,6 +134,8 @@ The sweep does **not** migrate `applicableTo` enforcement into the schema. The v
 
 #### D5b. Per-framework mapping-ID regex patterns (the ADR-019 D5 / ADR-020 D5 commitment)
 
+> **Superseded in part by [ADR-027](027-framework-versioning-and-mapping-convention.md).** The base mapping-ID shapes defined here remain the per-framework ref grammar, but ADR-027 version-pins them: every consumer value now carries a version token (`@5.0.1`, `@1.0`, `:2025`, `@2022`, `@2024`; STRIDE stays unversioned), ISO 22989 moves from a bare string to a closed `@2022` controlled-vocabulary enum (ADR-027 D8), and the consumer schemas `$ref` the strict `framework-mapping-patterns-pinned` block with `additionalProperties: false` (the loose fall-through described below was removed once the content was migrated, #343). The base `framework-mapping-patterns` block defined here is retained in the schema. See ADR-027 for the canonical pinned forms.
+
 [ADR-019](019-risks-schema.md) D5 and [ADR-020](020-controls-schema.md) D5 declared that per-framework mapping-ID regex patterns live in `frameworks.schema.json` and are referenced from `risks.schema.json` and `controls.schema.json`. This ADR commits the concrete shape.
 
 **Conformance-sweep deliverable.** Add a new `definitions/framework-mapping-patterns` block to `frameworks.schema.json`:

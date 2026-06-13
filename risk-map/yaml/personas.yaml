@@ -44,7 +44,7 @@ personas:
         predictions are additionally covered by AI Model Serving.
     mappings:
       iso-22989:
-        - AI Producer
+        - AI Producer@2022
     responsibilities:
       - Model architecture design and training
       - Model evaluation and validation
@@ -71,7 +71,7 @@ personas:
         data aggregators, data marketplaces, and those licensing datasets.
     mappings:
       iso-22989:
-        - AI Partner (data supplier)
+        - AI Partner (data supplier)@2022
     responsibilities:
       - Data quality assurance
       - Data provenance tracking
@@ -103,7 +103,7 @@ personas:
         (e.g., load balancing, API authentication, and request throttling layers).
     mappings:
       iso-22989:
-        - AI Partner (infrastructure provider)
+        - AI Partner (infrastructure provider)@2022
     responsibilities:
       - Infrastructure support, capacity, security, and availability
       - API security and rate limiting
@@ -176,7 +176,7 @@ personas:
         (e.g., Vertex AI Agent Builder, OpenAI Assistants API).
     mappings:
       iso-22989:
-        - AI Partner (tooling provider)
+        - AI Partner (tooling provider)@2022
     responsibilities:
       - Framework security and sandboxing
       - Tool execution safety controls
@@ -218,7 +218,7 @@ personas:
         modifying them, or perform light customization (prompt engineering, RAG, etc.).
     mappings:
       iso-22989:
-        - AI Customer (application builder)
+        - AI Customer (application builder)@2022
     responsibilities:
       - Application-level security controls
       - Input validation and sanitization
@@ -290,7 +290,7 @@ personas:
         rely on application developers and providers for AI security controls.
     mappings:
       iso-22989:
-        - AI Customer (end user)
+        - AI Customer (end user)@2022
     responsibilities:
       - Appropriate use of AI systems
       - Reporting issues or anomalies

@@ -136,3 +136,39 @@ Two trigger-vs-read-set gaps inherited from the bash-to-framework migration ([#2
 - **`validate-lifecycle-stage`** — `lifecycle-stage.yaml` was outside both the trigger and the read/discovery set pre-A4. Resolved within PR #277 itself by introducing a dedicated hook with a narrow trigger and a `--mode lifecycle` short-circuit on `validate_riskmap.py`. The remaining default-mode lifecycle belt-and-suspenders check inside `validate_riskmap.py` is deliberately covered by that dedicated hook's contract, not by `validate-component-edges`.
 
 Both are documented in [#279](https://github.com/cosai-oasis/secure-ai-tooling/issues/279). The invariant exists to make the same class of regression a structural-test failure rather than a reviewer catch.
+
+## Addendum 2026-06-08: Comparison-oracle inputs and the trigger ⊋ scanned-content asymmetry
+
+**Status:** Draft (maintainer to flip to Accepted)
+
+Authored 2026-06-08 alongside [#343](https://github.com/cosai-oasis/secure-ai-tooling/issues/343) Work 6. This addendum extends the 2026-05-08 invariant for a check-input topology that addendum did not anticipate; it does not reset the ADR's status.
+
+### Invariant
+
+The 2026-05-08 invariant treats a hook's read/discovery set as a single category. A validator whose verdict depends on a **comparison oracle** — a file the validator reads to decide whether other files' contents are still valid, but which is not itself among the scanned-content files — splits the read set into two:
+
+- **Scanned-content set** — the files the validator parses for the values under test.
+- **Oracle set** — files read (via their own path constants) whose contents can flip any scanned value's verdict without appearing in the scanned-content set.
+
+For such a hook, the invariant becomes:
+
+> **trigger-set ⊇ (scanned-content-set ∪ oracle-set), AND that union ⊇ check-input-set.**
+
+The oracle file is part of the check-input set even though it is never in the scanned-content set: editing it alone can change the run's verdict, so editing it alone must trigger the hook. This is distinct from the `validate-persona-site-build` "trigger-only, never read" entries (over-matching belt-and-suspenders, not read at all) and distinct from the `validate-issue-templates` runtime-discovered carve-out (read set is a `git diff --cached` query result, not a fixed list). The oracle set is fixed and read every run via path constants.
+
+### `pass_filenames` consequence
+
+When a hook's trigger is a strict superset of its scanned-content set, `pass_filenames: true` is unsafe: a commit touching only an oracle or trigger-only file hands the validator that single path as argv, and an argv-driven validator would scan that non-content file instead of its default scanned-content set — a silent miss. Such hooks must set `pass_filenames: false` so the validator ignores argv and default-scans its fixed scanned-content set on every invocation. This is the first case where `pass_filenames: false` is adopted specifically to decouple a cross-file trigger from a single-file argv (prior `false` hooks were born false for schema-pair or generator reasons, per the original Decision's `pass_filenames` discipline note).
+
+### Enforcement
+
+The structural invariant needs no new machinery: the existing `_LOCAL_VALIDATOR_TRIGGER_COVERAGE` table in [`scripts/hooks/tests/test_precommit_hook_install.py`](../../scripts/hooks/tests/test_precommit_hook_install.py) already keys on hook id and unions all fixed paths that must trigger the hook, so each oracle file is registered as one more member of that set and `TestTriggerCoverageInvariant` enforces trigger ⊇ registered-set unchanged. The registry comment for an oracle-bearing hook must state which member is an oracle (read via a different path constant than the scanned files) so the next author does not mistake it for a scanned-content file or for a trigger-only guard. Implementation added a small dedicated guard, `TestMappingValidatorOracleTrigger`, asserting both mapping hooks run `pass_filenames: false` and that their `files:` regex matches **both** oracles — `frameworks.yaml` and `frameworks.schema.json` — plus a schema-oracle-only change-set test confirming an edit to the schema alone keeps the validators in scope and default-scanning the four consumer YAMLs. These are readable, hook-specific pins on top of the generic invariant.
+
+### Motivating change
+
+[#343](https://github.com/cosai-oasis/secure-ai-tooling/issues/343) pinned every consumer framework-mapping value (`AML.T0020@5.0.1`, `LLM06:2025`). After pinning, an edit to **either** framework source can flip a pinned consumer value from `current` to superseded/invalid. The two ADR-027 validators that catch this — `validate-mapping-purity` (D4c) and `validate-mapping-drift` (D5/D5a) — scan the four consumer YAMLs (`_DEFAULT_CONTENT_FILES`) but read **two** oracles, each via its own path constant:
+
+- `risk-map/yaml/frameworks.yaml` via `DEFAULT_FRAMEWORKS_PATH` — the **registry oracle**. A version bump there (e.g. ATLAS `5.0.1`→`6.0.0`) can flip a pinned consumer value's verdict.
+- `risk-map/schemas/frameworks.schema.json` via `DEFAULT_SCHEMA_PATH` / `load_pinned_patterns()` — the **schema oracle**. An edit to the strict pinned patterns or the ISO controlled-vocab enum there — the kind Work 2 itself made when activating the strict patterns, and future D10 version bumps — can likewise flip a pinned consumer value's verdict without ever touching a data file.
+
+Neither oracle is in the scanned-content set: editing one alone can flip verdicts. Both hooks originally triggered only on the four consumer YAMLs and ran `pass_filenames: true`, so an oracle-only commit either skipped them entirely or (had an oracle been in the trigger) handed the validator a non-content file as argv. Work 6 adds `frameworks.yaml` and then `frameworks.schema.json` to both triggers — via the path alternation `^risk-map/(yaml/(risks|controls|components|personas|frameworks)\.yaml|schemas/frameworks\.schema\.json)$`, mirroring the line-62 `check-jsonschema` "schema: frameworks.yaml" precedent — and flips both to `pass_filenames: false`, registering the union (four consumer YAMLs + `frameworks.yaml` + `frameworks.schema.json`) in the coverage table.

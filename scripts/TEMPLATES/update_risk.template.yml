@@ -57,7 +57,7 @@ body:
         - "Update long description to include recent research on this attack vector"
         - "Add controlThreatDetection to controls list - this control effectively mitigates this risk"
         - "Remove controlRedTeaming from controls - not directly applicable to this risk type"
-        - "Add MITRE ATLAS mapping AML.T0051 - new technique relevant to this risk"
+        - "Add MITRE ATLAS mapping AML.T0051@5.0.1 - new technique relevant to this risk"
         - "Update examples section with recent CVE demonstrating this risk"
 
         Cross-reference related framework entities using sentinels, e.g. {{riskPromptInjection}} or {{controlInputValidationAndSanitization}}.
@@ -105,7 +105,7 @@ body:
 
         📋 See the [Framework Mappings Style Guide](https://github.com/cosai-oasis/secure-ai-tooling/blob/main/risk-map/docs/contributing/framework-mappings-style-guide.md) for per-framework rules.
       placeholder: |
-        + mitre-atlas: AML.T0051
+        + mitre-atlas: AML.T0051@5.0.1
         + stride: InformationDisclosure
         - owasp-top10-llm: LLM01:2025
 

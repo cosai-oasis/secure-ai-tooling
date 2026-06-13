@@ -5,6 +5,11 @@ This document describes the design decisions, rationale, and methodology behind 
 **Version:** 1.0
 **Last Updated:** 2025-01-23
 
+> **Forward note (#343):** any bare ISO 22989 role names below are the as-authored
+> design forms, retained as a provenance record. The live persona corpus has since
+> been migrated to the ADR-027 version-pinned form (e.g. `AI Producer@2022`). See
+> the [framework mappings style guide](../contributing/framework-mappings-style-guide.md).
+
 ---
 
 ## Table of Contents

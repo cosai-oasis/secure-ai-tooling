@@ -724,6 +724,38 @@ _LOCAL_VALIDATOR_TRIGGER_COVERAGE: dict[str, set[str] | None] = {
     "validate-frameworks-versionid-purity": {
         "risk-map/yaml/frameworks.yaml",
     },
+    # validate-mapping-purity / validate-mapping-drift (ADR-027 D4c / D5/D5a):
+    # both scan the four consumer YAMLs (_DEFAULT_CONTENT_FILES) AND read TWO
+    # COMPARISON ORACLES, each via its own path constant:
+    #   - frameworks.yaml via DEFAULT_FRAMEWORKS_PATH — the registry oracle. A
+    #     version bump there (e.g. ATLAS 5.0.1->6.0.0) can flip a pinned consumer
+    #     value's verdict current->invalid.
+    #   - frameworks.schema.json via DEFAULT_SCHEMA_PATH / load_pinned_patterns()
+    #     — the schema oracle. An edit to the strict pinned patterns or the ISO
+    #     controlled-vocab enum there (the kind Work 2 made, and future D10
+    #     version bumps) can likewise flip a pinned consumer value's verdict
+    #     without ever touching the data file.
+    # Neither oracle is in the scanned-content set; each is read every run via its
+    # path constant, so editing either alone must trigger the hook. Per ADR-005
+    # § Addendum 2026-06-08 (comparison-oracle inputs), this forces
+    # pass_filenames: false so an oracle-only commit default-scans the four
+    # consumer YAMLs instead of scanning an oracle file as argv.
+    "validate-mapping-purity": {
+        "risk-map/yaml/risks.yaml",
+        "risk-map/yaml/controls.yaml",
+        "risk-map/yaml/components.yaml",
+        "risk-map/yaml/personas.yaml",
+        "risk-map/yaml/frameworks.yaml",  # registry oracle (DEFAULT_FRAMEWORKS_PATH)
+        "risk-map/schemas/frameworks.schema.json",  # schema oracle (DEFAULT_SCHEMA_PATH)
+    },
+    "validate-mapping-drift": {
+        "risk-map/yaml/risks.yaml",
+        "risk-map/yaml/controls.yaml",
+        "risk-map/yaml/components.yaml",
+        "risk-map/yaml/personas.yaml",
+        "risk-map/yaml/frameworks.yaml",  # registry oracle (DEFAULT_FRAMEWORKS_PATH)
+        "risk-map/schemas/frameworks.schema.json",  # schema oracle (DEFAULT_SCHEMA_PATH)
+    },
 }
 
 
@@ -1270,3 +1302,130 @@ class TestRegenerateIssueTemplatesD9Trigger:
             f"personas.yaml does not contribute to the tuple-selector content). "
             f"Got: {files_regex!r}"
         )
+
+
+# ===========================================================================
+# Mapping-validator comparison-oracle trigger (#343 Work 6)
+# ===========================================================================
+
+
+class TestMappingValidatorOracleTrigger:
+    """
+    validate-mapping-purity (ADR-027 D4c) and validate-mapping-drift (D5/D5a)
+    must fire on BOTH framework sources and run pass_filenames: false.
+
+    Per ADR-005 § Addendum 2026-06-08 (comparison-oracle inputs): both validators
+    scan the four consumer YAMLs but read TWO comparison oracles, each via its own
+    path constant:
+      - frameworks.yaml via DEFAULT_FRAMEWORKS_PATH (the registry oracle): a
+        version bump can flip a pinned consumer value current->invalid.
+      - frameworks.schema.json via DEFAULT_SCHEMA_PATH / load_pinned_patterns()
+        (the schema oracle): a strict-pattern or ISO-enum edit can likewise flip
+        a pinned consumer value's verdict without touching the data file.
+    After #343 pinned every consumer mapping value, an edit to either source can
+    invalidate a pinned value; if an oracle-only commit does not trigger the hooks,
+    that breakage is committed uncaught. The trigger must therefore include both
+    framework sources, and the hooks must run pass_filenames: false (else an
+    oracle-only commit hands the validator the oracle path as argv and it scans a
+    non-content file — a silent miss).
+    """
+
+    _MAPPING_HOOKS = ("validate-mapping-purity", "validate-mapping-drift")
+    # The four consumer YAMLs (scanned-content set) plus BOTH oracles. Editing
+    # any one alone must trigger the hooks.
+    _COVERAGE_PATHS = (
+        "risk-map/yaml/risks.yaml",
+        "risk-map/yaml/controls.yaml",
+        "risk-map/yaml/components.yaml",
+        "risk-map/yaml/personas.yaml",
+        "risk-map/yaml/frameworks.yaml",  # registry oracle
+        "risk-map/schemas/frameworks.schema.json",  # schema oracle
+    )
+
+    def test_mapping_hooks_run_pass_filenames_false(self):
+        """
+        Both mapping validators must declare pass_filenames: false.
+
+        Given: the two ADR-027 mapping-validator hooks in .pre-commit-config.yaml
+        When:  inspecting pass_filenames
+        Then:  both are False (so an oracle-only commit default-scans the four
+               consumer YAMLs instead of scanning the oracle file as argv)
+        """
+        for hook_id in self._MAPPING_HOOKS:
+            hooks = _hooks_by_id(hook_id)
+            assert len(hooks) == 1, f"Exactly one `{hook_id}` hook expected"
+            assert hooks[0].get("pass_filenames") is False, (
+                f"`{hook_id}` must set pass_filenames: false (ADR-005 § Addendum 2026-06-08); "
+                f"got: {hooks[0].get('pass_filenames')!r}"
+            )
+
+    def test_mapping_hooks_trigger_on_frameworks_and_consumers(self):
+        """
+        Both mapping validators' files: regex must match all four consumer YAMLs
+        AND both framework oracles (frameworks.yaml and frameworks.schema.json).
+
+        Given: the two ADR-027 mapping-validator hooks
+        When:  applying each hook's files: regex (re.search) against the six paths
+        Then:  every path matches — most importantly the two oracles, whose edit
+               can invalidate a pinned consumer value without touching the four
+               consumer YAMLs
+        """
+        for hook_id in self._MAPPING_HOOKS:
+            hook = _hooks_by_id(hook_id)[0]
+            files_regex = hook.get("files", "")
+            for path in self._COVERAGE_PATHS:
+                assert re.search(files_regex, path), (
+                    f"`{hook_id}` files: regex {files_regex!r} must match `{path}` "
+                    f"(ADR-005 § Addendum 2026-06-08: comparison-oracle inputs). A commit "
+                    f"touching only `{path}` would otherwise silently skip the validator."
+                )
+
+    def test_schema_oracle_only_change_set_is_in_scope_and_default_scans(self):
+        """
+        A frameworks.schema.json-only change set must put both validators in scope
+        while leaving pass_filenames: false so they default-scan the four consumer
+        YAMLs (mirrors the frameworks.yaml-only registry-oracle case).
+
+        Given: the two ADR-027 mapping-validator hooks
+        When:  modeling a commit that stages ONLY risk-map/schemas/frameworks.schema.json
+        Then:  the hook's files: regex matches that path (the hook fires) AND
+               pass_filenames is False (so the validator ignores the schema path as
+               argv and default-scans the four consumer YAMLs, re-checking every
+               pinned value against the edited schema oracle)
+
+        This is the schema-oracle analog of the registry-oracle behavior: a strict
+        pinned-pattern / ISO-enum edit in frameworks.schema.json that never touches
+        a data file must still re-validate all pinned consumer values. With
+        pass_filenames: true the validator would receive only the schema path as
+        argv and scan a non-content file — a silent miss.
+        """
+        schema_path = "risk-map/schemas/frameworks.schema.json"
+        consumer_yamls = (
+            "risk-map/yaml/risks.yaml",
+            "risk-map/yaml/controls.yaml",
+            "risk-map/yaml/components.yaml",
+            "risk-map/yaml/personas.yaml",
+        )
+        for hook_id in self._MAPPING_HOOKS:
+            hook = _hooks_by_id(hook_id)[0]
+            files_regex = hook.get("files", "")
+            # The schema oracle alone is in scope (the hook fires on this commit).
+            assert re.search(files_regex, schema_path), (
+                f"`{hook_id}` files: regex {files_regex!r} must match `{schema_path}` "
+                f"so a schema-oracle-only commit triggers the hook (ADR-005 § Addendum "
+                f"2026-06-08: comparison-oracle inputs)."
+            )
+            # pass_filenames must stay false so the validator default-scans the
+            # four consumer YAMLs rather than scanning the schema path as argv.
+            assert hook.get("pass_filenames") is False, (
+                f"`{hook_id}` must keep pass_filenames: false so a schema-oracle-only "
+                f"commit default-scans the four consumer YAMLs; got: "
+                f"{hook.get('pass_filenames')!r}"
+            )
+            # The four consumer YAMLs are the default scanned-content set: each is
+            # also in the trigger, confirming the hook re-checks them on any edit.
+            for yaml_path in consumer_yamls:
+                assert re.search(files_regex, yaml_path), (
+                    f"`{hook_id}` files: regex {files_regex!r} must match consumer "
+                    f"YAML `{yaml_path}` (default scanned-content set)."
+                )

@@ -8,6 +8,7 @@ unchanged, and the git index must not be touched.
 """
 
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -350,3 +351,44 @@ def test_sweep_includes_adr027_validators():
     assert "frameworks.yaml" in source, (
         "validate-all.sh does not reference frameworks.yaml for the versionId purity check."
     )
+
+
+def test_sweep_runs_content_check_jsonschema_for_consumer_yamls():
+    """
+    Assert the full-tree sweep validates each consumer YAML against its schema
+    with check-jsonschema (CI-parity for the mandatory-pin gate).
+
+    Given: the source of scripts/tools/validate-all.sh
+    When: the source text is inspected for content check-jsonschema invocations
+    Then: for each of risks/controls/components/personas, the script invokes
+          `check-jsonschema --schemafile risk-map/schemas/<X>.schema.json ...
+          risk-map/yaml/<X>.yaml`.
+
+    Why this matters: post-#343 the strict consumer schemas make pinning
+    mandatory — check-jsonschema rejects an unpinned value (e.g. `GOVERN-6.2`
+    with no `@1.0`). But validate-all.sh previously ran check-jsonschema ONLY as
+    `--check-metaschema` (validating the schema FILES), never the content YAMLs
+    against the consumer schemas. So a maintainer running the manual full-tree
+    sweep got a false all-clear on an unpinned value that pre-commit + CI reject.
+    This test pins the content-schema steps into the sweep so the gap cannot
+    silently reopen.
+
+    Structural (reads SCRIPT_SOURCE) so it is independent of the existing
+    check-jsonschema stub used by the generation-purity tests.
+    """
+    source = SCRIPT_SOURCE.read_text(encoding="utf-8")
+    for name in ("risks", "controls", "components", "personas"):
+        # The schemafile flag must name the consumer's schema, and the same
+        # invocation must name the consumer's YAML. A single regex spanning
+        # both (with the --schemafile flag between them) ensures they belong to
+        # one check-jsonschema call rather than coincidental separate mentions.
+        pattern = (
+            rf"check-jsonschema\b.*--schemafile\s+risk-map/schemas/{name}\.schema\.json"
+            rf".*risk-map/yaml/{name}\.yaml"
+        )
+        assert re.search(pattern, source, re.DOTALL), (
+            f"validate-all.sh does not run content check-jsonschema for {name}: "
+            f"expected a `check-jsonschema --schemafile risk-map/schemas/{name}.schema.json "
+            f"... risk-map/yaml/{name}.yaml` invocation. Without it the manual full-tree "
+            f"sweep skips the mandatory-pin gate that pre-commit + CI enforce (#343)."
+        )

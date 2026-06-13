@@ -142,7 +142,7 @@ body:
 
         📋 See the [Framework Mappings Style Guide](https://github.com/cosai-oasis/secure-ai-tooling/blob/main/risk-map/docs/contributing/framework-mappings-style-guide.md) for per-framework rules.
       placeholder: |
-        mitre-atlas: AML.T0051
+        mitre-atlas: AML.T0051@5.0.1
         stride: InformationDisclosure
         owasp-top10-llm: LLM01:2025
 

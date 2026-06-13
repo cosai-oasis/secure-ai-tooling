@@ -32,13 +32,16 @@ _OPERATIONS = {"new", "update"}
 _ALL_SOURCES = {f"{op}_{entity}" for op in _OPERATIONS for entity in _ENTITY_TYPES}
 
 # Canonical regex patterns for framework mapping values (ADR-022 D5b)
+# ADR-027 version-pinned canonical forms (#343): every example carries a version
+# token except STRIDE (unversioned). These mirror the strict
+# framework-mapping-patterns-pinned block in frameworks.schema.json.
 _CANONICAL_PATTERNS: dict[str, re.Pattern] = {
     "stride": re.compile(
         r"^(Spoofing|Tampering|Repudiation|InformationDisclosure|DenialOfService|ElevationOfPrivilege)$"
     ),
-    "nist-ai-rmf": re.compile(r"^(GOVERN|MAP|MEASURE|MANAGE)-\d+(\.\d+)*$"),
-    "owasp-top10-llm": re.compile(r"^LLM\d{2}:\d{4}$"),
-    "mitre-atlas": re.compile(r"^AML\.(T|M)\d{4}(\.\d{3})?$"),
+    "nist-ai-rmf": re.compile(r"^(GOVERN|MAP|MEASURE|MANAGE)-\d+(\.\d+)*@1\.0$"),
+    "owasp-top10-llm": re.compile(r"^LLM\d{2}:2025$"),
+    "mitre-atlas": re.compile(r"^AML\.(T|M)\d{4}(\.\d{3})?@5\.0\.1$"),
 }
 
 # Generator placeholder pattern — only expands ALL-CAPS tokens.
@@ -317,13 +320,13 @@ class TestExternalReferencesSolicitation:
 
 class TestFrameworkMappingCanonicalForms:
     """
-    ADR-022 D5b: example values shown in framework-mapping helper text must
-    conform to the canonical regex for each framework key.
+    ADR-027 (#343): example values shown in framework-mapping helper text must
+    conform to the version-pinned canonical form for each framework key.
 
-    - STRIDE:          PascalCase enum (e.g. InformationDisclosure, NOT information-disclosure)
-    - NIST AI RMF:     GOVERN-N.N form (e.g. GOVERN-6.2, NOT GV-6.2)
-    - OWASP LLM Top10: LLMxx:yyyy form (e.g. LLM01:2025, NOT LLM01)
-    - MITRE ATLAS:     AML.(T|M)dddd[.ddd] (already conformant; regression guard)
+    - STRIDE:          bare PascalCase enum, unversioned (e.g. InformationDisclosure)
+    - NIST AI RMF:     GOVERN-N.N@1.0 form (e.g. GOVERN-6.2@1.0, NOT GV-6.2 or unpinned GOVERN-6.2)
+    - OWASP LLM Top10: LLMxx:2025 form (e.g. LLM01:2025, NOT LLM01)
+    - MITRE ATLAS:     AML.(T|M)dddd[.ddd]@5.0.1 (version-pinned; regression guard)
 
     The check is applied generically to all 8 templates so that if the SWE adds
     mapping examples to component or persona templates, they must also conform.
@@ -443,7 +446,7 @@ class TestFrameworkMappingCanonicalForms:
         bad = [v for v in nist_values if not _CANONICAL_PATTERNS["nist-ai-rmf"].match(v)]
         assert not bad, (
             f"new_control.template.yml nist-ai-rmf example(s) use deprecated form "
-            f"(ADR-022 D5b): {bad}. Wrong: 'GV-6.2'. Correct: 'GOVERN-6.2'."
+            f"(ADR-027 pinned form): {bad}. Wrong: 'GV-6.2' / 'GOVERN-6.2'. Correct: 'GOVERN-6.2@1.0'."
         )
 
     def test_update_control_nist_ai_rmf_example_uses_govern_form(self, repo_root: Path) -> None:
@@ -467,7 +470,7 @@ class TestFrameworkMappingCanonicalForms:
         bad = [v for v in nist_values if not _CANONICAL_PATTERNS["nist-ai-rmf"].match(v)]
         assert not bad, (
             f"update_control.template.yml nist-ai-rmf example(s) use deprecated form "
-            f"(ADR-022 D5b): {bad}. Wrong: 'GV-4.1'. Correct: 'GOVERN-4.1'."
+            f"(ADR-027 pinned form): {bad}. Wrong: 'GV-4.1' / 'GOVERN-4.1'. Correct: 'GOVERN-4.1@1.0'."
         )
 
     def test_mitre_atlas_examples_remain_conformant(self, repo_root: Path) -> None:

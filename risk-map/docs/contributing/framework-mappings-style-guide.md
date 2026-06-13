@@ -2,7 +2,7 @@
 
 This guide covers how to write framework mappings across all entity types (risks, controls, personas) in the CoSAI Risk Map. It documents identifier formats, per-framework conventions, and the principles that should guide mapping decisions.
 
-Identifier formats are the **canonical** forms committed in [ADR-022](../../../docs/adr/022-supporting-schemas.md) D5b. Where a framework's canonical form is machine-enforced by a schema regex, this guide marks it; where the schema currently accepts a looser form for migration reasons, the canonical form is still the one to author (per [ADR-026](../../../docs/adr/026-issue-template-domain.md) D4b — teach the canonical form even where validators accept loose input). See [Identifier Enforcement](#identifier-enforcement).
+Identifier formats are the **canonical, version-pinned** forms committed in [ADR-027](../../../docs/adr/027-framework-versioning-and-mapping-convention.md) (which version-pins the per-framework base shapes that [ADR-022](../../../docs/adr/022-supporting-schemas.md) D5b first defined). Every mapping value carries a version token (`@5.0.1`, `@1.0`, `:2025`, `@2022`, `@2024`) except STRIDE, which is unversioned. The schema enforces these pinned forms strictly for all six frameworks — there is no longer a loose fall-through. Generate values with the maintainer tooling rather than hand-spelling them (see [Identifier Enforcement](#identifier-enforcement)).
 
 ---
 
@@ -77,20 +77,20 @@ STRIDE, NIST AI RMF, and EU AI Act are asymmetric by design: STRIDE categorizes 
 
 ## Identifier Enforcement
 
-The canonical identifier patterns ([ADR-022](../../../docs/adr/022-supporting-schemas.md) D5b) live in `risk-map/schemas/frameworks.schema.json` under `definitions/framework-mapping-patterns`. Each entity schema (`risks`, `controls`, `components`) references them for the `mappings` field. Three frameworks are enforced strictly today; three accept any string while their existing entries are migrated to the canonical form.
+The canonical, version-pinned identifier patterns ([ADR-027](../../../docs/adr/027-framework-versioning-and-mapping-convention.md)) live in `risk-map/schemas/frameworks.schema.json` under `definitions/framework-mapping-patterns-pinned`. Each entity schema (`risks`, `controls`, `components`, `personas`) `$ref`s these pinned patterns for every `mappings` framework key, with `additionalProperties: false` — so an unpinned, off-pattern, or out-of-enum value fails `check-jsonschema` at commit. All six frameworks are enforced strictly; the prior loose fall-through for STRIDE / NIST / OWASP was removed once the content was migrated (#343).
 
-| Framework | Canonical pattern | Schema status |
-|-----------|-------------------|---------------|
-| MITRE ATLAS | `^AML\.(T\|M)\d{4}(\.\d{3})?$` | **Enforced** — non-conforming IDs fail at commit |
-| EU AI Act | `^Article\s\d+(\(\d+\))?$` | **Enforced** |
-| ISO 22989 | bare string (role descriptors) | **Enforced** as free text — documented exception, see [ISO 22989](#iso-22989) |
-| STRIDE | `^(Spoofing\|Tampering\|Repudiation\|InformationDisclosure\|DenialOfService\|ElevationOfPrivilege)$` | **Fall-through** — schema accepts any string pending content migration |
-| NIST AI RMF | `^(GOVERN\|MAP\|MEASURE\|MANAGE)-\d+(\.\d+)*$` | **Fall-through** |
-| OWASP Top 10 LLM | `^LLM\d{2}:\d{4}$` | **Fall-through** |
+| Framework | Canonical pinned pattern | Version token |
+|-----------|--------------------------|---------------|
+| MITRE ATLAS | `^AML\.(T\|M)\d{4}(\.\d{3})?@(5\.0\.1)$` | `@5.0.1` |
+| NIST AI RMF | `^(GOVERN\|MAP\|MEASURE\|MANAGE)-\d+(\.\d+)*@(1\.0)$` | `@1.0` |
+| STRIDE | `^(Spoofing\|Tampering\|Repudiation\|InformationDisclosure\|DenialOfService\|ElevationOfPrivilege)$` | none (unversioned) |
+| OWASP Top 10 LLM | `^LLM\d{2}:2025$` | `:2025` |
+| ISO 22989 | closed controlled-vocabulary enum, each member `@2022` | `@2022` |
+| EU AI Act | `^Article\s\d+(\(\d+\))?@(2024)$` | `@2024` |
 
-**Author the canonical form regardless of enforcement status.** For the three fall-through frameworks, the schema currently accepts the older non-canonical form (lowercase-kebab STRIDE, `GV-/MP-/MS-/MG-` NIST abbreviations, un-versioned `LLM##`) so that existing entries do not break before they are migrated. New content uses the canonical form below; a future content sweep migrates the remaining entries and flips the three patterns to strict.
+**Generate values with the maintainer tooling, do not hand-spell them.** `scripts/framework_mapping_maintainer.py` (subcommands `add` / `update` / `remove` / `migrate`) composes the pinned value from a structured selection and validates it against the schema before writing — the canonical compose path. The version token pins each value to the framework edition currently registered in `frameworks.yaml`; when a framework version bumps, the purity (ADR-027 D4c) and drift (D5/D5a) validators flag every consumer value the bump invalidates.
 
-ISO 22989 is a deliberate, permanent exception: its persona mappings are role descriptors (`AI Partner (data supplier)`), not codes, so the schema leaves it as a bare string (ADR-021 D8, ADR-022 D5b).
+ISO 22989 is a controlled vocabulary rather than a regex: per [ADR-027](../../../docs/adr/027-framework-versioning-and-mapping-convention.md) D8 the six persona role descriptors are encoded as a closed inline enum, each pinned with `@2022` (e.g. `AI Partner (data supplier)@2022`). A role not in the closed set is rejected. (This refines the earlier ADR-021 D8 / ADR-022 D5b "bare string" treatment, which pre-dated version pinning.)
 
 ---
 
@@ -102,12 +102,12 @@ ISO 22989 is a deliberate, permanent exception: its persona mappings are role de
 
 **Source:** [https://atlas.mitre.org](https://atlas.mitre.org) — version 5.0.1 as of October 2025
 
-**Identifier formats** — canonical pattern `^AML\.(T|M)\d{4}(\.\d{3})?$` (schema-enforced):
-- Techniques: `AML.T####` (e.g., `AML.T0020`)
-- Sub-techniques: `AML.T####.###` (e.g., `AML.T0010.002`)
-- Mitigations: `AML.M####` (e.g., `AML.M0007`)
+**Identifier formats** — canonical pinned pattern `^AML\.(T|M)\d{4}(\.\d{3})?@(5\.0\.1)$` (schema-enforced). The base ref is followed by the `@5.0.1` version token:
+- Techniques: `AML.T####@5.0.1` (e.g., `AML.T0020@5.0.1`)
+- Sub-techniques: `AML.T####.###@5.0.1` (e.g., `AML.T0010.002@5.0.1`)
+- Mitigations: `AML.M####@5.0.1` (e.g., `AML.M0007@5.0.1`)
 
-The single pattern covers techniques (`T`), mitigations (`M`), and optional sub-technique suffixes. A malformed ATLAS ID fails schema validation at commit.
+The single pattern covers techniques (`T`), mitigations (`M`), and optional sub-technique suffixes, all pinned to the registered ATLAS version. A malformed or unpinned ATLAS ID fails schema validation at commit.
 
 **Risks map to techniques.** ATLAS techniques (`AML.T####`) describe adversary actions; a risk in CoSAI describes what can go wrong. The connection is: "An attacker using [technique] realizes [this risk]." Use the most specific technique available. If only a sub-technique applies, use the sub-technique, not the parent.
 
@@ -119,13 +119,13 @@ The single pattern covers techniques (`T`), mitigations (`M`), and optional sub-
 # Risk — technique identifiers
 mappings:
   mitre-atlas:
-    - AML.T0020
-    - AML.T0010.002   # sub-technique is more specific than AML.T0010
+    - AML.T0020@5.0.1
+    - AML.T0010.002@5.0.1   # sub-technique is more specific than AML.T0010
 
 # Control — mitigation identifiers
 mappings:
   mitre-atlas:
-    - AML.M0007
+    - AML.M0007@5.0.1
 ```
 
 ---
@@ -136,26 +136,26 @@ mappings:
 
 **Source:** NIST AI 100-1 — [https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf)
 
-**Identifier format:** `[FUNCTION]-[Category].[Subcategory]` — canonical pattern `^(GOVERN|MAP|MEASURE|MANAGE)-\d+(\.\d+)*$`
+**Identifier format:** `[FUNCTION]-[Category].[Subcategory]@1.0` — canonical pinned pattern `^(GOVERN|MAP|MEASURE|MANAGE)-\d+(\.\d+)*@(1\.0)$`
 
-The four functions use their **full uppercase names**, not the legacy two-letter abbreviations:
+The four functions use their **full uppercase names**, not the legacy two-letter abbreviations, and carry the `@1.0` version token:
 - `GOVERN` — Govern (legacy `GV`)
 - `MAP` — Map (legacy `MP`)
 - `MEASURE` — Measure (legacy `MS`)
 - `MANAGE` — Manage (legacy `MG`)
 
-Examples: `GOVERN-1.1`, `MEASURE-2.7`, `MAP-4.1`, `MANAGE-4.1`
+Examples: `GOVERN-1.1@1.0`, `MEASURE-2.7@1.0`, `MAP-4.1@1.0`, `MANAGE-4.1@1.0`
 
-Always use the subcategory-level identifier (e.g., `MEASURE-2.7`), not the category level alone (`MEASURE-2`). The framework's subcategories are the actionable units; the category level is too coarse for meaningful mapping.
+Always use the subcategory-level identifier (e.g., `MEASURE-2.7@1.0`), not the category level alone (`MEASURE-2@1.0`). The framework's subcategories are the actionable units; the category level is too coarse for meaningful mapping.
 
 ```yaml
 mappings:
   nist-ai-rmf:
-    - MEASURE-2.7
-    - MEASURE-2.3
+    - MEASURE-2.7@1.0
+    - MEASURE-2.3@1.0
 ```
 
-The `nist-ai-rmf` key currently falls through to the loose schema pattern (see [Identifier Enforcement](#identifier-enforcement)) because legacy entries still use the `GV-/MP-/MS-/MG-` abbreviations. Author the full-word form; do not add new abbreviated IDs.
+The schema enforces the full-word, version-pinned form strictly; the legacy `GV-/MP-/MS-/MG-` abbreviations and unpinned forms are rejected at commit.
 
 **Limitation:** NIST AI RMF v1.0 is control-oriented and relatively coarse-grained. Some CoSAI controls span multiple RMF subcategories, and some have no close match. Do not force a mapping where the fit is weak.
 
@@ -186,7 +186,7 @@ mappings:
     - ElevationOfPrivilege
 ```
 
-The `stride` key currently falls through to the loose schema pattern (see [Identifier Enforcement](#identifier-enforcement)) because legacy entries still use the lowercase-kebab form (`denial-of-service`). Author the PascalCase form; do not add new kebab-case values.
+STRIDE is unversioned (the registered `frameworks.yaml` version is null), so the pinned form carries **no** version token — the value is the bare PascalCase category name. The schema enforces this exact closed set strictly; the legacy lowercase-kebab form (`denial-of-service`) is rejected at commit.
 
 **Limitation:** STRIDE was designed for traditional software systems. The categories are coarse and do not capture AI-specific threat nuances. Use MITRE ATLAS alongside STRIDE to provide more precise classification.
 
@@ -198,7 +198,7 @@ The `stride` key currently falls through to the loose schema pattern (see [Ident
 
 **Source:** [https://owasp.org/www-project-top-10-for-large-language-model-applications](https://owasp.org/www-project-top-10-for-large-language-model-applications) — version 2025 (released November 2024)
 
-**Identifier format:** `LLM##:YYYY` (zero-padded two-digit number, colon, four-digit list year) — canonical pattern `^LLM\d{2}:\d{4}$`. Example: `LLM01:2025`, not `LLM01` or `LLM1`.
+**Identifier format:** `LLM##:2025` (zero-padded two-digit number, colon, the pinned list year) — canonical pinned pattern `^LLM\d{2}:2025$`. Example: `LLM01:2025`, not `LLM01` or `LLM1`.
 
 The version suffix pins the mapping to a specific edition of the list (the OWASP LLM Top 10 is re-issued; `LLM01` referred to different categories across editions). Use `:2025` for the current list.
 
@@ -232,7 +232,7 @@ mappings:
     - LLM01:2025
 ```
 
-The `owasp-top10-llm` key currently falls through to the loose schema pattern (see [Identifier Enforcement](#identifier-enforcement)) because legacy entries still use the un-versioned `LLM##` form. Author the versioned `LLM##:2025` form; do not add new un-versioned IDs.
+The schema enforces the versioned `LLM##:2025` form strictly; the un-versioned `LLM##` form is rejected at commit. OWASP keeps its upstream-recognizable `:` delimiter (not `@`) deliberately.
 
 ---
 
@@ -242,26 +242,24 @@ The `owasp-top10-llm` key currently falls through to the loose schema pattern (s
 
 **Source:** ISO/IEC 22989:2022 — [https://www.iso.org/standard/74296.html](https://www.iso.org/standard/74296.html)
 
-**Identifier format:** Free-text role names from the standard. No codes. Parenthetical qualifiers are part of the identifier when the standard uses them.
+**Identifier format:** A role name from the standard's closed controlled vocabulary, pinned with `@2022`. ISO 22989 mappings are role descriptors rather than codes, so the schema encodes them as a closed inline enum (not a regex) per [ADR-027](../../../docs/adr/027-framework-versioning-and-mapping-convention.md) D8 — a role not in the closed set is rejected at commit. (This refines the earlier [ADR-021](../../../docs/adr/021-personas-and-self-assessment-schema.md) D8 / [ADR-022](../../../docs/adr/022-supporting-schemas.md) D5b "bare string" treatment, which pre-dated version pinning.)
 
-ISO 22989 is the **documented permanent exception** to the canonical-ID rule ([ADR-021](../../../docs/adr/021-personas-and-self-assessment-schema.md) D8, [ADR-022](../../../docs/adr/022-supporting-schemas.md) D5b): its mappings are role descriptors, not canonical identifiers, so the schema enforces them as a bare string. There is no regex to satisfy — preserve the role label exactly as the standard writes it.
+The six valid values (exactly these, each `@2022`):
+- `AI Producer@2022`
+- `AI Partner (data supplier)@2022`
+- `AI Partner (infrastructure provider)@2022`
+- `AI Partner (tooling provider)@2022`
+- `AI Customer (application builder)@2022`
+- `AI Customer (end user)@2022`
 
-Examples of valid values:
-- `AI Producer`
-- `AI Partner (data supplier)`
-- `AI Partner (infrastructure provider)`
-- `AI Partner (tooling provider)`
-- `AI Customer (application builder)`
-- `AI Customer (end user)`
-
-The parenthetical qualifier (e.g., `data supplier`, `application builder`) disambiguates broad roles that ISO 22989 further divides. Preserve the parenthetical exactly as it appears in the standard.
+The parenthetical qualifier (e.g., `data supplier`, `application builder`) disambiguates broad roles that ISO 22989 further divides; it is part of the enum member and must match exactly.
 
 Some CoSAI personas have no direct ISO 22989 equivalent. Omit the `iso-22989` key rather than mapping to the closest available role.
 
 ```yaml
 mappings:
   iso-22989:
-    - AI Partner (data supplier)
+    - AI Partner (data supplier)@2022
 ```
 
 ---
@@ -272,15 +270,15 @@ mappings:
 
 **Source:** EUR-Lex — [https://eur-lex.europa.eu/eli/reg/2024/1689](https://eur-lex.europa.eu/eli/reg/2024/1689)
 
-**Identifier format:** Article-level references — canonical pattern `^Article\s\d+(\(\d+\))?$` (schema-enforced). One space after `Article`; the optional parenthetical is a paragraph number.
+**Identifier format:** Article-level references pinned with `@2024` — canonical pinned pattern `^Article\s\d+(\(\d+\))?@(2024)$` (schema-enforced). One space after `Article`; the optional parenthetical is a paragraph number; the `@2024` token pins to the registered EU AI Act edition.
 
 Examples:
-- `Article 9` (risk management system requirements)
-- `Article 13` (transparency and provision of information)
-- `Article 13(1)` (a specific paragraph within an article)
-- `Article 72` (obligations for providers of general-purpose AI models)
+- `Article 9@2024` (risk management system requirements)
+- `Article 13@2024` (transparency and provision of information)
+- `Article 13(1)@2024` (a specific paragraph within an article)
+- `Article 72@2024` (obligations for providers of general-purpose AI models)
 
-A malformed reference (`Article9`, `Art. 9`, `Article 9.1`) fails schema validation at commit. Use the official EUR-Lex text as the source for article numbering.
+A malformed or unpinned reference (`Article9`, `Art. 9`, `Article 9.1`, `Article 9` without `@2024`) fails schema validation at commit. Use the official EUR-Lex text as the source for article numbering.
 
 **For personas:** Map to the EU AI Act's defined roles where the CoSAI persona corresponds to a legal obligation-bearer. The Act defines roles including "provider", "deployer", "importer", "distributor", and "authorised representative" (Articles 3 and 25). Use the Act's own terminology.
 
@@ -300,13 +298,13 @@ The `Article {N}` / `Article {N}({paragraph})` form is the settled, schema-enfor
 # Wrong — redundant
 mappings:
   mitre-atlas:
-    - AML.T0010
-    - AML.T0010.002
+    - AML.T0010@5.0.1
+    - AML.T0010.002@5.0.1
 
 # Correct — use only the most specific level that is accurate
 mappings:
   mitre-atlas:
-    - AML.T0010.002
+    - AML.T0010.002@5.0.1
 ```
 
 **More than four mappings in one framework warrants review.** It often means:
@@ -370,14 +368,14 @@ If you are proposing to add mappings for a framework not currently in `framework
 
 When reviewing a PR that adds or modifies `mappings:` fields:
 
-- [ ] Identifiers match the **canonical** format for each framework (see [Identifier Enforcement](#identifier-enforcement)), even where the schema currently accepts a looser form
+- [ ] Identifiers match the **canonical, version-pinned** format for each framework (see [Identifier Enforcement](#identifier-enforcement)) — tool-generated, not hand-spelled
 - [ ] No parent technique is mapped alongside its sub-technique
-- [ ] Risks reference only techniques (`AML.T####`) and controls reference only mitigations (`AML.M####`) for MITRE ATLAS
-- [ ] STRIDE values are PascalCase and match the six valid categories exactly (`Tampering`, not `tampering` or `t`)
-- [ ] NIST AI RMF uses full-word function prefixes (`GOVERN-1.1`, not `GV-1.1`)
+- [ ] Risks reference only techniques (`AML.T####@5.0.1`) and controls reference only mitigations (`AML.M####@5.0.1`) for MITRE ATLAS
+- [ ] STRIDE values are bare PascalCase and match the six valid categories exactly (`Tampering`, not `tampering` or `t`; no version token)
+- [ ] NIST AI RMF uses full-word function prefixes and the `@1.0` token (`GOVERN-1.1@1.0`, not `GV-1.1`)
 - [ ] OWASP identifiers are versioned (`LLM04:2025`, not `LLM04` or `LLM4`)
-- [ ] EU AI Act references use the `Article {N}` / `Article {N}({paragraph})` form
-- [ ] ISO 22989 role names preserve parenthetical qualifiers exactly as they appear in the standard
+- [ ] EU AI Act references use the `Article {N}@2024` / `Article {N}({paragraph})@2024` form
+- [ ] ISO 22989 values are one of the six closed-enum role descriptors, each pinned `@2022` (`AI Partner (data supplier)@2022`)
 - [ ] Mappings carry taxonomy IDs only — no inline rationale or URLs; supporting citations live in `externalReferences` (see below) and non-obvious rationale in the PR description
 - [ ] Mappings with more than four entries per framework have been scrutinized
 - [ ] No framework is used for an entity type not listed in its `applicableTo`
@@ -388,8 +386,9 @@ When reviewing a PR that adds or modifies `mappings:` fields:
 
 - [guide-frameworks.md](../guide-frameworks.md) — How to register a new framework, framework definition file structure, validation rules
 - [yaml-authoring-subset.md](../yaml-authoring-subset.md) — Prose authoring rules, the `externalReferences` structured-citation flow, and the `{{ref:identifier}}` sentinel form
-- [ADR-022](../../../docs/adr/022-supporting-schemas.md) D5b — Canonical per-framework mapping-ID regex patterns (source of truth)
-- [ADR-021](../../../docs/adr/021-personas-and-self-assessment-schema.md) D8 — Persona mappings (ISO 22989 role-descriptor exception)
+- [ADR-027](../../../docs/adr/027-framework-versioning-and-mapping-convention.md) — Framework versioning + version-pinned mapping convention (source of truth for the pinned forms; supersedes ADR-022 D5b's value shapes)
+- [ADR-022](../../../docs/adr/022-supporting-schemas.md) D5b — Per-framework mapping-ID base patterns (the pre-pinning shapes ADR-027 extends)
+- [ADR-021](../../../docs/adr/021-personas-and-self-assessment-schema.md) D8 — Persona mappings (ISO 22989 role descriptors; pinned to the `@2022` closed enum per ADR-027 D8)
 - [design/metadata-mappings.md](../design/metadata-mappings.md) — Phase 2 methodology: rationale tables for initial mappings, per-framework gap analysis, sources used (forthcoming)
 - [guide-risks.md](../guide-risks.md) — Complete guide for adding or updating risks
 - [guide-controls.md](../guide-controls.md) — Complete guide for adding or updating controls

@@ -1,18 +1,28 @@
 #!/usr/bin/env python3
 """
-Tests for personas.schema.json schema updates
+Tests for personas.schema.json schema updates.
 
 This module tests the expanded persona schema supporting 8 CoSAI personas with:
 - New persona ID enum values (8 new + 2 legacy personas)
 - Optional fields: deprecated, mappings, responsibilities, identificationQuestions
 - Backward compatibility with existing personas.yaml
 
+Phase 2 of issue #343 flips the persona mappings block to strict-pinned wiring
+per ADR-027 D3a/D7:
+- mappings.additionalProperties changes from a loose array catch-all to the
+  boolean false.
+- All six frameworks are explicitly wired with per-property entries pointing at
+  framework-mapping-patterns-pinned.
+- Bare/legacy iso-22989 values ("AI Producer", "Data supplier") are REJECTED;
+  pinned values with @2022 suffix ("AI Producer@2022") are required.
+
 Tests cover:
 - Schema validation for new persona IDs
-- Optional field validation and structure
-- Backward compatibility with legacy persona entries
+- Optional field validation and structure (Phase-2: strict mappings shape)
+- Backward compatibility with existing personas.yaml
 - Valid and invalid persona configurations
 - Edge cases and error conditions
+- Phase-2 strict flip: pinned iso accepted, legacy iso rejected
 """
 
 import json
@@ -173,23 +183,27 @@ class TestPersonaOptionalFields:
         assert "mappings" in persona_props, "mappings field must be defined"
         assert persona_props["mappings"]["type"] == "object", "mappings must be object type"
 
-    def test_mappings_field_has_array_values(self, personas_schema_path):
+    def test_mappings_additional_properties_is_false(self, personas_schema_path):
         """
-        Test that mappings object contains arrays of strings.
+        Test that mappings.additionalProperties is the boolean false (Phase-2 strict flip).
 
-        Given: personas.schema.json mappings definition
-        When: additionalProperties are examined
-        Then: Values are defined as arrays of strings
+        Given: personas.schema.json mappings definition (strict #343 schema)
+        When: additionalProperties is examined
+        Then: It is exactly the boolean false — the loose catch-all has been removed
+
+        ADR-027 D3a: all six frameworks are explicitly wired with per-property
+        entries; the loose array catch-all was replaced by false (#343).
         """
         with open(personas_schema_path) as f:
             schema = json.load(f)
 
         mappings_def = schema["definitions"]["persona"]["properties"]["mappings"]
-
-        assert "additionalProperties" in mappings_def, "mappings must define additionalProperties"
-        additional_props = mappings_def["additionalProperties"]
-        assert additional_props["type"] == "array", "mapping values must be arrays"
-        assert additional_props["items"]["type"] == "string", "mapping array items must be strings"
+        ap = mappings_def.get("additionalProperties", "<MISSING>")
+        assert ap is False, (
+            f"personas.schema.json definitions/persona/properties/mappings/additionalProperties "
+            f"must be the boolean false (strict schema, #343 ADR-027 D3a); "
+            f"got: {ap!r}. The loose array catch-all must be replaced with false."
+        )
 
     def test_mappings_field_is_optional(self, personas_schema_path):
         """
@@ -440,11 +454,16 @@ personas:
 
     def test_persona_with_mappings_passes_validation(self, tmp_path, personas_schema_path, base_uri):
         """
-        Test that persona with framework mappings validates.
+        Test that persona with framework mappings (pinned forms) validates.
 
-        Given: A persona with mappings to external frameworks
+        Given: A persona with mappings to external frameworks using pinned iso-22989 values
         When: Schema validation is performed
         Then: Validation passes
+
+        Uses pinned iso-22989 values (with @2022 suffix) per ADR-027 D7/D8.
+        Bare/legacy values ("Data supplier", "AI Producer") are REJECTED by the
+        strict schema (#343); the pinned value "AI Partner (data supplier)@2022"
+        is accepted because iso-22989 is now wired to framework-mapping-patterns-pinned.
         """
         yaml_content = """
 title: Test Personas
@@ -457,8 +476,7 @@ personas:
       - Organizations that provide data
     mappings:
       iso-22989:
-        - "Data supplier"
-        - "Data provider"
+        - "AI Partner (data supplier)@2022"
     identificationQuestions:
       - "Do you collect, curate, or license datasets used to train AI systems?"
       - "Are you responsible for the quality and provenance of data supplied to AI pipelines?"
@@ -569,11 +587,15 @@ personas:
 
     def test_persona_with_all_optional_fields_passes_validation(self, tmp_path, personas_schema_path, base_uri):
         """
-        Test that persona with all optional fields validates.
+        Test that persona with all optional fields (pinned mappings) validates.
 
         Given: A persona with deprecated, mappings, responsibilities, identificationQuestions
+               using a pinned iso-22989 value (with @2022 suffix)
         When: Schema validation is performed
         Then: Validation passes
+
+        Uses pinned iso-22989 per ADR-027 D7/D8; the strict pinned oneOf enum
+        rejects bare values such as "AI system developer" (#343).
         """
         yaml_content = """
 title: Test Personas
@@ -587,7 +609,7 @@ personas:
     deprecated: false
     mappings:
       iso-22989:
-        - "AI system developer"
+        - "AI Customer (application builder)@2022"
     responsibilities:
       - "Integrate AI models into applications"
       - "Implement security controls"
@@ -793,6 +815,164 @@ personas:
 
 
 # ============================================================================
+# Phase-2 strict-flip tests — iso-22989 pinned vs legacy
+# ============================================================================
+
+
+class TestPersonaMappingsStrictFlip:
+    """
+    Tests for the strict persona mappings block (#343 ADR-027 D3a/D7).
+
+    iso-22989 values in persona mappings must use the pinned @2022 oneOf enum.
+    Bare values ("AI Producer", "Data supplier") are rejected by the strict schema.
+    """
+
+    def test_persona_bare_iso_value_rejected(self, tmp_path, personas_schema_path, base_uri):
+        """
+        Test that a bare iso-22989 value (without @2022) is rejected.
+
+        Given: A persona with iso-22989: ["AI Producer"] (no version token)
+        When: Schema validation is performed
+        Then: Validation fails (non-zero exit)
+
+        The pinned iso-22989 oneOf enum requires the @2022 suffix per ADR-027 D7/D8.
+        The loose catch-all that formerly allowed this value has been removed (#343).
+        """
+        yaml_content = """
+title: Test Personas
+description:
+  - Test personas for validation
+personas:
+  - id: personaModelProvider
+    title: Model Provider
+    description:
+      - Organizations that provide AI models
+    mappings:
+      iso-22989:
+        - "AI Producer"
+    identificationQuestions:
+      - "Do you supply or license AI models to other organizations?"
+"""
+        yaml_file = tmp_path / "personas.yaml"
+        yaml_file.write_text(yaml_content)
+
+        result = subprocess.run(
+            [
+                "check-jsonschema",
+                "--base-uri",
+                base_uri,
+                "--schemafile",
+                str(personas_schema_path),
+                str(yaml_file),
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode != 0, (
+            "Bare iso-22989 value 'AI Producer' (without @2022) must be REJECTED "
+            "by the strict persona schema (ADR-027 D7/D8, #343). "
+            "The loose catch-all that formerly accepted this value has been removed."
+        )
+
+    def test_persona_pinned_iso_value_accepted(self, tmp_path, personas_schema_path, base_uri):
+        """
+        Test that a pinned iso-22989 value (with @2022 suffix) is accepted.
+
+        Given: A persona with iso-22989: ["AI Producer@2022"]
+        When: Schema validation is performed
+        Then: Validation passes
+
+        The pinned oneOf enum for iso-22989 accepts the six @2022 members per
+        ADR-027 D7/D8. iso-22989 is now wired to framework-mapping-patterns-pinned
+        as a consumer $ref target (#343).
+        """
+        yaml_content = """
+title: Test Personas
+description:
+  - Test personas for validation
+personas:
+  - id: personaModelProvider
+    title: Model Provider
+    description:
+      - Organizations that provide AI models
+    mappings:
+      iso-22989:
+        - "AI Producer@2022"
+    identificationQuestions:
+      - "Do you supply or license AI models to other organizations?"
+"""
+        yaml_file = tmp_path / "personas.yaml"
+        yaml_file.write_text(yaml_content)
+
+        result = subprocess.run(
+            [
+                "check-jsonschema",
+                "--base-uri",
+                base_uri,
+                "--schemafile",
+                str(personas_schema_path),
+                str(yaml_file),
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0, (
+            f"Pinned iso-22989 value 'AI Producer@2022' must be ACCEPTED "
+            f"by the strict Phase-2 persona schema (ADR-027 D7/D8, #343). "
+            f"Error: {result.stderr}"
+        )
+
+    def test_persona_unknown_framework_key_rejected(self, tmp_path, personas_schema_path, base_uri):
+        """
+        Test that an unknown framework key in persona mappings is rejected.
+
+        Given: A persona with mappings containing made-up-framework key
+        When: Schema validation is performed
+        Then: Validation fails (propertyNames + additionalProperties:false)
+
+        propertyNames rejects the unknown key; additionalProperties:false provides
+        defense-in-depth (#343).
+        """
+        yaml_content = """
+title: Test Personas
+description:
+  - Test personas for validation
+personas:
+  - id: personaModelProvider
+    title: Model Provider
+    description:
+      - Organizations that provide AI models
+    mappings:
+      made-up-framework:
+        - "some-value"
+    identificationQuestions:
+      - "Do you supply or license AI models to other organizations?"
+"""
+        yaml_file = tmp_path / "personas.yaml"
+        yaml_file.write_text(yaml_content)
+
+        result = subprocess.run(
+            [
+                "check-jsonschema",
+                "--base-uri",
+                base_uri,
+                "--schemafile",
+                str(personas_schema_path),
+                str(yaml_file),
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode != 0, (
+            "Unknown framework key 'made-up-framework' in persona mappings must be REJECTED "
+            "(propertyNames constraint)"
+        )
+
+
+# ============================================================================
 # Edge Case Tests
 # ============================================================================
 
@@ -886,9 +1066,13 @@ personas:
         """
         Test multiple personas with different combinations of optional fields.
 
-        Given: Multiple personas with varied optional field combinations
+        Given: Multiple personas with varied optional field combinations; the persona
+               that includes mappings uses a pinned iso-22989 value (with @2022)
         When: Schema validation is performed
         Then: All personas validate successfully
+
+        Uses pinned iso-22989 per ADR-027 D7/D8; the strict pinned oneOf enum
+        rejects bare "AI Producer" and requires the @2022 suffix (#343).
         """
         yaml_content = """
 title: Test Personas
@@ -901,7 +1085,7 @@ personas:
       - Provider with mappings only
     mappings:
       iso-22989:
-        - "Model provider"
+        - "AI Producer@2022"
     identificationQuestions:
       - "Do you supply or license AI models to other organizations?"
 

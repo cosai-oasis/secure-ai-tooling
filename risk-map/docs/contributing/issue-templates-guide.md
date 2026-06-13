@@ -150,7 +150,7 @@ The template includes inline links to:
 
 - **Component Changes** - Use `+` to add, `-` to remove (e.g., `+ componentModelEvaluation`, `- componentDataSources`)
 - **Risk Changes** - Same syntax (e.g., `+ riskModelSourceTampering`, `- riskPromptInjection`)
-- **Framework Changes** - Same syntax (e.g., `+ mitre-atlas: AML.M0015`, `- nist-ai-rmf: GOVERN-6.2`)
+- **Framework Changes** - Same syntax (e.g., `+ mitre-atlas: AML.M0015@5.0.1`, `- nist-ai-rmf: GOVERN-6.2@1.0`)
 - **Supporting Evidence** - Links to discussions, standards, references
 
 **Example Walkthrough:**
@@ -169,7 +169,7 @@ Component Changes:
 + componentModelEvaluation
 
 Framework Changes:
-+ mitre-atlas: AML.M0015
++ mitre-atlas: AML.M0015@5.0.1
 ```
 
 **GitHub Permalink Best Practices:**
@@ -249,7 +249,7 @@ External References:
     url: https://arxiv.org/abs/1708.06733
 
 Framework Mappings:
-mitre-atlas: AML.T0018
+mitre-atlas: AML.T0018@5.0.1
 stride: Tampering
 ```
 
@@ -299,7 +299,7 @@ Examples to Add:
 - "Research paper documenting backdoor attack on image classifier (https://arxiv.org/...)"
 
 Framework Changes:
-+ owasp-top10-llm: LLM03
++ owasp-top10-llm: LLM03:2025
 
 Supporting Evidence:
 - CVE-2024-XXXXX: Backdoor discovered in production model
@@ -646,14 +646,14 @@ Update templates support quick actions using familiar git diff syntax:
 
 ```
 + componentNewItem
-+ mitre-atlas: AML.M0015
++ mitre-atlas: AML.M0015@5.0.1
 ```
 
 **Remove:** Prefix with `-`
 
 ```
 - componentOldItem
-- nist-ai-rmf: GOVERN-6.2
+- nist-ai-rmf: GOVERN-6.2@1.0
 ```
 
 **Benefits:**

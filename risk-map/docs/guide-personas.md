@@ -38,7 +38,7 @@ Actors that also operate runtime environments serving model predictions are addi
 - Model artifact integrity and availability for distribution
 
 **Framework Mapping:**
-- ISO 22989: AI Producer
+- ISO 22989: AI Producer@2022
 
 **Identification Questions:**
 
@@ -64,7 +64,7 @@ Actors that supply training data, evaluation datasets, or inference data to mode
 - Data privacy protections
 
 **Framework Mapping:**
-- ISO 22989: AI Partner (data supplier)
+- ISO 22989: AI Partner (data supplier)@2022
 
 ---
 
@@ -79,7 +79,7 @@ Actors that provide infrastructure, compute resources, APIs, and platform servic
 - Model hosting and serving
 
 **Framework Mapping:**
-- ISO 22989: AI Partner (infrastructure provider)
+- ISO 22989: AI Partner (infrastructure provider)@2022
 
 ---
 
@@ -115,7 +115,7 @@ Examples include agentic frameworks and libraries (e.g., LangChain, Semantic Ker
 - Cognitive architecture safety guardrails
 
 **Framework Mapping:**
-- ISO 22989: AI Partner (tooling provider)
+- ISO 22989: AI Partner (tooling provider)@2022
 
 **Identification Questions:**
 
@@ -141,7 +141,7 @@ Actors that integrate AI models (via APIs or embedded models) into applications,
 - User access controls
 
 **Framework Mapping:**
-- ISO 22989: AI Customer (application builder)
+- ISO 22989: AI Customer (application builder)@2022
 
 ---
 
@@ -169,7 +169,7 @@ Actors that use AI-powered applications or services without developing or deploy
 - Data minimization (user inputs)
 
 **Framework Mapping:**
-- ISO 22989: AI Customer (end user)
+- ISO 22989: AI Customer (end user)@2022
 
 **Identification Questions:**
 
@@ -235,13 +235,13 @@ Personas can be mapped to actors defined in external frameworks. Currently, the 
 
 | CoSAI Persona | ISO 22989 Actor |
 |---------------|-----------------|
-| Model Provider | AI Producer |
-| Data Provider | AI Partner (data supplier) |
-| AI Platform Provider | AI Partner (infrastructure provider) |
+| Model Provider | AI Producer@2022 |
+| Data Provider | AI Partner (data supplier)@2022 |
+| AI Platform Provider | AI Partner (infrastructure provider)@2022 |
 | AI Model Serving | (No direct mapping) |
-| Agentic Platform Provider | AI Partner (tooling provider) |
-| Application Developer | AI Customer (application builder) |
-| AI System Users | AI Customer (end user) |
+| Agentic Platform Provider | AI Partner (tooling provider)@2022 |
+| Application Developer | AI Customer (application builder)@2022 |
+| AI System Users | AI Customer (end user)@2022 |
 | AI System Governance | (No direct mapping) |
 
 ### Adding Framework Mappings
@@ -256,7 +256,7 @@ Framework mappings are defined in the `mappings` field of each persona:
       Actors that develop, train, evaluate, and tune AI/ML models...
   mappings:
     iso-22989:
-      - AI Producer
+      - AI Producer@2022
 ```
 
 The framework ID must be defined in `frameworks.yaml` with `applicableTo` including `personas`.

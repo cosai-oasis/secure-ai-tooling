@@ -3,12 +3,15 @@
 Shared library for ADR-027 framework-mapping composition and splitting.
 
 Implements the core logic for D3/D3a/D4/D4a/D4b/D6/D8:
-  - compose_pinned_value: generate a pinned value from structured inputs
-  - split_pinned_value:   recover (base_ref, version) from a pinned value
-  - derive_mapping_id:    deterministic SHA-256 handle (non-stored, D4b)
-  - load_registry:        parse frameworks.yaml into a keyed dict
-  - load_pinned_patterns: extract the framework-mapping-patterns-pinned block
-  - known_versions:       recognized version set for a framework (D3a)
+  - compose_pinned_value:    generate a pinned value from structured inputs
+  - split_pinned_value:      recover (base_ref, version) from a pinned value
+  - derive_mapping_id:       deterministic SHA-256 handle (non-stored, D4b)
+  - load_registry:           parse frameworks.yaml into a keyed dict
+  - load_pinned_patterns:    extract the framework-mapping-patterns-pinned block
+  - known_versions:          recognized version set for a framework (D3a)
+  - migrate_legacy_value:    map a legacy value to its pinned form (#343)
+  - LEGACY_NIST_PREFIX_MAP:  GV/MS/MP/MG → GOVERN/MEASURE/MAP/MANAGE (#343)
+  - LEGACY_STRIDE_KEBAB_MAP: kebab → PascalCase STRIDE enum members (#343)
 
 The SINGLE SOURCE OF TRUTH for per-framework delimiters and controlled
 vocabularies is the `framework-mapping-patterns-pinned` block in
@@ -408,3 +411,132 @@ def derive_mapping_id(cosai_id: str, framework_id: str, pinned_value: str) -> st
     """
     canonical = f"{cosai_id}|{framework_id}|{pinned_value}"
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+# ---------------------------------------------------------------------------
+# Legacy migration — lookup tables and migrate_legacy_value (#343)
+# ---------------------------------------------------------------------------
+
+# NIST AI RMF legacy 2-letter prefix → canonical GOVERN/MEASURE/MAP/MANAGE.
+# Sourced from the four NIST AI RMF core functions used in the live corpus.
+# An unknown prefix must raise InvalidRefError (fail-loud — never silent-skip).
+LEGACY_NIST_PREFIX_MAP: dict[str, str] = {
+    "GV": "GOVERN",
+    "MS": "MEASURE",
+    "MP": "MAP",
+    "MG": "MANAGE",
+}
+
+# STRIDE legacy kebab-case form → canonical PascalCase enum member.
+# These are the six STRIDE threat categories used in the live corpus.
+# An unknown kebab form must raise InvalidRefError (fail-loud).
+LEGACY_STRIDE_KEBAB_MAP: dict[str, str] = {
+    "spoofing": "Spoofing",
+    "tampering": "Tampering",
+    "repudiation": "Repudiation",
+    "information-disclosure": "InformationDisclosure",
+    "denial-of-service": "DenialOfService",
+    "elevation-of-privilege": "ElevationOfPrivilege",
+}
+
+
+def migrate_legacy_value(
+    framework_id: str,
+    value: str,
+    *,
+    registry: dict[str, dict],
+    pinned_patterns: dict[str, dict],
+) -> tuple[str, bool]:
+    """
+    Map a legacy mapping value to its ADR-027 pinned form.
+
+    Idempotency first: if value already validates against the framework's
+    pinned subschema, return (value, False) unchanged. This makes a second
+    migrate pass a no-op on an already-migrated corpus.
+
+    Otherwise respell the base-ref per framework-specific rules and call
+    compose_pinned_value() to produce the canonical pinned value. Never
+    hand-spells the output.
+
+    NIST AI RMF: split on the first '-'; look up the prefix in
+    LEGACY_NIST_PREFIX_MAP. Raises InvalidRefError if the prefix is unknown.
+
+    STRIDE: look up the kebab form in LEGACY_STRIDE_KEBAB_MAP. Raises
+    InvalidRefError if the form is not in the map. Already-pinned PascalCase
+    values are caught by the idempotency check above and never reach this path.
+
+    All other frameworks (mitre-atlas, owasp-top10-llm, iso-22989, eu-ai-act):
+    use the value as the base_ref directly (identity). compose_pinned_value()
+    handles version-token appending and schema validation.
+
+    Args:
+        framework_id:    Framework concept id from frameworks.yaml.
+        value:           Current (possibly legacy) mapping value.
+        registry:        Registry dict from load_registry().
+        pinned_patterns: Pinned subschemas from load_pinned_patterns().
+
+    Returns:
+        Tuple (pinned_value, changed) where changed is True if the value was
+        rewritten, False if it was already in pinned form (idempotent).
+
+    Raises:
+        UnknownFrameworkError: If framework_id is not in the registry.
+        InvalidRefError:       If the value cannot be mapped to a valid pinned form.
+    """
+    # Fail loud immediately for unknown frameworks — before any respell attempt.
+    if framework_id not in registry:
+        raise UnknownFrameworkError(
+            f"Framework {framework_id!r} not found in registry. Known frameworks: {sorted(registry.keys())}"
+        )
+
+    # Idempotency check: if value already validates against the pinned subschema,
+    # return unchanged. A missing/None subschema means no pinned validation exists
+    # for this framework, so we treat it as "not yet pinned" and proceed.
+    sub_schema = pinned_patterns.get(framework_id)
+    if sub_schema is not None:
+        try:
+            jsonschema.validate(instance=value, schema=sub_schema)
+            # Value already validates against the pinned subschema — idempotent.
+            return (value, False)
+        except JSONSchemaValidationError:
+            pass  # Not yet pinned; fall through to respell logic.
+
+    # Respell the base_ref per framework.
+    if framework_id == "nist-ai-rmf":
+        # Split on the FIRST '-' only. 'GV-6.2' → prefix='GV', rest='6.2'.
+        # A value with no '-' will produce empty sep and fail the check below.
+        prefix, sep, rest = value.partition("-")
+        if not sep or prefix not in LEGACY_NIST_PREFIX_MAP:
+            known = sorted(LEGACY_NIST_PREFIX_MAP.keys())
+            raise InvalidRefError(
+                f"Framework 'nist-ai-rmf': cannot respell {value!r}. "
+                f"Expected '<PREFIX>-<sub-id>' where PREFIX is one of {known}; "
+                f"got prefix {prefix!r}."
+            )
+        base_ref = f"{LEGACY_NIST_PREFIX_MAP[prefix]}-{rest}"
+
+    elif framework_id == "stride":
+        # STRIDE: kebab → PascalCase. Already-pinned PascalCase is caught above.
+        if value not in LEGACY_STRIDE_KEBAB_MAP:
+            known = sorted(LEGACY_STRIDE_KEBAB_MAP.keys())
+            raise InvalidRefError(
+                f"Framework 'stride': cannot respell {value!r}. Expected one of the known kebab forms: {known}."
+            )
+        base_ref = LEGACY_STRIDE_KEBAB_MAP[value]
+
+    else:
+        # All other frameworks: the value is used as-is for the base_ref.
+        # compose_pinned_value() appends the version token and validates.
+        base_ref = value
+
+    # Look up the current version for this framework (None for unversioned).
+    version = registry[framework_id].get("version")
+
+    new_value = compose_pinned_value(
+        framework_id,
+        version,
+        base_ref,
+        registry=registry,
+        pinned_patterns=pinned_patterns,
+    )
+    return (new_value, new_value != value)

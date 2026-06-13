@@ -327,19 +327,34 @@ repos:
         files: ^risk-map/yaml/frameworks\.yaml$
         pass_filenames: false
 
+      # validate-mapping-purity / validate-mapping-drift trigger on the four
+      # consumer YAMLs AND both framework sources. Each framework source is a
+      # comparison ORACLE: both validators scan the consumer YAMLs but read
+      #   - framework versions from frameworks.yaml (via DEFAULT_FRAMEWORKS_PATH),
+      #     so a version bump there can flip a pinned consumer value's verdict; and
+      #   - the strict pinned patterns + ISO enum from frameworks.schema.json (via
+      #     DEFAULT_SCHEMA_PATH / load_pinned_patterns), so a pattern/enum edit
+      #     there can flip a pinned consumer value's verdict without touching any
+      #     data file.
+      # pass_filenames is false (the validators default-scan the four consumer
+      # YAMLs) so an oracle-only commit re-validates them instead of handing the
+      # validator an oracle path as argv and scanning a non-content file — a
+      # silent miss. The two-source alternation mirrors the line-62
+      # check-jsonschema "schema: frameworks.yaml" precedent.
+      # See ADR-005 § Addendum 2026-06-08 (comparison-oracle inputs).
       - id: validate-mapping-purity
         name: 'validate: framework mapping value purity (ADR-027 D4c)'
         language: system
         entry: python3 scripts/hooks/precommit/validate_mapping_purity.py
-        files: ^risk-map/yaml/(risks|controls|components|personas)\.yaml$
-        pass_filenames: true
+        files: ^risk-map/(yaml/(risks|controls|components|personas|frameworks)\.yaml|schemas/frameworks\.schema\.json)$
+        pass_filenames: false
 
       - id: validate-mapping-drift
         name: 'validate: framework mapping value drift (ADR-027 D5/D5a)'
         language: system
         entry: python3 scripts/hooks/precommit/validate_mapping_drift.py
-        files: ^risk-map/yaml/(risks|controls|components|personas)\.yaml$
-        pass_filenames: true
+        files: ^risk-map/(yaml/(risks|controls|components|personas|frameworks)\.yaml|schemas/frameworks\.schema\.json)$
+        pass_filenames: false
 
   # ---------------------------------------------------------------------------
   # Generators (Mode B auto-stage). Each wrapper runs the appropriate
