@@ -1,8 +1,8 @@
 {
   "dependencies": {
     "@mermaid-js/mermaid-cli": "^11.15.0",
-    "playwright": "1.60.0",
-    "prettier": "^3.8.4",
+    "playwright": "1.61.1",
+    "prettier": "^3.9.1",
     "puppeteer": "24.43.1"
   }
 }
