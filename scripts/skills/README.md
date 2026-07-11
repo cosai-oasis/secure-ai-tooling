@@ -64,3 +64,7 @@ python3 scripts/hooks/precommit/validate_neutrality.py scripts/skills/<name>/SKI
   pitched at the right altitude (granularity), applying the per-type
   altitude tests and deferring terminology to `classical-lexicon`
   (ADR-031 D2).
+- `audit-framework-mappings/` — audits the framework mappings across
+  risks, controls, and personas against the framework-mappings style
+  guide (version pinning, applicability, selectivity), deferring format
+  to the style guide (ADR-031 D2, ADR-027).
