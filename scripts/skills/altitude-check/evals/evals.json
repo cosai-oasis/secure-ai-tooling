@@ -1,0 +1,115 @@
+{
+  "skill_name": "altitude-check",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Check the altitude of this control description: 'Deploy a sidecar that intercepts every tool call, computes a risk score via an ML classifier, and writes the decision to the OTel collector with a correlation ID.'",
+      "expected_output": "T1 fails — this is implementation, not an objective. Restate as the capability (e.g. calibrate/gate tool-call approval by risk) and move the sidecar/classifier/OTel details to examples.",
+      "expectations": [
+        "Flags T1 (objective-not-implementation) as failing",
+        "Identifies the sidecar / ML classifier / OTel collector as implementation detail to move into examples",
+        "Proposes an objective-level restatement of the capability"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Check the altitude of this control: title 'Prevent Prompt Injection', description 'Stop attackers from injecting instructions that make the model deviate from its intended behavior.'",
+      "expected_output": "T2 fails — this restates the risk rather than naming a defensive capability. Rewrite as the capability (e.g. input validation and sanitization) framed positively.",
+      "expectations": [
+        "Flags T2 (not-a-restated-risk) as failing",
+        "Explains that it describes the threat inverted rather than a positive defensive capability",
+        "Proposes a capability-framed rewrite"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Altitude check: proposed control 'Input Validation for Model Inputs' — validate and sanitize inputs to the model to remove malicious or malformed content before inference.",
+      "expected_output": "T6 — likely duplicates the existing controlInputValidationAndSanitization; recommend augmenting the existing control rather than adding a near-duplicate (or state what distinguishes it).",
+      "expectations": [
+        "Checks the existing corpus (controls.yaml) for overlap",
+        "Identifies likely duplication with an existing input-validation control",
+        "Recommends augmenting the existing control or clearly stating what distinguishes the new one"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Altitude check: control 'Delegation Chain Auditability' — ensure that, at each delegation hop, an agent acting on behalf of a caller produces a verifiable record of whose authority it exercised. Known techniques: signed delegation tokens, scoped capability records.",
+      "expected_output": "Well-pitched: states an objective (T1 pass), not a restated risk (T2), posture not mandate (T3), a solved problem with known techniques (T4). Overall well-pitched.",
+      "expectations": [
+        "Judges T1 (objective not implementation) as passing",
+        "Judges T4 (solved problem) as passing given the named known techniques",
+        "Overall verdict is well-pitched (no altitude adjustment required)"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Altitude check: proposed risk 'Opaque Multi-Hop Agent Authorization' — in agentic systems where one agent delegates to another across tools and MCP servers, intermediate agents fail to emit structured delegation events, so forensics cannot determine which human or agent authorized an action even though every hop's token was cryptographically valid.",
+      "expected_output": "R1 — should merge. This is the same impact class (accountability/forensic opacity) at the same component locus (the delegation/IAM/orchestration layer) as the existing riskAgentDelegationChainOpacity; it fails the merge-vs-distinct two-test (neither a different component locus nor a distinct impact class). Recommend merging into riskAgentDelegationChainOpacity (as an added paragraph or a {{ref:}}) rather than standing it up as a new risk.",
+      "expectations": [
+        "Checks risks.yaml and identifies the near-identical existing risk riskAgentDelegationChainOpacity",
+        "Applies the R1 two-test and finds neither a different component locus nor a distinct impact class",
+        "Recommends merging into the existing delegation-opacity risk rather than adding a standalone risk"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Altitude check: proposed risk 'Confused-Deputy Privilege Escalation via Agent Delegation' — a high-privilege agent acts on behalf of a lower-privilege caller without re-validating the caller's authorization at the delegation boundary, letting the caller escalate through the deputy's own permissions (e.g. an IDE agent using service-role credentials that bypass row-level security). We already catalog agent delegation-chain opacity; is this the same risk?",
+      "expected_output": "R1 — distinct, keep separate. Although both sit in the agent-delegation family, this passes the merge-vs-distinct two-test: it is a distinct impact class (confidentiality/integrity privilege-escalation harm) versus the accountability/forensic-visibility harm of riskAgentDelegationChainOpacity. It is a real risk (riskAgenticDelegationConfusedDeputy), not a duplicate. Keep it as its own entry; state in one sentence that opacity is a visibility failure while confused-deputy is an authorization-boundary failure.",
+      "expectations": [
+        "Applies the R1 two-test and concludes the candidate is DISTINCT, not a merge",
+        "Grounds the distinction in a different impact class (privilege escalation / confidentiality-integrity vs accountability opacity), naming riskAgenticDelegationConfusedDeputy and riskAgentDelegationChainOpacity",
+        "Does not recommend merging; keeps the candidate as its own risk"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Altitude check: proposed risk 'No Rate Limiting on Agent Tool Calls' — the orchestration layer does not cap how many tool invocations an agent may issue, so nothing stops it.",
+      "expected_output": "R3 fails — this is framed as a control gap (a missing rate-limit defense), not a threat. Rewrite as the harm the gap enables: agents entering uncontrolled recursive tool-calling cycles that exhaust context windows, compute, and API budget (availability/cost impact) — which the corpus already captures as riskRunawayAgentToolLoops. Reframe to the threat-and-impact, then run the R1 merge check against riskRunawayAgentToolLoops.",
+      "expectations": [
+        "Flags R3 (threat-not-control-gap) as failing — the title names a missing defense, not a harm",
+        "Rewrites the control-absence framing as the threat and its impact (uncontrolled recursive tool loops exhausting resources)",
+        "Connects the reframed threat to the existing riskRunawayAgentToolLoops (and notes the R1 merge check)"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Altitude check: proposed risk 'Sentient Agent Collusion' — a speculative future risk that autonomous agents could spontaneously develop shared hidden goals and coordinate to deceive their operators. No incident, research result, or vulnerability class is cited.",
+      "expected_output": "R4 fails — real, not hypothetical. There is no demonstrable incident, research result, or vulnerability class grounding this; it is a speculative 'what if.' Flag it for the maintainer rather than asserting the risk. (Contrast the corpus's grounded agentic risks, which each cite a real example, e.g. riskRunawayAgentToolLoops and riskAgenticDelegationConfusedDeputy.)",
+      "expectations": [
+        "Flags R4 (real-not-hypothetical) as failing due to absence of a real incident, research result, or vulnerability class",
+        "Recommends flagging for the maintainer rather than asserting the risk",
+        "Does not fabricate evidence to justify the risk"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Altitude check: proposed component 'Vector Store' — the database that holds embedding vectors the agent queries for retrieval-augmented generation (e.g. a managed vector index).",
+      "expected_output": "C1 — absorb. An existing component already covers this locus: componentRAGContent (Retrieval Augmented Generation & Content). A vector store is the storage mechanism behind RAG, not a distinct role; naming it separately does not change where a control or risk attaches beyond what componentRAGContent already anchors. Recommend absorbing into componentRAGContent (keep the vector store as an example), rather than adding a new component.",
+      "expectations": [
+        "Checks components.yaml and identifies componentRAGContent as the existing home",
+        "Applies C1 absorb-or-decompose and concludes ABSORB (a reader would not learn a new place a control/risk attaches)",
+        "Recommends absorbing into componentRAGContent and keeping the vector store as an example, not a new node"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Altitude check: proposed component 'MCP Server' — a Model Context Protocol server the agent connects to in order to invoke external tools and services.",
+      "expected_output": "C2 fails — role, not product/protocol. 'MCP Server' names a specific protocol; a protocol-named component invites sibling sprawl (A2A server, OpenAPI tool server, ...). The role/locus is 'external tools and services the agent calls,' already captured by componentTools. Generalize to that role and keep MCP as an example; do not add a protocol-named component. (Defer terminology to the classical-lexicon skill.)",
+      "expectations": [
+        "Flags C2 (role-not-product/protocol) as failing — MCP is a protocol name, not a role",
+        "Notes protocol-named components invite sibling sprawl and identifies componentTools as the existing role/locus",
+        "Recommends generalizing to the role and keeping MCP as an example (and defers terminology to classical-lexicon)"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "Altitude check: proposed component 'Agent System-Prompt Whitespace Normalizer' — the step that trims trailing whitespace from the agent's system instructions before they reach the reasoning core.",
+      "expected_output": "C3 fails — not reader-instructive. Naming this does not change where any control or risk attaches; it is a fine-grained processing detail inside components that already exist (componentAgentSystemInstruction / componentAgentInputHandling / componentReasoningCore). Absorb it — it is too fine-grained to earn a node.",
+      "expectations": [
+        "Flags C3 (reader-instructive) as failing — adding it changes where nothing attaches",
+        "Identifies the existing coarser components it belongs inside (e.g. componentAgentSystemInstruction / componentAgentInputHandling / componentReasoningCore)",
+        "Recommends absorbing it as too fine-grained rather than adding a new component"
+      ]
+    }
+  ]
+}
