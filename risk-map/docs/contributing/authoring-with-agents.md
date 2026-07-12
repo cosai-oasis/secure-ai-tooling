@@ -52,6 +52,13 @@ authoring agents this guide covers; the third is the existing submission gate.
    PR; running it yourself first is the pre-submission dry run described in
    [`submission-readiness-guide.md`](submission-readiness-guide.md).
 
+For **reviewing an incoming content-proposal issue** (rather than authoring),
+a maintainer can draft a structured review comment with the
+[`draft-issue-comment`](../../../scripts/skills/draft-issue-comment/) skill,
+which applies the
+[`issue-response-reviewer`](../../../scripts/agents/issue-response-reviewer.md)
+agent (composing `content-reviewer` in `issue` mode).
+
 The creator and critic are **authoring-time and pre-PR**. Neither one is the
 submission gate, and neither decides governance questions — those are handed to
 a maintainer. You route the work: creator drafts, critic challenges, you
