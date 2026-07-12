@@ -1,0 +1,50 @@
+{
+  "skill_name": "explore-risks-by-activity",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I build agent tool integrations and MCP servers for other teams to use. What risks am I exposed to, and what should I do about them?",
+      "expected_output": "Maps the activity to the Agentic Platform and Framework Providers persona, surfaces the agentic risks that list it as impacted (with ids), attaches each risk's addressing controls, explains terms, stays read-only.",
+      "expectations": [
+        "Identifies the reader's persona as Agentic Platform and Framework Providers (personaAgenticProvider), grounded in personas.yaml",
+        "Surfaces real agentic risks from risks.yaml that impact that persona (e.g. rogue actions, confused-deputy delegation, tool/registry/MCP-related risks), naming their ids",
+        "For each surfaced risk, lists the addressing controls from the risk's controls field (ids + titles)",
+        "Persona-tagging is corpus-true: every risk presented as impacting the mapped persona(s) is genuinely tagged to one of them in risks.yaml, and any risk surfaced as a scope-fit inclusion is explicitly flagged AND genuinely NOT tagged to those personas (no tagged risk mislabeled as scope-fit, and no un-tagged risk presented as tagged)",
+        "Explains framework terms (persona / risk / control) and remains read-only (does not edit YAML)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I don't build anything — I just use an AI coding assistant at work. What should I actually worry about?",
+      "expected_output": "Maps to AI System Users (personaEndUser), surfaces end-user-impacted risks in plain language, does not dump provider/developer-only risks as the reader's exposure.",
+      "expectations": [
+        "Identifies the reader's persona as AI System Users (personaEndUser)",
+        "Surfaces risks that impact end users (not the full corpus, not provider-only risks), in plain language with ids",
+        "Persona-tagging is corpus-true: every risk presented as impacting personaEndUser is genuinely tagged to it in risks.yaml; any scope-fit inclusion is explicitly flagged and genuinely un-tagged",
+        "Suggests what the reader can reasonably do / which controls or practices matter for a user role",
+        "Explains terms for a non-framework audience"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Show me all the risks for training and fine-tuning foundation models.",
+      "expected_output": "Maps to Model Provider / Data Provider personas; because the ask is 'show me all', uses a compact table of the supply-chain/training risks with their controls.",
+      "expectations": [
+        "Maps the activity to Model Provider and/or Data Provider personas",
+        "Uses a table/list format (adaptive to the 'show me all' phrasing)",
+        "Surfaces training/supply-chain risks such as data poisoning and model source tampering, with ids and their addressing controls",
+        "Persona-tagging is corpus-true: every risk presented as impacting Model Provider / Data Provider is genuinely tagged to one of them in risks.yaml, and any risk surfaced as a scope-fit inclusion is explicitly flagged AND genuinely NOT tagged — e.g. it does NOT label a persona-tagged risk like riskDataPoisoning as an un-tagged scope-fit case"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "This is missing a risk about prompt-cache poisoning across tenants — can you add it?",
+      "expected_output": "Recognizes this is an authoring request, out of scope for a read-only explorer; redirects to risk-creator (and content-reviewer), without editing YAML.",
+      "expectations": [
+        "Recognizes adding/editing content is out of scope for this read-only skill",
+        "Redirects to the risk-creator agent (and content-reviewer for submission)",
+        "Does not attempt to edit risks.yaml"
+      ]
+    }
+  ]
+}
