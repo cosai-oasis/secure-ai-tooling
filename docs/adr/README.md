@@ -23,7 +23,7 @@ If a decision is about *how the Risk Map content model is shaped*, it belongs in
 | [005](005-pre-commit-framework.md) | Pre-commit framework adoption | Accepted | 2026-04-21 |
 | [006](006-agent-architecture-pattern.md) | Vendor-neutral agent architecture under `scripts/agents/` | Accepted | 2026-04-21 |
 | [007](007-content-reviewer-modes.md) | `content-reviewer` three-mode architecture | Accepted | 2026-04-21 |
-| [008](008-sub-agent-orchestration.md) | Sub-agent orchestration: composition contracts and routing boundaries | Accepted | 2026-04-21 |
+| [008](008-sub-agent-orchestration.md) | Sub-agent orchestration: composition contracts and routing boundaries | Accepted (§2 superseded in part — [amendment](008-sub-agent-orchestration.md#amendment-2026-07-12-draft-issue-comments-review-discipline-is-a-canonical-skill) Draft) | 2026-04-21 |
 | [009](009-persona-pages-workflow-topology.md) | GitHub Pages deploy surface and persona-pages workflow topology | Accepted | 2026-04-21 |
 | [010](010-site-repo-root-module-boundary.md) | `site/` as a repo-root peer of `risk-map/` | Accepted | 2026-04-21 |
 | [011](011-persona-site-data-schema-contract.md) | `persona-site-data.schema.json` as a versioned producer/consumer contract | Accepted | 2026-04-21 |
