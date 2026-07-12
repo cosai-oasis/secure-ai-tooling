@@ -90,3 +90,9 @@ python3 scripts/hooks/precommit/validate_neutrality.py scripts/skills/<name>/SKI
 - `explore-risks-by-activity/` — maps a stated activity or role to the
   risks that affect it and the controls that address them (read-only;
   ADR-032 D2).
+- `draft-issue-comment/` — drafts a structured maintainer review comment
+  for a content-proposal issue (a proposed risk/control/component/persona),
+  applying the `issue-response-reviewer` agent (which composes
+  `content-reviewer` in `issue` mode) and writing a local draft to edit and
+  post; citations follow ADR-016/017 (`externalReferences` + `{{ref:}}`).
+  Read the issue proposal, not a PR diff (ADR-031 D6, ADR-008).

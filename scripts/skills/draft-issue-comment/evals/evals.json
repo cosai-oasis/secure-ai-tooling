@@ -1,0 +1,50 @@
+{
+  "skill_name": "draft-issue-comment",
+  "note": "Self-contained evals — the proposal content is provided inline in each prompt (no dependency on a live GitHub issue; earlier evals referenced #204/#211, which are unrelated real issues in the upstream repo). Synthetic issue numbers (#900+) are filename labels only.",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Draft a maintainer review for content-proposal issue #900. The proposal is provided inline below — review it directly, no GitHub fetch needed. Proposal: UPDATE the existing risk `riskPromptInjection` to add a documented real-world example — an indirect prompt-injection attack in which instructions hidden in a retrieved web page caused an AI assistant to take an unintended action, reported by a security researcher; the author supplies the source as a plain URL. The proposal is otherwise specific and well-scoped — fit to proceed with minor corrections.",
+      "expected_output": "Applies scripts/agents/issue-response-reviewer.md; because the proposal is fit to proceed, it DRAFTS a Proposed YAML block for the updated risk; the source citation in that YAML uses externalReferences (type/id/title/https) referenced by a {{ref:identifier}} sentinel in the example text — never an inline URL or an <a> HTML anchor. Written to a local draft-900-comment.md; not posted.",
+      "expectations": [
+        "Reads and applies scripts/agents/issue-response-reviewer.md as the source of truth rather than re-deriving the review rules",
+        "Reaches a fit-to-proceed verdict and DRAFTS a Proposed YAML block (this is the citation-path case the other evals do not exercise)",
+        "The drafted YAML cites the source via externalReferences + {{ref:identifier}} sentinels — NEVER an inline URL or an <a> HTML anchor (ADR-016/017)",
+        "Does not reference the retired relevantQuestions field or an 'Opus agent'/vendor-specific gate",
+        "Writes to a local file named draft-900-comment.md and does not attempt to post to GitHub"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Draft a maintainer review for content-proposal issue #901. Proposal (inline, no fetch needed): a NEW risk — 'an agent that serves multiple tenants can leak one tenant's credentials into another tenant's session or context'. Review it.",
+      "expected_output": "The overlap analysis catches the existing riskCrossTenantCredentialPropagation, which already covers this exact threat; verdict RETHINK (duplicate); no Proposed YAML drafted; recommends merging/extending the existing entry. Local draft-901-comment.md; not posted.",
+      "expectations": [
+        "Reads and applies scripts/agents/issue-response-reviewer.md and runs the overlap analysis against risks.yaml",
+        "Identifies the existing riskCrossTenantCredentialPropagation as covering the same threat and reaches a RETHINK verdict (does not draft a new duplicate risk)",
+        "Recommends merging/extending the existing entry rather than adding a new one",
+        "Writes to a local file named draft-901-comment.md and does not post"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Draft a maintainer review for content-proposal issue #902. Proposal (inline, no fetch needed): a NEW persona — 'AI Red Team', responsible for adversarially testing deployed AI systems, with draft responsibilities and five identification questions supplied by the author.",
+      "expected_output": "Treats persona as a valid reviewable type; applies the canonical spec's persona gates (persona-model consistency and the identificationQuestions style guide — count 5-7, second-person, parenthetical examples) and surfaces the high necessity bar (is this genuinely distinct from existing personas, per ADR-021?). Local draft-902-comment.md; not posted.",
+      "expectations": [
+        "Treats persona as a valid issue type and reviews it (does not claim only risk/control/component are supported)",
+        "Applies the persona-specific gates (persona-model consistency + the identificationQuestions style guide) and surfaces the necessity question vs existing personas",
+        "Uses the current identificationQuestions field, not the retired relevantQuestions",
+        "Writes to a local file named draft-902-comment.md and does not post"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Can you use the draft-issue-comment approach to review the YAML changes in this open PR before I merge it?",
+      "expected_output": "Redirects: this skill is for content-proposal issues, not PR diffs; points to content-reviewer in diff mode.",
+      "expectations": [
+        "Recognizes a PR/diff review is out of scope for this skill",
+        "Redirects to content-reviewer in diff mode",
+        "Does not fabricate an issue-style review of a PR diff"
+      ]
+    }
+  ]
+}
