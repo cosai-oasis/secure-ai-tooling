@@ -85,7 +85,7 @@ The architect agent is the negative example that anchors the rule. [`scripts/age
 
 ## Amendment 2026-07-12: `draft-issue-comment`'s review discipline is a canonical skill
 
-**Status:** Draft (2026-07-12). Does not alter the Accepted status of D1–D3 above; it supersedes only the §2 classification of the `draft-issue-comment` flow's review discipline.
+**Status:** Accepted (2026-07-12). Does not alter the Accepted status of D1–D3 above; it supersedes only the §2 classification of the `draft-issue-comment` flow's review discipline.
 **Authors:** Architect agent, with maintainer review.
 
 ### Context
