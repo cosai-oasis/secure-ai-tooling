@@ -1283,7 +1283,8 @@ class TestExistingEntriesStillValidate:
     """
 
     @pytest.fixture(scope="class")
-    def framework_entries(self, frameworks_yaml_data: dict) -> list:
+    @classmethod
+    def framework_entries(cls, frameworks_yaml_data: dict) -> list:
         """Individual framework entries from frameworks.yaml."""
         entries = frameworks_yaml_data.get("frameworks", [])
         if not entries:
