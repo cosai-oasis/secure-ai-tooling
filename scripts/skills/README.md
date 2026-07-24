@@ -57,3 +57,36 @@ python3 scripts/hooks/precommit/validate_neutrality.py scripts/skills/<name>/SKI
 
 - `classical-lexicon/` — grounds Risk Map terminology in established
   security terms of art (ADR-031 D2/D3).
+- `mapping-selection/` — selects a control's/risk's components, addressed
+  risks/controls, and framework mappings, grounded in the corpus and the
+  framework applicability rules (ADR-031 D2/D4).
+- `altitude-check/` — checks whether a control/risk/component draft is
+  pitched at the right altitude (granularity), applying the per-type
+  altitude tests and deferring terminology to `classical-lexicon`
+  (ADR-031 D2).
+- `audit-framework-mappings/` — audits the framework mappings across
+  risks, controls, and personas against the framework-mappings style
+  guide (version pinning, applicability, selectivity), deferring format
+  to the style guide (ADR-031 D2, ADR-027).
+- `audit-identification-questions/` — audits persona identification
+  questions against the identification-questions style guide (framing,
+  scoping, examples, ordering), deferring the rules to the style guide
+  (ADR-031 D5, ADR-021 D7).
+- `explain-entity/` — explains a single risk/control/component/persona in
+  plain language, including its classical roots and relationships
+  (read-only; ADR-032 D2).
+- `explore-controls-by-classical/` — maps a classical security concept to
+  the controls that embody or extend it, deferring terminology to
+  `classical-lexicon` (read-only; ADR-032 D2/D3).
+- `explore-exposure/` — maps a named product/technology or component id to
+  that component's risks and controls, with a curated-plus-inferred
+  product→component lexicon (read-only; ADR-032 D2/D5).
+- `explore-framework-coverage/` — a reverse index over the framework
+  mappings across risks, controls, and personas, deferring format/quality
+  questions to `audit-framework-mappings` (read-only; ADR-032 D2/D3).
+- `explore-persona-self-id/` — guides a reader to their persona(s) via the
+  framework's identification questions, then surfaces the risks that
+  impact them and the controls they implement (read-only; ADR-032 D2).
+- `explore-risks-by-activity/` — maps a stated activity or role to the
+  risks that affect it and the controls that address them (read-only;
+  ADR-032 D2).
