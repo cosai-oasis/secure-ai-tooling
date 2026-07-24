@@ -57,3 +57,14 @@ python3 scripts/hooks/precommit/validate_neutrality.py scripts/skills/<name>/SKI
 
 - `classical-lexicon/` — grounds Risk Map terminology in established
   security terms of art (ADR-031 D2/D3).
+- `mapping-selection/` — selects a control's/risk's components, addressed
+  risks/controls, and framework mappings, grounded in the corpus and the
+  framework applicability rules (ADR-031 D2/D4).
+- `altitude-check/` — checks whether a control/risk/component draft is
+  pitched at the right altitude (granularity), applying the per-type
+  altitude tests and deferring terminology to `classical-lexicon`
+  (ADR-031 D2).
+- `audit-framework-mappings/` — audits the framework mappings across
+  risks, controls, and personas against the framework-mappings style
+  guide (version pinning, applicability, selectivity), deferring format
+  to the style guide (ADR-031 D2, ADR-027).

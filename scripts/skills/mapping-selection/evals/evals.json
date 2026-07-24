@@ -1,0 +1,105 @@
+{
+  "skill_name": "mapping-selection",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "For a control that requires deliberate user confirmation of high-consequence agent actions (a preventive, human-oversight control), which NIST AI RMF function and subcategory should it map to?",
+      "expected_output": "Selects a GOVERN subcategory (oversight/roles), explicitly rejects MANAGE as reactive for a preventive design control.",
+      "expectations": [
+        "Selects a GOVERN (or MEASURE) subcategory, not MANAGE",
+        "Explains that MANAGE is reactive/response-oriented and wrong for a preventive design/oversight control",
+        "Uses a subcategory-level id (e.g. GOVERN-6.x), not a bare category"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I want to map a control to MITRE ATLAS AML.T0051 (LLM Prompt Injection). Is that right for a control?",
+      "expected_output": "Flags that controls map to mitigations (AML.M####), not techniques (AML.T####); AML.T0051 is a technique and belongs on a risk, not a control.",
+      "expectations": [
+        "States that controls map to MITRE ATLAS mitigations (AML.M####), not techniques (AML.T####)",
+        "Identifies AML.T0051 as a technique that belongs on a risk, not a control",
+        "Advises omitting ATLAS if no mitigation fits rather than forcing the technique"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Draft control: 'Agent Tool Call Rate Limiting' — limits how many tool calls an agent can make per task to bound runaway loops. Which components should it map to, and how many? I was going to just set components: all.",
+      "expected_output": "Pushes back on 'all'; selects the specific components where rate-limiting the agent's tool calls actually operates (reasoning/orchestration/tools), not the whole framework.",
+      "expectations": [
+        "Recommends against components: 'all' for this narrowly-scoped control",
+        "Selects specific components where the control operates (e.g. reasoning core / orchestration / tools), grounded in components.yaml",
+        "Reserves 'all' for genuinely universal/governance controls"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I have a control and I've mapped it to 7 NIST AI RMF subcategories and 6 OWASP LLM items because they all seem somewhat related. Is that ok?",
+      "expected_output": "Flags over-mapping; soft cap 4/framework; keep only directly-relevant mappings with a one-sentence rationale each; 'somewhat related' is a signal to cut.",
+      "expectations": [
+        "Flags the count as over-mapping (soft cap ~4 per framework)",
+        "Advises keeping only directly-relevant mappings, each with a one-sentence rationale",
+        "Treats 'somewhat related' as a signal to remove, not keep"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "A control mandates that a human can review and veto high-risk agent actions before they execute. Does it map to the EU AI Act, and if so where?",
+      "expected_output": "Yes — EU AI Act Article 14 (human oversight); the control implements that specific obligation. Notes the pinned form Article 14@2024 and marks it for tool-generation; treats EU AI Act as the non-US framing that broadens beyond NIST.",
+      "expectations": [
+        "Identifies EU AI Act Article 14 (human oversight) as an applicable mapping",
+        "Confirms EU AI Act is control-applicable when the control implements a specific regulatory obligation",
+        "Notes the pinned form (Article 14@2024) and marks it [tool-generate]"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Should I map a low-level control about TLS/mTLS enforcement between internal components to the EU AI Act, just to be thorough?",
+      "expected_output": "No — EU AI Act maps only when a control implements a specific regulatory obligation, not for generic technical transport security. Forcing it is over-mapping; map to the relevant technical frameworks instead.",
+      "expectations": [
+        "Recommends NOT mapping a generic technical transport-security control to the EU AI Act",
+        "Explains EU AI Act applies only when the control implements a specific regulatory obligation",
+        "Frames forcing the mapping as over-mapping"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Risk direction: I'm mapping riskPromptInjection (Prompt Injection) to STRIDE. I wrote stride: [tampering, elevation-of-privilege]. Is that right?",
+      "expected_output": "The categories (Tampering, ElevationOfPrivilege) are correct for prompt injection, but the casing/form is wrong: STRIDE values are bare PascalCase with no separators, so it must be Tampering and ElevationOfPrivilege, not lowercase 'tampering' or kebab 'elevation-of-privilege'. STRIDE is risk-side (applies to risks, not controls) and unversioned.",
+      "expectations": [
+        "Confirms Tampering and ElevationOfPrivilege are the correct STRIDE categories for prompt injection",
+        "Rejects the lowercase/kebab form; requires bare PascalCase (Tampering, ElevationOfPrivilege), no separators and no version token",
+        "Notes STRIDE is risk-side (applies to risks, not controls)"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Risk direction: riskRunawayAgentToolLoops. The addressing control (Agent Execution Bounds) maps to MITRE ATLAS mitigation AML.M0004. Should the risk just reuse AML.M0004? And for the technique, I found the parent AML.T0034 (Cost Harvesting) and the sub-technique AML.T0034.002 — should I list both?",
+      "expected_output": "No — risks map to techniques (AML.T####), never mitigations (AML.M####); the control's AML.M0004 is a mitigation and belongs on the control, not the risk (the mirror rule). Use the technique. For parent-vs-sub, list only the most specific accurate one: AML.T0034.002, not both the parent AML.T0034 and its sub-technique. Pinned form AML.T0034.002@5.0.1, marked for tool-generation.",
+      "expectations": [
+        "States risks map to MITRE ATLAS techniques (AML.T####), not mitigations (AML.M####); AML.M0004 is a mitigation that belongs on the control, not the risk",
+        "Selects the technique AML.T0034.002 and does NOT list the parent AML.T0034 alongside its sub-technique (most-specific only)",
+        "Notes the pinned form (AML.T0034.002@5.0.1) and marks it for tool-generation"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Risk direction: I'm mapping a risk and I want to add a NIST AI RMF subcategory (say MEASURE-2.7) to it because it feels relevant to how the risk is assessed. Is that allowed on a risk?",
+      "expected_output": "No — NIST AI RMF does not apply to risks; it is control-side (and persona) only. Reject the NIST subcategory on the risk regardless of how relevant it feels. Risk-side frameworks are MITRE ATLAS techniques, STRIDE, and OWASP LLM. If assessment matters, that belongs on the addressing control, not the risk.",
+      "expectations": [
+        "States NIST AI RMF does NOT apply to risks (it is control-side / persona-side only) and rejects the mapping",
+        "Rejects it on applicability grounds regardless of apparent topical relevance",
+        "Names the risk-applicable frameworks instead: MITRE ATLAS techniques, STRIDE, OWASP Top 10 for LLM"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Risk direction: for riskRunawayAgentToolLoops (an agent stuck in a runaway tool-call loop), which controls should the risk's controls list name, and what reciprocal edits are required?",
+      "expected_output": "Select controls that directly address the runaway-loop risk: controlAgentExecutionBounds (bounds the number/cost of tool calls) and controlAgentObservability (surfaces the looping behavior). Each is defensible in one sentence; do not list merely 'related' controls or any universal (risks: all) control. Reciprocity: each named control's risks array must list riskRunawayAgentToolLoops back (risk.controls must match control.risks).",
+      "expectations": [
+        "Selects controlAgentExecutionBounds and controlAgentObservability as directly addressing the runaway-loop risk, each with a one-sentence rationale",
+        "Excludes merely-related controls and any universal (risks: 'all') control",
+        "States the reciprocity requirement: each named control's risks array must list this risk back (risk.controls <-> control.risks)"
+      ]
+    }
+  ]
+}
