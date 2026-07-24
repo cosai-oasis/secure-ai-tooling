@@ -1,0 +1,78 @@
+{
+  "skill_name": "audit-identification-questions",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Audit this identification question: 'Do developers building on your framework configure model access policies?'",
+      "expected_output": "Flags the third-person framing ('Do developers'); should be second-person about the reader's own activity.",
+      "expectations": [
+        "Flags the third-person framing ('Do developers') as a violation",
+        "States questions should be second-person, about what the reader does",
+        "Suggests a second-person rewrite"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "A persona has 9 identification questions. Audit the structure.",
+      "expected_output": "Flags the count as outside the 5-7 range; recommends reducing.",
+      "expectations": [
+        "Flags that the count (9) exceeds the 5-7 range",
+        "Recommends reducing to 5-7 questions"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Audit the example format in this question: 'Do you use agent frameworks such as LangChain and CrewAI?'",
+      "expected_output": "Flags the 'such as' inline form; the required format is parenthetical '(e.g., LangChain, CrewAI)'.",
+      "expectations": [
+        "Flags 'such as' inline as non-conformant",
+        "States the required format is parenthetical (e.g., item1, item2)",
+        "Notes the 2-4 item length guidance"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Audit this question, which the author believes is already clean: 'Are you responsible for training or fine-tuning foundation models (e.g., pre-training, RLHF, instruction tuning)?'",
+      "note": "Recalibrated after a smoke run: the question is NOT fully clean by the guide — the skill correctly caught guide-grounded issues without manufacturing nits.",
+      "expected_output": "Confirms the strong parts, but catches the narrow-scope issue ('foundation models' should use an 'including' scope-expansion) and/or the 'responsible for' role-vs-activity framing — grounding each flag in the style guide.",
+      "expectations": [
+        "Confirms the conformant parts (second-person 'Are you', correct (e.g., ...) parenthetical with 2-4 items, yes/no answerable)",
+        "Catches the narrow-scope issue ('foundation models' should use an 'including' scope-expansion per the guide) and/or the 'responsible for' role-vs-activity framing",
+        "Grounds each flag in the style guide rather than asserting ungrounded or manufactured violations"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Audit this identification question for the Agentic Platform and Framework Providers persona: 'Do you connect large language models to external APIs, tools, or services?' Note that the Application Developer persona also integrates models with external services.",
+      "note": "Scoping-clause presence. The activity (connecting LLMs to external services) is shared with the adjacent Application Developer persona; the corpus resolves it with a framework-vs-application scoping clause (personaAgenticProvider Q3 says 'as a reusable framework or platform rather than a single application'). The bare question lets both personas answer yes.",
+      "expected_output": "Flags the missing scoping clause: the activity is shared with the Application Developer persona, so a clause distinguishing the framework/platform provider from a single-application integrator is required. Suggests a clause modeled on the guide's shared-activity rule.",
+      "expectations": [
+        "Flags that the activity is shared with an adjacent persona (Application Developer) and lacks a disambiguating scoping clause",
+        "States the style guide's rule that a shared activity needs a scoping clause assigning it to exactly one persona",
+        "Suggests a scoping clause (e.g., 'as a reusable framework or platform rather than a single application') and grounds it in the guide"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Audit these two identification questions from the same persona: 'Do you train AI models?' and 'Do you build or create machine learning models?'",
+      "note": "No-overlapping-questions. This is the style guide's explicit overlapping-questions anti-pattern: two questions describing the same activity at different abstraction levels. Remedy is merge or add a scoping clause.",
+      "expected_output": "Flags the two questions as overlapping — they ask effectively the same thing at different abstraction levels — and recommends merging them or adding a scoping clause to distinguish them.",
+      "expectations": [
+        "Flags the two questions as overlapping / asking effectively the same thing",
+        "Identifies this as the style guide's overlapping-questions anti-pattern",
+        "Recommends merging the two questions or adding a scoping clause to differentiate them"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Audit the ordering of these questions for a persona, in this order: (1) 'Do you provide integration layers as a reusable framework rather than as a single application?' (2) 'Do you build or maintain software that orchestrates which tools an AI model invokes (e.g., tool-calling frameworks, agent orchestrators, or planning engines)?' (3) 'Do you define the agent architecture for AI systems (e.g., reasoning loops, planning workflows, or reflection patterns)?'",
+      "note": "Ordering. Question 1 is a boundary-clarifying question (it carries the framework-vs-application scoping clause) but is placed first; the guide says the most distinguishing activity leads and boundary-clarifying questions come last.",
+      "expected_output": "Flags the ordering: the boundary-clarifying question (Q1, with the 'reusable framework rather than a single application' scoping clause) is placed first but should come last; the most distinguishing activity (tool orchestration) should lead.",
+      "expectations": [
+        "Flags that a boundary-clarifying / scoping-clause question is placed first instead of last",
+        "States the style guide's ordering rule (most distinguishing activity first, boundary-clarifying questions last)",
+        "Suggests reordering so the most distinguishing question leads and the boundary-clarifying question ends the list"
+      ]
+    }
+  ]
+}
