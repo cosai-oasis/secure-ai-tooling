@@ -3,6 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-04-20
 **Authors:** Architect agent, with maintainer review
+**Superseded in part by:** [Amendment 2026-07-12](#amendment-2026-07-12-draft-issue-comments-review-discipline-is-a-canonical-skill) (below) — the [§2](#decision) framing of the `draft-issue-comment` flow's review discipline as "not part of the canonical pattern" is superseded by [ADR-031 D5](031-authoring-time-agents-and-skills.md) + [ADR-033 D1](033-vendor-neutral-agent-skill-shipping.md). The composition contracts and routing boundaries of D1–D3 are unchanged.
 
 ---
 
@@ -79,3 +80,57 @@ The architect agent is the negative example that anchors the rule. [`scripts/age
 - When the newer canonicals (`architect`, `testing`, `code-reviewer`, `swe`) have been exercised through one or more published orchestration flows, a follow-up ADR should capture their composition patterns. Expected flows include `architect → testing → swe → code-reviewer` for test-first implementation and `architect → swe → code-reviewer` for infrastructure work. Neither is currently battle-tested; both are declared in `architect.md` but have not been run end-to-end in live contributor-facing work.
 - If a second harness is officially supported, the question of whether skill-layer code becomes tracked (versus maintainer-local) is a separate decision. Not in scope here.
 - The `format: agent` output schema of `content-reviewer` would benefit from a JSON schema or equivalent contract document if the number of composing canonicals grows beyond `issue-response-reviewer`. Defer until that pressure exists.
+
+---
+
+## Amendment 2026-07-12: `draft-issue-comment`'s review discipline is a canonical skill
+
+**Status:** Accepted (2026-07-12). Does not alter the Accepted status of D1–D3 above; it supersedes only the §2 classification of the `draft-issue-comment` flow's review discipline.
+**Authors:** Architect agent, with maintainer review.
+
+### Context
+
+[D2](#decision) ("Skill-to-agent composition") uses the `draft-issue-comment` flow as its worked example and, in its "Per-harness layering" clause, classifies it: "A `/draft-issue-comment` slash command is one harness's layering over `issue-response-reviewer` … Per ADR-006, harness layering is an implementation detail of the consuming environment, not part of the canonical pattern." When ADR-008 was written (2026-04-20), that classification was correct on the facts then true: there was **no canonical skill surface at all**. [ADR-006](006-agent-architecture-pattern.md) had established `scripts/agents/` for agents, but skills existed only as harness-specific wrappers, so any `draft-issue-comment` form was necessarily harness-layered.
+
+Three later, Accepted-track decisions changed the surface that framing described:
+
+- [ADR-031 D5](031-authoring-time-agents-and-skills.md) (Accepted, [#402](https://github.com/cosai-oasis/secure-ai-tooling/pull/402)) established `scripts/skills/` as the **canonical, vendor-neutral home** for skills, paralleling `scripts/agents/`. A skill can now be canonical; before ADR-031 it could not.
+- [ADR-033 D1](033-vendor-neutral-agent-skill-shipping.md) (the canonical-only shipping standard) fixed the canonical skill as the **single tracked form** and ruled out first-party per-harness wrappers in-repo.
+- The `draft-issue-comment` skill has since been promoted into `scripts/skills/` as a neutral canonical that **defers to** the [`issue-response-reviewer`](../../scripts/agents/issue-response-reviewer.md) agent (which composes `content-reviewer` in `issue` mode) — it applies that agent's spec and does not restate it.
+
+The promotion is coherent under the later ADRs — it is a canonical skill admitted under the general ADR-031-D5 / ADR-033-D1 skill-surface rules — but nothing in the ADR record reconciled it against ADR-008 §2's "not part of the canonical pattern" framing, which now reads stale for the *review-discipline* half of the flow. This amendment closes that gap.
+
+### Decision
+
+#### D4. The `draft-issue-comment` review discipline is a canonical skill; only its external side effects remain harness layering
+
+The `draft-issue-comment` flow **splits** into two parts that the later ADRs place on opposite sides of the canonical boundary. The [§2](#decision) "not part of the canonical pattern" framing is superseded for the first part and retained for the second:
+
+- **The review discipline is a canonical skill.** Producing a structured maintainer review comment for a content-proposal issue — the discipline the flow carries — ships as the neutral canonical skill `scripts/skills/draft-issue-comment/` under [ADR-031 D5](031-authoring-time-agents-and-skills.md) (canonical skill home) and [ADR-033 D1](033-vendor-neutral-agent-skill-shipping.md) (canonical-only). This is the current governing classification; ADR-008 §2's "harness layering, not part of the canonical pattern" no longer describes this part.
+- **The external side effects remain harness layering.** [D3](#decision)'s routing boundary is unchanged: the canonical skill returns a local draft; it does not post to GitHub. A harness's live GitHub-fetch and post/write mechanics — the `gh`-CLI invocation, the write of the drafted comment — stay harness-specific and out of the tracked canonical, exactly as [D2](#decision) and [D3](#decision) require. ADR-008 §2's boundary governs *these* mechanics; it no longer governs the review discipline.
+
+#### D5. The skill *defers to* the agent — this is ADR-006's canonical-and-defer relationship, not a re-canonicalization of the review logic
+
+The canonical skill does **not** restate the review spec. It defers to the canonical [`issue-response-reviewer`](../../scripts/agents/issue-response-reviewer.md) agent — which composes `content-reviewer` in `issue` mode ([ADR-007](007-content-reviewer-modes.md)) — as its single source of truth for the review process, feedback shape, quality gates, and output structure. The review logic remains canonical **in the agent**; the skill is a thin, canonical caller that applies it. This is the same "canonical is authoritative; the thin form defers to it" relationship [ADR-006](006-agent-architecture-pattern.md) fixes, now realized skill→agent rather than wrapper→agent. Promoting the skill therefore adds a canonical *caller*; it does not duplicate or re-canonicalize the review logic the agent already owns. [D1](#decision)'s agent-to-agent composition contract (`issue-response-reviewer` → `content-reviewer`) is untouched.
+
+#### D6. This is the standing pattern for a promotion↔prior-ADR tension
+
+When a promotion into the shipped set (`scripts/agents/**`, `scripts/skills/**`) reclassifies an artifact that an earlier Accepted ADR framed under the pre-canonical-skill surface, the reconciliation is recorded — not left implicit. The standing form is a dated, in-file amendment to the earlier ADR that annotates the superseded framing and points to the governing later decision, preserving the original text (the instrument this amendment uses; cf. the [ADR-026 amendment precedent](026-issue-template-domain.md#amendment-2026-05-21-component-categorysubcategory-valid-tuple-selector)). The artifact still enters the shipped set under [ADR-033 D6](033-vendor-neutral-agent-skill-shipping.md)'s expansion rule (an ADR-level admission that records D1–D5 conformance and a portable eval); this amendment records the *reconciliation of the prior framing*, which is a separate act from admission.
+
+### Consequences
+
+**Positive**
+
+- The ADR record now explicitly reconciles ADR-008 §2 with the canonical-skill surface. A future reader who reaches ADR-008's harness-layering framing is pointed to the governing later decision instead of being left to infer that ADR-031/033 override it.
+- The split is stated cleanly: review discipline is canonical (the skill), external side effects stay harness-specific (the routing boundary). D3's "canonicals return findings; callers perform side effects" rule is preserved intact, not weakened.
+- The reconciliation instrument (D6) is now a stated pattern, so the next promotion that trips a prior-ADR framing has a recorded convention to follow rather than a case-by-case judgment call.
+
+**Negative**
+
+- ADR-008 §2 must now be read together with this amendment; the original clause remains in place (history is preserved) but is no longer the whole story for the `draft-issue-comment` example. The header "Superseded in part by" pointer mitigates this, but a reader who skims only §2 could miss the reconciliation.
+- The split between "canonical review discipline" and "harness-specific side effects" is a distinction that must be maintained per flow. A future skill that blurs the two — putting a side effect into the canonical — would violate D3 and reopen this boundary.
+
+**Follow-up**
+
+- **Maintainer sign-off flips this amendment `Draft → Accepted`** and, at that point, the ADR-008 header pointer's "Draft" reference resolves to an Accepted amendment. The `Superseded in part by` header language is deliberately narrow (D1–D3 unchanged); confirm that scoping at Accept time.
+- **Admission of `draft-issue-comment` into the shipped set** under [ADR-033 D6](033-vendor-neutral-agent-skill-shipping.md) is a separate question from this reconciliation. The scope doc's open Q6 (whether to bless the skill by name in a skill-surface ADR, or leave it under the general ADR-031-D5 / ADR-033-D1 rules) is the maintainer's to decide; this amendment does not resolve it and does not depend on it.
