@@ -2,6 +2,8 @@
 
 Adding a new control involves defining it and then mapping it to the components, personas, and risks it affects. For this example, let's add a hypothetical `controlNewControl`.
 
+> **Tip:** You can draft this manually with the steps below, or start from an assisted draft — invoke the [`control-creator`](../../scripts/agents/control-creator.md) agent, stress-test the draft with [`control-critic`](../../scripts/agents/control-critic.md), then run [`content-reviewer`](../../scripts/agents/content-reviewer.md). See [Authoring with Agents](contributing/authoring-with-agents.md).
+
 ## 1. Add the new control ID to the schema
 
 First, derive the new control ID from the control title (`control` + camelCase descriptor — e.g., "Red Teaming" → `controlRedTeaming`) and declare it in `controls.schema.json`. This registers the new control with the framework. (The issue-template flow derives this ID automatically; when authoring YAML/schema directly via PR, apply the same convention by hand.)

@@ -2,6 +2,8 @@
 
 This guide explains the CoSAI Risk Map persona model, which defines distinct sets of activities and responsibilities within the AI ecosystem. Personas are used to assign ownership of security controls and identify who is affected by specific risks.
 
+> **Tip:** Personas are rarely added and adding one is a breaking change. If you believe a genuinely new persona is warranted, you can start from an assisted draft — invoke the [`persona-creator`](../../scripts/agents/persona-creator.md) agent (it runs a necessity test against the existing personas first), stress-test the draft with [`persona-critic`](../../scripts/agents/persona-critic.md), then run [`content-reviewer`](../../scripts/agents/content-reviewer.md). See [Authoring with Agents](contributing/authoring-with-agents.md).
+
 ---
 
 ## Overview

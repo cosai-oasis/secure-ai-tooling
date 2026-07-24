@@ -2,6 +2,7 @@
 
 **Version:** 0.1.0-draft
 **Scope:** Architectural decisions, trade-off analysis, and ADR authoring for tooling and infrastructure changes in the `secure-ai-tooling` repository
+**Decision of record:** ADR-006 (vendor-neutral agent architecture).
 
 ---
 
