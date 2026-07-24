@@ -1,0 +1,97 @@
+{
+  "skill_name": "audit-framework-mappings",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Audit this control mapping value: mitre-atlas: [AML.M0028]. Is it conformant?",
+      "expected_output": "Flags the missing version pin — ADR-027 requires AML.M0028@5.0.1 — deferring to the style guide's pinned pattern.",
+      "expectations": [
+        "Flags that the value is missing its version pin (@5.0.1) required by ADR-027",
+        "States the correct form is AML.M0028@5.0.1",
+        "Treats the framework-mappings-style-guide as the authoritative source rather than an unversioned form"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Audit these risk STRIDE values: stride: [tampering, information-disclosure]. Are they formatted correctly?",
+      "expected_output": "Flags the lowercase form; STRIDE is PascalCase (Tampering, InformationDisclosure).",
+      "expectations": [
+        "Flags the STRIDE values as incorrectly cased",
+        "States the correct form is PascalCase (Tampering, InformationDisclosure)",
+        "Does not accept lowercase STRIDE"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Audit this control mapping: mitre-atlas: [AML.T0043@5.0.1]. Is a technique valid on a control?",
+      "expected_output": "Flags technique-on-control: controls map to mitigations (AML.M####), risks map to techniques (AML.T####).",
+      "expectations": [
+        "Flags that controls map to MITRE ATLAS mitigations (AML.M####), not techniques (AML.T####)",
+        "Identifies AML.T0043 as a technique that does not belong on a control"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "A control has 6 NIST AI RMF mappings. Audit for selectivity.",
+      "expected_output": "Flags exceeding the soft limit of 4 per framework; recommends keeping only directly-relevant mappings.",
+      "expectations": [
+        "Flags exceeding the soft limit of ~4 mappings per framework",
+        "Recommends keeping only directly-relevant mappings, each defensible in one sentence"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Audit this persona mapping: iso-22989: [AI Partner (data supplier)]. Is it conformant?",
+      "expected_output": "Flags the missing @2022 version pin; ISO 22989 role descriptors are pinned, so the correct value is 'AI Partner (data supplier)@2022', which is a valid member of the closed controlled-vocabulary enum.",
+      "expectations": [
+        "Flags that the ISO 22989 value is missing its @2022 version pin",
+        "States the correct form is 'AI Partner (data supplier)@2022'",
+        "Confirms the role name is a valid member of the ISO 22989 closed controlled-vocabulary enum (personas-only framework)",
+        "Reads the ISO 22989 rule from the style guide rather than restating it from memory"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Audit this persona mapping: mitre-atlas: [AML.T0020@5.0.1] on personaDataProvider. Is MITRE ATLAS valid on a persona?",
+      "expected_output": "Flags an applicableTo violation: MITRE ATLAS applies to risks and controls only, not personas. The mapping must be removed regardless of whether the identifier is well-formed.",
+      "expectations": [
+        "Flags that MITRE ATLAS is not applicable to personas per the applicableTo table",
+        "States that MITRE ATLAS applies to risks and controls only",
+        "Treats this as a structural (applicableTo) violation, independent of whether the identifier form is correct",
+        "Grounds the applicability decision in the style guide's Framework Applicability table"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Audit this control mapping: owasp-top10-llm: [LLM01]. Is it conformant?",
+      "expected_output": "Flags the missing :2025 version token; OWASP Top 10 for LLM values are pinned as LLM##:2025, so the correct form is LLM01:2025.",
+      "expectations": [
+        "Flags that the OWASP value is missing its :2025 version token",
+        "States the correct form is LLM01:2025",
+        "Notes OWASP uses the colon delimiter (:2025), not the @ token used by other frameworks",
+        "Reads the OWASP pinned pattern from the style guide"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Audit this risk mapping: mitre-atlas: [AML.T0010@5.0.1, AML.T0010.002@5.0.1]. Is it conformant?",
+      "expected_output": "Flags a parent + sub-technique collision: AML.T0010.002 is the more specific match, so AML.T0010 must be dropped. Use only the most specific accurate level.",
+      "expectations": [
+        "Flags the parent + sub-technique collision (AML.T0010 alongside AML.T0010.002)",
+        "States that only the more specific sub-technique (AML.T0010.002@5.0.1) should remain",
+        "Grounds the rule in the style guide's granularity / do-not-map-parent-and-sub-technique guidance"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Audit this risk mapping: nist-ai-rmf: [MEASURE-2.3@1.0] on a risk. Is NIST AI RMF valid on a risk?",
+      "expected_output": "Flags an applicableTo violation: NIST AI RMF applies to controls only, not risks. The value is well-formed but the framework does not apply to this entity type and must be removed.",
+      "expectations": [
+        "Flags that NIST AI RMF is not applicable to risks per the applicableTo table",
+        "States that NIST AI RMF applies to controls only (it is control-oriented, with no threat taxonomy)",
+        "Treats this as a structural (applicableTo) violation even though the identifier form is correct",
+        "Grounds the applicability decision in the style guide's Framework Applicability table"
+      ]
+    }
+  ]
+}

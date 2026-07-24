@@ -1,0 +1,46 @@
+{
+  "skill_name": "explain-entity",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Explain riskDataPoisoning in plain terms.",
+      "expected_output": "Plain what/why, classical roots (data/supply-chain integrity), and relationships — the controls that address it, the personas impacted, the components where it manifests — with ids linked.",
+      "expectations": [
+        "Explains what riskDataPoisoning is and why it matters, in plain language grounded in its risks.yaml definition",
+        "Gives its classical roots (e.g. data integrity / supply-chain poisoning)",
+        "Lists its relationships: addressing controls, impacted personas (and/or lifecycle) with ids",
+        "Read-only; does not edit the entry"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "What is controlAgentPluginPermissions?",
+      "expected_output": "Explains the control's objective, its classical roots (least privilege, confused deputy, reference monitor), the risks it addresses, the components it applies to, and the implementer personas.",
+      "expectations": [
+        "Explains the control's objective plainly from controls.yaml",
+        "Gives classical roots (least privilege / confused deputy / reference monitor)",
+        "Lists the risks it addresses and the personas who implement it, with ids"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Explain the confused deputy thing in this framework.",
+      "expected_output": "Resolves the name to the confused-deputy risk (and related control), explains the classical confused-deputy concept and its agentic form, links ids.",
+      "expectations": [
+        "Resolves 'confused deputy' to the corresponding risk id (e.g. riskAgenticDelegationConfusedDeputy) and/or the addressing control",
+        "Explains the classical confused-deputy concept and how it manifests in agentic delegation",
+        "Links the relevant entity ids and stays read-only"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Explain riskPromptInjection, and while you're at it tighten its long description.",
+      "expected_output": "Explains the risk (read-only); declines the edit and redirects to risk-creator.",
+      "expectations": [
+        "Explains riskPromptInjection plainly with its relationships",
+        "Declines to edit the entry and redirects the change to risk-creator (and content-reviewer)",
+        "Does not modify risks.yaml"
+      ]
+    }
+  ]
+}

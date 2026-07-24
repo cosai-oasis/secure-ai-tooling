@@ -1,0 +1,46 @@
+{
+  "skill_name": "explore-exposure",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "What risks and controls apply to using AWS Nitro Enclaves in an agentic system?",
+      "expected_output": "Maps Nitro (curated) to the serving/storage confidential-compute components, finds the controls that apply to those components (e.g. isolated/confidential computing, integrity, access controls), and the risks those controls address, explaining the component→control→risk indirection.",
+      "expectations": [
+        "Maps AWS Nitro Enclaves to the confidential/isolated-compute components it protects (e.g. componentModelServing / componentModelStorage), citing the curated lexicon",
+        "Finds the controls that apply to those components (e.g. isolated & confidential computing, integrity, access controls) with ids",
+        "Surfaces the risks those controls address (reached via the controls), and explains that risks connect to a component through its controls",
+        "Read-only; links ids"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I use Pinecone as my vector store for RAG. What's my exposure?",
+      "expected_output": "Maps Pinecone → componentRAGContent, finds the controls applying to it and the retrieval/vector-store risks in play (e.g. retrieval/vector-store poisoning).",
+      "expectations": [
+        "Maps Pinecone to componentRAGContent (the retrieval/vector-store locus)",
+        "Surfaces the applying controls and the retrieval/vector-store-poisoning risk(s), with ids",
+        "Explains the mapping and the component→control→risk path"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "What risks and controls attach to componentReasoningCore?",
+      "expected_output": "Direct component input (no product mapping needed); lists the controls that apply to componentReasoningCore and the risks those controls address.",
+      "expectations": [
+        "Handles a direct component id (no product→component mapping needed)",
+        "Lists the controls whose components field includes componentReasoningCore, with ids",
+        "Surfaces the risks those controls address, with ids"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "We use a vendor called 'ChronoAgent' for our agent orchestration — what's our exposure?",
+      "expected_output": "The product isn't in the lexicon, so it infers the nearest component(s) from the role (agent orchestration → reasoning core / orchestration handling), flags the mapping as inferred (not curated), then surfaces exposure.",
+      "expectations": [
+        "Recognizes the product is not in the curated lexicon and maps it by role (agent orchestration → reasoning core / orchestration components)",
+        "Explicitly flags the product→component mapping as inferred, not curated",
+        "Still surfaces the applying controls and their risks from the corpus, with ids"
+      ]
+    }
+  ]
+}
