@@ -1,0 +1,223 @@
+{
+  "skill_name": "classical-lexicon",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm drafting a control and want to call the enforcement component an \"agent control gateway.\" Is that the right name?",
+      "expected_output": "Regrounds the invented term to Policy Enforcement Point (PEP), cites NIST SP 800-207 / 800-162, records at least one international equivalent (XACML PEP/PDP model, ISO/IEC 29146) with no maintainer flag (equivalence found), and records the counterfactual.",
+      "expectations": [
+        "Identifies 'agent control gateway' as an invented term, not an established term of art",
+        "Returns Policy Enforcement Point (PEP) as the canonical term",
+        "Cites a NIST source (SP 800-207 or SP 800-162)",
+        "Records at least one recognized international equivalent (e.g. XACML PEP/PDP model or ISO/IEC 29146) and raises no D3b-parochialism flag",
+        "Does not endorse coining a new term"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Proposed control title: \"Agent Observability.\" Review the terminology.",
+      "expected_output": "Flags 'Agent Observability' as coined and regrounds it to audit logging / telemetry with a NIST AU-family source, recording the international equivalent (EU AI Act Article 12 record-keeping / automatic logging; ISO/IEC 27002 logging) with no maintainer flag (equivalence found).",
+      "expectations": [
+        "Flags 'Agent Observability' as a coined/informal term",
+        "Proposes audit logging and/or telemetry as the established equivalent",
+        "Cites NIST SP 800-53 AU family (or equivalent) as the source",
+        "Records an international equivalent (EU AI Act Article 12 record-keeping and/or ISO/IEC 27002 logging) and raises no D3b-parochialism flag"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "A risk description warns about \"zombie shadow agents\" left running after a task ends. Fix the terminology.",
+      "expected_output": "Regrounds the colloquialism to orphaned / unregistered (unauthorized) principals or abandoned assets, and — because no crisp international-standard equivalent is recorded for this term (it rests on classical asset-management / IAM framing) — raises a D3b-parochialism maintainer flag while keeping the grounded term. Does not invent a spurious international equivalent to avoid the flag.",
+      "expectations": [
+        "Flags 'zombie' and 'shadow' as colloquial, not terms of art",
+        "Proposes orphaned / unregistered / unauthorized principal (or abandoned asset) as the grounded term",
+        "Raises a D3b-parochialism maintainer flag because no international equivalent is recorded (does not invent one to avoid the flag)",
+        "Records the proposed-to-chosen mapping"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "New component title: \"MCP Server.\" Is this named at the right level?",
+      "expected_output": "Generalizes to Tool Server (role/locus); MCP is an attribute/example, not the identity. A generalize verdict is a naming-altitude move, not a grounding-in-standards move, so it carries no international-equivalence obligation: no maintainer flag (D3b-parochialism or otherwise) is raised.",
+      "expectations": [
+        "Identifies MCP as a specific protocol, i.e. an attribute rather than the identity",
+        "Generalizes the name to Tool Server (or remote tool serving) at role grain",
+        "Says MCP should be kept only as an example / external reference, not in the identity",
+        "Raises NO maintainer flag: a generalize verdict carries no international-equivalence obligation, so no D3b-parochialism (or other equivalence) flag fires"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "My control description says it applies the \"least-privilege principle.\" Is that terminology acceptable?",
+      "expected_output": "Confirms the term is already grounded (accept); cites Saltzer & Schroeder / NIST SP 800-53 AC-6 and records the international equivalent (ISO/IEC 27002 least-privilege control) with no maintainer flag (equivalence found). No change needed.",
+      "expectations": [
+        "Classifies 'least-privilege principle' as already grounded / acceptable",
+        "Does not propose a change",
+        "Cites a real source (Saltzer & Schroeder or NIST SP 800-53 AC-6)",
+        "Records the international equivalent (ISO/IEC 27002 least-privilege) and raises no D3b-parochialism flag"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I need a term for the risk of users reflexively approving high-volume agent confirmation prompts without reading them. There's no obvious standard term. What should I call it?",
+      "expected_output": "Does NOT invent a canonical term. Surfaces any non-US/HCI framing, states no settled term of art was found, and raises a maintainer flag from the controlled vocabulary — a D3b-parochialism flag (no findable established/international equivalent) — for CoSAI governance review (D3b).",
+      "expectations": [
+        "Does not coin or endorse a new canonical term as if it were established",
+        "Explicitly states that no established term of art was found (or that it is contested)",
+        "Raises a maintainer flag from the controlled vocabulary (D3b-parochialism for the missing established/international equivalent), not a free-form note",
+        "Surfaces non-US or adjacent framing (e.g. ENISA, or security/warning-fatigue literature) rather than silently picking"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Is \"fail-safe defaults\" acceptable terminology for a control design principle, or should I use something else?",
+      "expected_output": "Confirms 'fail-safe defaults' is an established secure-design principle (grounded); attributes it to Saltzer & Schroeder; records the international equivalent (ISO/IEC 27002 secure-configuration guidance; the Saltzer & Schroeder principle is internationally current) with no maintainer flag (equivalence found); recommends no change.",
+      "expectations": [
+        "Classifies 'fail-safe defaults' as already grounded / an established term of art",
+        "Does not propose replacing it",
+        "Recognizes it as a classical secure-design principle (e.g. Saltzer & Schroeder 1975)",
+        "Records the international equivalent (ISO/IEC 27002 secure-configuration / the internationally-current principle) and raises no D3b-parochialism flag"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Component title: \"LangChain Tool Wrapper.\" Is this named at the right level?",
+      "expected_output": "Generalizes: LangChain is a specific framework (an attribute); the role is a tool adapter / tool integration; keep LangChain only as an example. A generalize verdict is a naming-altitude move, not a grounding-in-standards move, so it carries no international-equivalence obligation: no maintainer flag (D3b-parochialism or otherwise) is raised.",
+      "expectations": [
+        "Identifies LangChain as a specific product/framework, i.e. an attribute rather than the identity",
+        "Generalizes to a role-grain term (e.g. tool adapter, tool integration, or tool invocation interface)",
+        "Recommends keeping LangChain only as an example / external reference, not in the identity",
+        "Raises NO maintainer flag: a generalize verdict carries no international-equivalence obligation, so no D3b-parochialism (or other equivalence) flag fires"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "We keep having \"secret sprawl\" across our tool servers. What's the right term for this risk?",
+      "expected_output": "Grounds 'secret sprawl' in established secrets/credential-management terminology (e.g. credential management, CWE-522/798, NIST SP 800-57/800-53); does not coin a new term. INTENTIONAL PARTIAL SPEC: this eval deliberately does not assert an international-equivalent field or maintainer flag — secrets/credential management is neither in the F1 asserted-backfill set nor the explicit flag list, so its equivalence handling is left to the implementation and is NOT asserted here (silence is not 'assert absence').",
+      "expectations": [
+        "Flags 'secret sprawl' as industry jargon / informal rather than a term of art",
+        "Grounds it in established terminology (secrets management / credential management) with a real source (e.g. CWE-522, CWE-798, or NIST SP 800-57/800-53)",
+        "Does not invent a new canonical term"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Control name: \"Prompt Injection Shield.\" Review the terminology.",
+      "expected_output": "Flags 'Shield' as informal; regrounds the control to input validation and sanitization (corpus control controlInputValidationAndSanitization), cites OWASP Input Validation / NIST SI family, records the international equivalent (ISO/IEC 27002 secure-development; OWASP as an international project) with no maintainer flag (equivalence found). Does not endorse the name as-is.",
+      "expectations": [
+        "Flags 'Shield' as informal / coined for a control name",
+        "Regrounds the control to input validation and sanitization (controlInputValidationAndSanitization)",
+        "Cites a real source (OWASP Input Validation or NIST SP 800-53 SI family)",
+        "Records the international equivalent (ISO/IEC 27002 secure-development and/or OWASP as international) and raises no D3b-parochialism flag",
+        "Does not endorse 'Prompt Injection Shield' unchanged"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "I'm naming a control around keeping a human meaningfully in charge of high-stakes agent decisions. Is 'human oversight' the right term, or is there a better one?",
+      "expected_output": "Confirms 'human oversight' is grounded (NIST-first) and records the international equivalent (EU AI Act Article 14, which uses the same term — US and non-US bodies agree). Surfaces 'meaningful human control' informationally as the EU/ethics variant with stronger emphasis, so the author can pick it deliberately if that is the intended emphasis. Under the unconditional-equivalence rule, the equivalence is always recorded; a maintainer flag fires only on a missing or conflicting equivalent — here the equivalent is present and agrees, so NO flag is raised (neither D3b-parochialism, naming-conflict, nor substantive-conflict).",
+      "expectations": [
+        "Confirms 'human oversight' is a grounded term (NIST-first) and records the international equivalent (EU AI Act Article 14 uses the same term — US and non-US agree)",
+        "Surfaces 'meaningful human control' informationally as the EU/ethics variant with stronger emphasis",
+        "Raises NO maintainer flag: equivalence is always recorded, and a flag fires only on a missing or conflicting equivalent — here the equivalent is present and agrees"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "We ground our risk-management approach entirely in the NIST AI RMF. A reviewer said that's US-centric. What non-US framings should we acknowledge?",
+      "expected_output": "Surfaces EU AI Act Article 9 and ISO/IEC 23894 (and ISO/IEC 42001) as the non-US/international equivalents of the NIST AI RMF, framed as broadening the base rather than replacing NIST-first, and recommends governance acknowledgment. INTENTIONALLY GENERIC on the controlled-flag vocabulary: here the international equivalent is found and agrees, so this is broadening-acknowledgment, NOT a controlled defect flag (no D3b-parochialism / naming-conflict / substantive-conflict) — 'flag for governance acknowledgment' means informational surfacing, not a defect-flag token.",
+      "expectations": [
+        "Surfaces EU AI Act (Article 9) and/or ISO/IEC 23894 as non-US equivalents of the NIST AI RMF risk-management framing",
+        "Frames this as broadening the base, not displacing the NIST-first priority",
+        "Recommends governance acknowledgment rather than deciding unilaterally (informational surfacing, not a controlled defect-flag token)"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "Is 'least privilege' acceptable as-is, or do I need to add a European framing to be safe?",
+      "expected_output": "Confirms 'least privilege' is a well-established, universal term (Saltzer & Schroeder; NIST SP 800-53 AC-6) and records the international equivalent (ISO/IEC 27002), which agrees. Under the unconditional-equivalence rule, the equivalence is always recorded; a maintainer flag fires only on a missing or conflicting equivalent — here the equivalent is present and agrees, so NO flag is raised.",
+      "expectations": [
+        "Confirms 'least privilege' is grounded and universal (not US-only)",
+        "Records the international equivalent (ISO/IEC 27002) as the equivalence field, and raises NO flag because the equivalent is present and agrees",
+        "Does NOT invent a spurious counterbalance flag — a flag fires only on a missing or conflicting equivalent, not on every grounded term"
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "Is there an established, citable framing for 'secure AI development lifecycle principles'? NIST has the SSDF for software generally — is there an AI-specific one I should ground in, including non-US sources?",
+      "expected_output": "Grounds the US baseline (NIST SSDF / SP 800-218), surfaces a non-US/international AI-specific framing (UK NCSC + CISA 'Guidelines for Secure AI System Development' 2023; ISO/IEC 42001) as the international equivalent, and recommends maintainer acknowledgment rather than coining a new term. INTENTIONALLY GENERIC on the controlled-flag vocabulary: the international equivalent is found and broadens the base, so this is broadening-acknowledgment, NOT a controlled defect flag (no D3b-parochialism / naming-conflict / substantive-conflict).",
+      "expectations": [
+        "Grounds the US baseline (NIST SSDF / SP 800-218)",
+        "Surfaces a non-US or international AI-specific framing (UK NCSC 'Guidelines for Secure AI System Development', ISO/IEC 42001, or EU AI Act) as the equivalence",
+        "Recommends maintainer acknowledgment rather than coining a new term (informational surfacing, not a controlled defect-flag token)"
+      ]
+    },
+    {
+      "id": 15,
+      "prompt": "For a control, I want to enumerate the 'trustworthiness characteristics' an AI system must satisfy, and ground the list in NIST. A reviewer says the NIST list and the EU list are not the same set. Which enumeration do I ground in?",
+      "expected_output": "Flags a genuine substantive conflict, not a wording gap: NIST AI RMF's seven trustworthiness characteristics (valid & reliable; safe; secure & resilient; accountable & transparent; explainable & interpretable; privacy-enhanced; fair with harmful bias managed) are a materially different SET from the EU HLEG's seven requirements (human agency & oversight; technical robustness & safety; privacy & data governance; transparency; diversity/non-discrimination & fairness; societal & environmental wellbeing; accountability) — the EU set enumerates 'societal & environmental wellbeing' and 'human agency' as first-class items that NIST does not. Per D3b, surface both enumerations and raise a substantive-conflict maintainer flag (same nominal concept, materially different content/scope across standards — distinct from a naming-conflict label mismatch) for CoSAI governance review; do NOT ground in either enumeration unilaterally, and do NOT silently pick or rename one set to the other.",
+      "expectations": [
+        "Recognizes this is a substantive conflict between the NIST and EU enumerations (different sets), not a mere wording/emphasis difference",
+        "Names both source enumerations (NIST AI RMF trustworthiness characteristics and EU HLEG Trustworthy AI requirements) with a concrete point of divergence (e.g. 'societal & environmental wellbeing' / 'human agency' present in the EU set but not NIST's)",
+        "Raises a substantive-conflict maintainer flag (not naming-conflict, and not a silent rename) for governance review per D3b",
+        "Does NOT unilaterally ground the list in either NIST or the EU set as if the disagreement were resolved"
+      ]
+    },
+    {
+      "id": 16,
+      "prompt": "Review this control description for terminology: 'The Prompt Injection Shield inspects every request the agent sends to an MCP server before it is forwarded.' Give me a per-term verdict.",
+      "expected_output": "Returns a per-candidate table with two distinct verdicts: 'Prompt Injection Shield' -> reground to input validation and sanitization (corpus control controlInputValidationAndSanitization; OWASP Input Validation / NIST SI family), which records an international equivalent with no maintainer flag; 'MCP server' -> generalize to tool server / remote tool serving (MCP is one instance/attribute, keep only as an example), which carries no international-equivalence obligation and raises no maintainer flag. Each verdict is correct for its own candidate; the two are not conflated.",
+      "expectations": [
+        "Produces a per-candidate verdict (a row/verdict for each of the two terms), not a single blended answer",
+        "Regrounds 'Prompt Injection Shield' to input validation and sanitization (controlInputValidationAndSanitization) with a real source",
+        "Generalizes 'MCP server' to the role (tool server / remote tool serving), keeping MCP only as an example/attribute",
+        "Assigns the correct distinct verdict to each term (reground for one, generalize for the other) without conflating them",
+        "Raises NO maintainer flag on the 'MCP server' generalize verdict (no D3b-parochialism or other equivalence flag), since generalize carries no international-equivalence obligation; this is independent of whatever equivalence handling applies to the 'Prompt Injection Shield' reground verdict"
+      ]
+    },
+    {
+      "id": 17,
+      "prompt": "I'm grounding a control's access-decision component as a Policy Enforcement Point (PEP). Confirm the term and show its international standing.",
+      "expected_output": "Confirms 'grounded' (PEP, NIST SP 800-162 / 800-207) and records the international equivalence set (e.g. XACML PEP/PDP, ISO/IEC 29146) in the output row. No maintainer flag (equivalence found).",
+      "expectations": [
+        "Classifies PEP as grounded with a NIST source",
+        "Records at least one recognized international equivalent (e.g. XACML PEP/PDP model or ISO/IEC 29146)",
+        "Does NOT raise a D3b-parochialism flag because an equivalent was found",
+        "Produces the equivalence as a required field, not an optional aside"
+      ]
+    },
+    {
+      "id": 18,
+      "prompt": "I want to ground a delegated-authority-abuse risk as a 'confused deputy'. Is that grounded, and does it have international standing?",
+      "expected_output": "Keeps 'confused deputy' grounded (Hardy 1988, established term of art) but raises a D3b-parochialism maintainer flag noting no crisp international-standard equivalent was found. Never downgraded from grounded, never dropped.",
+      "expectations": [
+        "Keeps the term grounded (does NOT downgrade to novel-flag or drop it)",
+        "Raises a D3b-parochialism maintainer flag for the missing international equivalent",
+        "Does not invent a spurious international equivalent to avoid the flag",
+        "States the fallback is keep-and-flag, not remove"
+      ]
+    },
+    {
+      "id": 19,
+      "prompt": "I'm grounding the access-decision component as a 'reference monitor'. A reviewer points out Common Criteria calls this a 'reference validation mechanism'. Which do I use?",
+      "expected_output": "Recognizes both are established (reference monitor, Anderson 1972 / NIST; reference validation mechanism, ISO/IEC 15408 / Common Criteria), records the equivalence, and raises a naming-conflict maintainer flag for governance to adjudicate rather than renaming unilaterally.",
+      "expectations": [
+        "Recognizes 'reference validation mechanism' (CC/ISO 15408) as the international established label for the same concept",
+        "Records both as a cross-standard equivalence set, not one replacing the other",
+        "Raises a naming-conflict maintainer flag for governance adjudication",
+        "Does NOT unilaterally rename the term inside the draft"
+      ]
+    },
+    {
+      "id": 20,
+      "prompt": "I'm drafting a persona for the team that only hosts and serves third-party models. I want to call the role 'Model Wrangler'. Is that grounded?",
+      "expected_output": "Flags 'Model Wrangler' as a coined/informal role name; grounds it to the established role vocabulary — the CoSAI persona set (AI Model Serving, per ADR-021) and the international role standard ISO/IEC 22989 ('AI Producer' / provider roles) and EU AI Act role terms (deployer/provider). Does not coin; surfaces the established role term.",
+      "expectations": [
+        "Flags 'Model Wrangler' as an informal/coined role name, not a term of art",
+        "Grounds it to established role vocabulary (ISO/IEC 22989 AI roles and/or the existing CoSAI persona names per ADR-021)",
+        "Applies the grounding procedure to a persona/role term, not only control/risk mechanism terms",
+        "Does not coin a new role label"
+      ]
+    }
+  ]
+}
