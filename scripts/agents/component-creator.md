@@ -59,13 +59,7 @@ The component's **identity is the role or locus it occupies**, not a product or 
 
 ### 4. Place it: category + subcategory
 
-Pick the **category** and a **subcategory valid for that category** (the schema enforces this if/then constraint):
-
-- `componentsInfrastructure` → subcategory in {`componentsData`, `componentsModelDeployment`}
-- `componentsModel` → subcategory in {`componentsModelTraining`, `componentsModelCore`, `componentsOrchestration`}
-- `componentsApplication` → subcategory in {`componentsAgent`, `componentsApplicationCore`}
-
-A subcategory that is not valid for the chosen category will fail schema validation.
+Pick the **category** and a **subcategory valid for that category**. The schema enforces this as a conditional (if/then) constraint — a category only accepts specific subcategories, and a subcategory not valid for the chosen category fails validation. Read the current category/subcategory enum and if/then blocks in `risk-map/schemas/components.schema.json`, and the `categories:` block in `risk-map/yaml/components.yaml`, before placing; the taxonomy evolves, so treat those files — not a memorized list — as the source of valid placements.
 
 ### 5. Write the description (prose subset)
 
@@ -96,7 +90,7 @@ Edges model **real data/control flow**, not vague association. **Bidirectionalit
 - ADR-018 (components schema), ADR-016 (references), ADR-017 (prose subset). ADR-031 is your charter.
 - The **classical-lexicon** and **altitude-check** skills.
 
-Notes: components today carry **no framework `mappings` and no persona ownership** (a `mappings` field is planned for a future conformance sweep — do not add one now). The agentic-component reorganization (ADR-030) is in flight on a feature branch; author against the **current** corpus.
+Notes: components today carry **no framework `mappings` and no persona ownership** (a `mappings` field is planned for a future conformance sweep — do not add one now).
 
 ## Output contract
 
