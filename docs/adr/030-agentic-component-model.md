@@ -78,8 +78,8 @@ Schema impact: `category.id` gains `componentsExternalTools`; `subcategory.id` g
 
 Two role assignments come with it:
 
-- **The identity provider fills the policy-information-point role for subject attributes.** In ABAC terms the policy information point is the retrieval source for all data a policy evaluation requires (NIST SP 800-162 §2.4.3), which includes object attributes and environment conditions as well as subject ones. This model's identity provider covers the subject-identity and subject-attribute share; it introduces no separate policy information point, and object attributes and environment conditions have no component home. That is a narrower gap than the policy administration point above but the same kind, and it is tracked with it.
-- **The model introduces no policy administration point.** This is a decision, not an oversight: the policy-authoring surface is upstream of every component modeled here, and no risk or control in scope attaches to it. The consequence is real — policy-administration risks (unauthorized policy edit, policy rollback, unreviewed policy promotion) have no component home — and it is tracked as a follow-up rather than left implicit (see Follow-up).
+- **The identity provider fills the policy-information-point role for subject attributes.** In ABAC terms the policy information point is the retrieval source for all data a policy evaluation requires (NIST SP 800-162 §2.4.3), which includes object attributes and environment conditions as well as subject ones. This model's identity provider covers the subject-identity and subject-attribute share; it introduces no separate policy information point, and object attributes and environment conditions have no component home. That is a narrower gap than the policy administration point above but the same kind, and [#467](https://github.com/cosai-oasis/secure-ai-tooling/issues/467) covers both.
+- **The model introduces no policy administration point.** This is a decision, not an oversight: the policy-authoring surface is upstream of every component modeled here, and no risk or control in scope attaches to it. The consequence is real — policy-administration risks (unauthorized policy edit, policy rollback, unreviewed policy promotion) have no component home. Both absences are recorded at [#467](https://github.com/cosai-oasis/secure-ai-tooling/issues/467), closed as deferred: it states the reasoning, the resolutions available, and the criteria that would reopen it, so the decision does not lapse into an accident of what nobody wrote down.
 
 Schema impact: `subcategory.id` gains `componentsIdentity`; the Infrastructure `allOf` branch gains it, alongside `componentsRegistries`.
 
@@ -177,6 +177,34 @@ Two separate deferrals, neither decided here:
 - **Graphical representation (a future ADR).** A typed edge `kind` (`data` / `consult` / `contains`) plus renderer support; how to show inbound and outbound flow through a single enforcement point; how to draw a control-intermediated full flow; and whether the overview graph is a subset of per-category detail graphs. These are a distinct problem from component shape and are gated on a survey of independent graphical-mapping approaches before an ADR is authored.
 - **An autonomy/workload realization attribute.** A component attribute that re-encodes the application-versus-agent distinction `componentRuntimeHosting` folds (D6). This is a modeling primitive, not a representation concern, and is parked as its own follow-on rather than bundled into the representation ADR.
 
+**An illustrative shape, so the deferral is inspectable rather than abstract.** The following is *not* a decision and does not bind the representation ADR — it is recorded because a deferral stated only in the abstract is one a later reader cannot evaluate, and because D9 and D14 both leave consult edges riding data-flow `to`/`from` where they render as data-flow arrows. Two optional keys nested under `edges:`, alongside `to` and `from`, so every relation stays in one place:
+
+```yaml
+- id: componentAuthorizationPolicyDecisionPoint
+  edges:
+    to: [...]              # data flow, unchanged
+    from: [...]
+    reliesOn:              # optional — authorities whose answers this component depends on
+      - componentIdentityProvider
+    relyingParties:        # optional — components that depend on this component's answers
+      - componentAuthorizationPolicyEnforcementPoint
+      - componentToolNetworkPolicyEnforcementPoint
+      - componentAgentNetworkPolicyEnforcementPoint
+      - componentApplicationNetworkPolicyEnforcementPoint
+      - componentModelServing
+```
+
+Four properties of the sketch are worth stating, because each is a place a reader could reasonably guess wrong:
+
+- **Both keys are available to any component; neither is reserved to a class of them.** The example is the policy decision point precisely because it carries both: it is a relying party of the identity provider and an authority to five enforcement points. A rule assigning `relyingParties` to decision points, identity providers and registries and `reliesOn` to everything else would be falsified by the first component in the model. `componentFederationProxy`'s description already states this dual shape in prose — "a relying party toward the upstream identity provider and an identity provider" downstream.
+- **Classification is per-edge, not per-component.** Not every edge leaving an authority is a consult: `componentModelRegistry → componentModelStorage` is a pointer relation, and storage does not consult the registry. A migration that retyped every edge out of a registry would mis-type it.
+- **The pair is reciprocal, on the same rule `to`/`from` already follow.** `A.reliesOn` contains B if and only if `B.relyingParties` contains A. This doubles the reciprocal-edit burden [ADR-034](034-corpus-change-landing-sequence.md) D2a/D2b describes, and the existing bidirectionality validator would extend to cover it.
+- **`reliesOn` is trust reliance, not a build dependency.** It is deliberately not `dependsOn`, which names software dependency relationships in SBOM formats (CycloneDX, SPDX). The relation here is that one component depends on another's *assertion* to make a decision.
+
+*Relying party* is a term of art, not a coinage: a system entity that acts on assertions it receives from an authority — the asserting party in SAML, the OpenID Provider in OIDC. [NIST SP 800-53](https://doi.org/10.6028/NIST.SP.800-53r5) Rev. 5 IA-4(8) pairs it with an identity provider in exactly this sense. Its international equivalents are recorded through the classical-lexicon skill rather than restated here, per [ADR-031](031-authoring-time-agents-and-skills.md) D3b.
+
+Landing this shape is a schema change plus a migration, not an additive edit: roughly a dozen edges currently expressed as `to`/`from` would reclassify, and they overlap the corpus text D14 already owes.
+
 ### D11. The model artifact is reachable only by training and by serving
 
 `componentTheModel` carries exactly four edges: `to: [componentModelEvaluation, componentModelServing]`, `from: [componentModelTrainingTuning, componentModelServing]`. Every path that reaches the model artifact is therefore either a training-tier path (training produces it; evaluation consumes it, both in `componentsModelTraining`) or a serving path. At runtime, serving is the sole toucher.
@@ -227,13 +255,15 @@ The registry's single edge is therefore `componentToolRegistry → componentTool
 
 **Owed corpus text.** `componentTools`' description characterizes the registry as the discovery layer "agents query". Under this rule that query traverses the enforcement point. This is a description edit, not a change to any decision here.
 
+**How this reads once edges are typed.** The registry consult this rule creates is one of the edges D10's illustrative sketch retypes: it is a `reliesOn` relation from an enforcement point to an authority, not a data flow, and it renders as a data-flow arrow only because no edge kind exists yet. A reader meeting the misleading arrow here should follow it to D10.
+
 ### D15. `componentAuditRecordRepository` is a distinct storage locus
 
 `componentAuditRecordRepository` (`componentsInfrastructure` / `componentsDeployment`) is the durable, tamper-evident storage substrate that other components write logs and audit records to.
 
 **The name is the classical one.** NIST SP 800-53 calls this an *audit record repository* (AU-6(3)). A practice-shaped name attracts practice-shaped controls — "centralize your logs" — and centralization is not a control. The classical name makes such a control visibly out of family.
 
-**The classical grounding, stated once here and cited rather than restated elsewhere.** The separation this component rests on is recorded in SP 800-53 as enhancements to AU-9, *Protection of Audit Information*: store audit records "in a repository that is part of a physically different system or system component than the system or component being audited" (AU-9(2)); restrict access to a subset of privileged users (AU-9(4)); require dual authorization for deletion (AU-9(5)); provide read-only access (AU-9(6)); store on a component running a different operating system (AU-9(7)).
+**The classical grounding, stated once here and cited rather than restated elsewhere.** The separation this component rests on is recorded in SP 800-53 as enhancements to AU-9, *Protection of Audit Information*: store audit records "in a repository that is part of a physically different system or system component than the system or component being audited" (AU-9(2)); authorize access to *management of the audit logging functionality* to a subset of privileged users (AU-9(4)); enforce dual authorization for movement or deletion of audit information (AU-9(5)); authorize read-only access to audit information (AU-9(6)); store audit information on a component running a different operating system (AU-9(7)).
 
 Those enhancements are the grounding, **not** the family-level reading that the AU family assigns generation to emitters and protection to the medium. SP 800-53 does not partition obligations by architectural locus at all — every AU control is addressed to the organization or the system — and AU-9's own statement extends protection to "audit information **and audit logging tools**", which are emitter-side. A reader who checks will find that, so the record should not claim otherwise.
 
@@ -332,7 +362,7 @@ Two consequences are decided here rather than left implicit:
 - **Every top-level category must carry a `mermaid-styles.yaml` entry** or it renders unstyled. The category style guard in `scripts/hooks/validate_riskmap.py` enforces this.
 - **The edge model carries interim semantic debt.** The consult and containment edges (D9) ride data-flow `to`/`from` and render as data-flow arrows until the representation ADR adds a typed `kind`. This misleads diagram readers; it is accepted to avoid stranding the identity and isolation components.
 - **Control and risk mapping is owed for every net-new component in this model** (D16). The two consent surfaces (D5) additionally require any mapping written against a single consent surface to be dual-mapped and then refined.
-- **Policy-administration risks have no component home** (D2). This is a decided absence, not an accident, but the gap is real and tracked.
+- **Policy-administration risks have no component home**, and neither do policy inputs that are not subject attributes (D2). These are decided absences, not accidents, but the gaps are real. Both are recorded at [#467](https://github.com/cosai-oasis/secure-ai-tooling/issues/467), closed as deferred, which carries the criteria that would reopen them.
 - **The registry-consult edge is provisional** (D14). If the analysis in Follow-up concludes the consult belongs to the decision point, or to both sides, that is an edge change against this record.
 - **`componentTools`' description contradicts D14** until the owed text edit lands: it describes the registry as the layer agents query directly.
 - **`componentRuntimeHosting`'s description is narrower than the model.** It names application and agent execution as what it hosts, while its edges carry three workloads including `componentModelServing`. Owed corpus text (D6).
@@ -342,7 +372,6 @@ Two consequences are decided here rather than left implicit:
 
 - **Representation ADR** (D10): typed edge `kind`, directionality through a single enforcement point, control-intermediated flow views, overview-versus-detail graph composition. Gated on the graphical-mapping survey.
 - **Autonomy/workload attribute** (D10): a separate deferred shape decision.
-- **Policy administration point** (D2): a tracked issue deciding whether policy administration earns a component, or whether policy-administration risks attach to the decision point. Filed so the absence does not silently become permanent.
 - **Registry-consult ownership** (D14): a tracked issue analyzing enforcement-point/decision-point interaction with non-local resolving data, and deciding whether the tool registry's edge runs to the enforcement point, to the decision point, or to both.
 - **Owed corpus text**: `componentTools`' registry-query sentence (D14) and `componentRuntimeHosting`'s workload list (D6).
 - **Content work**: control and risk mapping for every net-new component in this model (D16), including the agent consent-fatigue risk and its tiering control (D5), and the server-initiated-inference risk (Alternatives).
