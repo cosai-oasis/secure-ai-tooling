@@ -44,11 +44,11 @@ We adopt the component model described by D1–D17. Landing mechanics — the at
 | 6 | D1 | The external-tools tier and its two subcategories |
 | 7 | D2 | The identity subcategory; the identity provider as information point; no administration point |
 | 8 | D3 | The deployment subcategory's retitle and id rename |
-| 9 | **D14** | Nothing enters or informs the tool zone except through the tool network enforcement point |
+| 9 | **D14** | No data path reaches the tool zone except through the tool network enforcement point |
 | 10 | D7 | The tool-boundary I/O-handling layer |
 | 11 | D8 | Tool-call re-anchoring and the reasoning-core decouple |
 | 12 | D5 | Two consent surfaces |
-| 13 | D15 | Secure logging as a distinct storage locus |
+| 13 | D15 | The audit record repository as a distinct storage locus |
 | 14 | D9 | Consult and containment edges land as mappings; typing deferred |
 | 15 | **D17** | Borrowed authority individuates a cross-domain intermediary from the authority it speaks for |
 | 16 | D10 | What this record defers |
@@ -240,18 +240,24 @@ This model splits the role by layer — connection admission at layer 4, action 
 
 **There is deliberately no `componentIsolationRuntime → componentModelServing` edge.** Serving is one of runtime hosting's three hosted workloads (D6), and runtime hosting runs inside the confinement, so serving's confinement is transitive. This is consistent with the other two workloads: `componentApplication` and `componentReasoningCore` likewise carry no direct isolation edge. A direct edge to serving alone would assert that serving is confined by a different mechanism than its two peer tenants, which is not what the model means.
 
-### D14. Nothing enters or informs the tool zone except through the tool network enforcement point
+### D14. No data path reaches the tool zone except through the tool network enforcement point
 
-**No path reaches or informs the tool zone that does not traverse `componentToolNetworkPolicyEnforcementPoint`.** A path that bypasses it is a network-control bypass regardless of what it carries.
+**No data path reaches the tool zone that does not traverse `componentToolNetworkPolicyEnforcementPoint`.** A path that bypasses it is a network-control bypass regardless of what it carries. The rule is scoped to data paths deliberately — control-plane consults and the hosting substrate also reach into the zone, by decision, and are treated below.
 
 Two consequences are deliberate edge *removals* relative to the prior component graph, and are recorded here because a reader of the diff alone would not recognize them as decisions:
 
 - **`componentToolRegistry → componentTools` is removed.** Registry data reaches the tool zone through the enforcement point, which consults the registry as a control-plane peer to admit a connection only to an endpoint the registry enumerates. The registry does not reach the tools directly.
 - **`componentToolRegistry → componentOrchestrationInputHandling` is removed.** Discovery is not exempt: a discovery path that hands registry contents straight into orchestration is a bypass of the same control. Reasoning-time tool selection draws on registry data indirectly, through what the served model already knows about available tools; registry consultation itself sits at the network admission decision.
 
-The registry's single edge is therefore `componentToolRegistry → componentToolNetworkPolicyEnforcementPoint`.
+The registry retains two edges: the consult decided below, and `componentTools → componentToolRegistry`, the publication path by which a tool server's metadata enters the catalog. That second edge originates *inside* the tool zone and is not a path into it, so this rule does not reach it.
 
-**Open — which side owns the registry consult.** The tool-side enforcement point's description claims it admits connections only to endpoints the registry enumerates. That is a client-side discovery check, and the registry is the AI system's own asset inventory rather than the tool provider's. The consult is likely owned by both sides, and the correct edge may run from the registry to the policy *decision* point rather than to an enforcement point. Settling it requires an analysis of enforcement-point/decision-point interaction with non-local resolving data, which is out of scope here (see Follow-up). The edge as modeled is the interim position, not the resolution.
+**Resolved — the consult is the caller's, and it lands on the agent enforcement point.** The tool-side enforcement point's description claimed it admits connections only to endpoints the registry enumerates. That cannot be right: D4 makes `componentToolNetworkPolicyEnforcementPoint` *the tool provider's* ingress policy, and `componentToolRegistry` is the AI system's own catalog. A remote provider does not consult the caller's catalog to decide whether to admit the caller. The vocabulary confirms it — the tool-side point enforces allowed **sources**, the registry supplies endpoints the system is permitted **to reach**, which is an allowed-destination list.
+
+The edge therefore runs `componentToolRegistry → componentAgentNetworkPolicyEnforcementPoint`, joining the identity provider and policy decision point that node already consults, and the tool-side point keeps its own allowed-source policy. The decision point is *not* the destination: the enumerated-endpoint check is a connection-admission decision, and routing it through the decision point would separate it from the two control-plane peers it belongs with.
+
+**This is not a policy information point in disguise.** A registry supplying object attributes at decision time would be the non-subject-attribute gap D2 records and [#467](https://github.com/cosai-oasis/secure-ai-tooling/issues/467) tracks. It is not: the consult resolves an admission decision at the connection, not an attribute for a policy evaluation.
+
+**Consistency with D9.** D9 licenses `componentAuthorizationPolicyDecisionPoint → componentAuthorizationPolicyEnforcementPoint`, and the authorization enforcement point sits inside `componentsExternalTools` (D1) — so a control-plane verdict already informs the tool zone without traversing the network enforcement point, as does `componentToolHosting → componentToolServer`. **This rule governs the data path.** Control-plane consults and the hosting substrate are not paths by which content enters the zone, and stating the rule as absolute overstated it. The corpus text D10's sketch would retype is exactly this set.
 
 **Owed corpus text.** `componentTools`' description characterizes the registry as the discovery layer "agents query". Under this rule that query traverses the enforcement point. This is a description edit, not a change to any decision here.
 
@@ -363,7 +369,7 @@ Two consequences are decided here rather than left implicit:
 - **The edge model carries interim semantic debt.** The consult and containment edges (D9) ride data-flow `to`/`from` and render as data-flow arrows until the representation ADR adds a typed `kind`. This misleads diagram readers; it is accepted to avoid stranding the identity and isolation components.
 - **Control and risk mapping is owed for every net-new component in this model** (D16). The two consent surfaces (D5) additionally require any mapping written against a single consent surface to be dual-mapped and then refined.
 - **Policy-administration risks have no component home**, and neither do policy inputs that are not subject attributes (D2). These are decided absences, not accidents, but the gaps are real. Both are recorded at [#467](https://github.com/cosai-oasis/secure-ai-tooling/issues/467), closed as deferred, which carries the criteria that would reopen them.
-- **The registry-consult edge is provisional** (D14). If the analysis in Follow-up concludes the consult belongs to the decision point, or to both sides, that is an edge change against this record.
+- **The registry-consult edge moves** (D14). `componentToolRegistry` re-points from the tool network enforcement point to the agent network enforcement point, and the tool-side point loses its caller's-catalog enumeration claim. This is owed corpus text, not an open question.
 - **`componentTools`' description contradicts D14** until the owed text edit lands: it describes the registry as the layer agents query directly.
 - **`componentRuntimeHosting`'s description is narrower than the model.** It names application and agent execution as what it hosts, while its edges carry three workloads including `componentModelServing`. Owed corpus text (D6).
 - **The decision numbering does not match the reading order.** D11 is the load-bearing decision and much of D1–D10 follows from it. The numbering is preserved because it is cited outside this document (see Revision history); the reading-order note at the head of the Decision section is the mitigation.
@@ -372,7 +378,6 @@ Two consequences are decided here rather than left implicit:
 
 - **Representation ADR** (D10): typed edge `kind`, directionality through a single enforcement point, control-intermediated flow views, overview-versus-detail graph composition. Gated on the graphical-mapping survey.
 - **Autonomy/workload attribute** (D10): a separate deferred shape decision.
-- **Registry-consult ownership** (D14): a tracked issue analyzing enforcement-point/decision-point interaction with non-local resolving data, and deciding whether the tool registry's edge runs to the enforcement point, to the decision point, or to both.
 - **Owed corpus text**: `componentTools`' registry-query sentence (D14) and `componentRuntimeHosting`'s workload list (D6).
 - **Content work**: control and risk mapping for every net-new component in this model (D16), including the agent consent-fatigue risk and its tiering control (D5), and the server-initiated-inference risk (Alternatives).
 
