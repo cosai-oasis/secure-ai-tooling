@@ -85,7 +85,7 @@ Schema impact: `subcategory.id` gains `componentsIdentity`; the Infrastructure `
 
 ### D3. `componentsDeployment` — subcategory retitle *and* id rename
 
-The deployment subcategory is retitled from "Model Deployment" to "Deployment" and its id is renamed `componentsModelDeployment` → `componentsDeployment`. It holds the hosting and storage substrates — `componentToolHosting`, `componentRuntimeHosting`, `componentIsolationRuntime`, `componentModelStorage`, `componentSecureLogging` — not only model-related ones, which is what the old name implied.
+The deployment subcategory is retitled from "Model Deployment" to "Deployment" and its id is renamed `componentsModelDeployment` → `componentsDeployment`. It holds the hosting and storage substrates — `componentToolHosting`, `componentRuntimeHosting`, `componentIsolationRuntime`, `componentModelStorage`, `componentAuditRecordRepository` — not only model-related ones, which is what the old name implied.
 
 The substrates are what live here; the workloads they host do not. `componentModelServing` in particular is **not** in this subcategory — D12 places it in `componentsModel`/`componentsModelCore` with the artifact it serves, and its relationship to the substrate is carried by an edge from `componentRuntimeHosting`, not by co-location.
 
@@ -109,7 +109,7 @@ The second half of the rule is what keeps the model from sprawling:
 
 - **Serving** absorbs model-tier ingress enforcement rather than growing a fourth network node, because no second authority is present (D12).
 - **Orchestration** has no enforcement point at all. It is the served model's own machinery under the same authority as serving, so serving's ingress enforcement is what stands between orchestration and every external caller.
-- **`componentSecureLogging`** is one substrate written by many components (D15), not one log store per writer, because the writers do not each own a distinct log-retention authority.
+- **`componentAuditRecordRepository`** is one substrate written by many components (D15), not one repository per writer, because the writers do not each own a distinct retention authority.
 - **`componentRuntimeHosting`** is not bisected by operator authority even though it hosts workloads run by different operators (D6).
 
 **Deferral clause.** Where a would-be second enforcement locus differs only in required control *strength* rather than in the authority whose policy is enforced, it is a workload attribute, not a component — the same deferral D6 applies to the autonomy attribute (D10).
@@ -227,13 +227,27 @@ The registry's single edge is therefore `componentToolRegistry → componentTool
 
 **Owed corpus text.** `componentTools`' description characterizes the registry as the discovery layer "agents query". Under this rule that query traverses the enforcement point. This is a description edit, not a change to any decision here.
 
-### D15. `componentSecureLogging` is a distinct storage locus
+### D15. `componentAuditRecordRepository` is a distinct storage locus
 
-`componentSecureLogging` (`componentsInfrastructure` / `componentsDeployment`) is the durable, tamper-evident storage substrate that other components write logs and audit records to.
+`componentAuditRecordRepository` (`componentsInfrastructure` / `componentsDeployment`) is the durable, tamper-evident storage substrate that other components write logs and audit records to.
 
-**Altitude two-test.** *Absorb-into-existing fails:* no component covers durable, tamper-resistant log storage. `componentDataStorage` and `componentModelStorage` persist training data and model artifacts respectively, not the runtime record of what the system did. *Reader-instructive passes:* it carries the write-once/append-only integrity control set (WORM-style storage, hash-chained or Merkle-linked audit trails) and tells a reader that every detective control depending on log integrity for evidentiary value depends on this node.
+**The name is the classical one.** NIST SP 800-53 calls this an *audit record repository* (AU-6(3)). A practice-shaped name attracts practice-shaped controls — "centralize your logs" — and centralization is not a control. The classical name makes such a control visibly out of family.
+
+**The classical grounding, stated once here and cited rather than restated elsewhere.** The separation this component rests on is recorded in SP 800-53 as enhancements to AU-9, *Protection of Audit Information*: store audit records "in a repository that is part of a physically different system or system component than the system or component being audited" (AU-9(2)); restrict access to a subset of privileged users (AU-9(4)); require dual authorization for deletion (AU-9(5)); provide read-only access (AU-9(6)); store on a component running a different operating system (AU-9(7)).
+
+Those enhancements are the grounding, **not** the family-level reading that the AU family assigns generation to emitters and protection to the medium. SP 800-53 does not partition obligations by architectural locus at all — every AU control is addressed to the organization or the system — and AU-9's own statement extends protection to "audit information **and audit logging tools**", which are emitter-side. A reader who checks will find that, so the record should not claim otherwise.
+
+**Where this model departs from SP 800-53, deliberately.** AU-9(2) and AU-9(7) answer the independence question **topologically** — a different physical system, a different operating system. This model generalizes to the **control plane**: what must be separated is the authority that administers the store from the authority that operates the recorded workload, which a distinct account or tenancy can achieve without physical separation. The generalization is ours and is not what the standard says.
+
+It also carries a residual the topological answer does not. Where a store is co-located with the workload it records, an adversary at host or hypervisor privilege holds the medium however the logical control plane is partitioned; AU-9(2) and AU-9(7) exist precisely for that case. Control-plane separation is therefore the general property, and topological separation the stronger form of it where the threat model reaches host privilege.
+
+It is deliberately **not** aligned to a policy information point. A policy information point is consulted at decision time to supply attributes for an authorization decision; this node is written after the fact and read during investigation, and it supplies nothing to any decision — its `edges.to` is empty by design. The two differ in what fails: a corrupted decision input versus destroyed evidence. D2 records that this model introduces no separate policy information point, and this node does not become one.
+
+**Altitude two-test.** *Absorb-into-existing fails:* no component covers durable, tamper-resistant record storage. `componentDataStorage` and `componentModelStorage` persist training data and model artifacts respectively, not the runtime record of what the system did. *Reader-instructive passes:* it carries the write-once/append-only integrity control set (WORM-style storage, hash-chained or Merkle-linked audit trails) and tells a reader that every detective control depending on record integrity for evidentiary value depends on this node.
 
 It is the storage locus, not the practice of using it.
+
+**What would unmake this decision.** The obligations that earn the node are the ones with no emitter to attach to: tamper-evident retention with external checkpointing and independent verification, separation of write from read and delete credentials, and an administrative plane outside the recorded workload's trust domain. An emitter cannot make its own records tamper-evident against itself, which is why security logging is deployed out of band from the workload it records. The test this decision should be held to is therefore concrete: **at least one control must list this component and state an obligation that could not have been stated on any emitter.** If the control layer produces only emission obligations — what to log, at which component — then the node is carrying edges and no obligations, and the correct response is to reconsider it rather than to stretch the requirements to fit. Components land ahead of their controls (D16), so this condition is recorded here and settled there.
 
 **One component is not one store.** This node is a single *component shape*, not a claim that every writer's records land in one instance under one authority. A deployment will normally have several — the records a model-serving operator retains are not the records an agent's operator retains, and they answer to different retention, access, and jurisdictional rules. The model does not represent that fan-out, for the same reason D4 does not individuate shared resources by authority: what earns a node here is the integrity property, and that property is identical wherever the substrate is instantiated. A per-authority split would multiply the node without changing what any control attached to it says. Centralized and decentralized deployments both satisfy it.
 
