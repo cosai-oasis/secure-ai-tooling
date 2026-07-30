@@ -59,19 +59,19 @@ A flat array of single-line **security responsibilities** for the role (each a s
 
 ### 6. identificationQuestions (the persona-specific hard part)
 
-Draft **5–7** questions that let a reader self-identify — applying the **audit-identification-questions** discipline (invoke that skill, or follow `identification-questions-style-guide.md`):
+Draft questions that let a reader self-identify — apply the **audit-identification-questions** discipline (invoke that skill; its structural bounds — count, approved openers, parenthetical format — are read from `identification-questions-style-guide.md`'s Rule enforcement summary, not restated here since they are machine-enforced and may change):
 
-- Each opens with `Do you `, `Are you `, or `Does your ` (second-person, activity-focused — not title-focused).
+- Second-person, activity-focused — not title-focused.
 - Yes/no answerable; no embedded conditionals.
 - **Scoping clauses** to disambiguate from adjacent personas (this is what makes the persona distinguishable).
-- Parenthetical examples `(e.g., item1, item2)` — 2–4 items, `e.g.,` not `i.e.`.
+- Technical terms get parenthetical examples per the style guide's format.
 - Ordering: most distinguishing activity first, scope-expanding in the middle, boundary-clarifying last.
 
 The questions are the persona's most-scrutinized field — they are how a reader decides "is this me?"
 
 ### 7. Mappings (persona-applicable frameworks only)
 
-- **ISO 22989:** pick the correct role from the closed controlled vocabulary (`AI Producer@2022`, `AI Partner (data supplier / infrastructure provider / tooling provider)@2022`, `AI Customer (application builder / end user)@2022`). Not every persona maps (e.g. governance has none).
+- **ISO 22989:** pick the correct role from the closed controlled vocabulary — six discrete pinned values, read the exact set from `framework-mappings-style-guide.md` rather than from memory (the parenthetical qualifiers are part of the enum member and must match exactly; there is no slash-combined form). Not every persona maps (e.g. governance has none).
 - **EU AI Act:** `Article N@2024`, only when a specific legal obligation attaches to the role.
 - **Do NOT** add MITRE ATLAS, NIST AI RMF, STRIDE, or OWASP — none apply to personas.
 
