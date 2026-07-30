@@ -3,6 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-07-08
 **Authors:** Architect agent, with maintainer review
+**Extended by:** [Amendment 2026-07-30](#amendment-2026-07-30-corpus-state-dependent-eval-expectations-ship-with-a-pinned-fixture) (below) — [D6](#d6-develop-evaluate-and-expand-lifecycle)'s portable-eval requirement gains a grounding rule for corpus-state-dependent expectations. D1–D6 are otherwise unchanged.
 
 ---
 
@@ -114,3 +115,93 @@ This ADR **requires** the check and fixes its constraints; it does **not** selec
 - **Provide and extend the worked adaptation examples (D3)** — a small, curated set *exercised* in at least two independent harnesses (one of them third-party), kept contributor-extensible.
 - **Write a one-page consumer adaptation / known-gaps note (D3/D6)** documenting, by harness, where extended frontmatter is silently ignored, and pointing consumers at the existing open-source cross-harness converters and installers instead of a first-party per-harness wrapper. This is the adoption-friction lever the consumption research identified, and it keeps the project on the neutral-canonical side of D1.
 - **Admit new agents and skills (D6)** via amendments to ADR-031 / ADR-032 or new ADRs that record conformance to this standard; each must satisfy D1–D5 and ship a portable eval.
+---
+
+## Amendment 2026-07-30: Corpus-state-dependent eval expectations ship with a pinned fixture
+
+**Status:** Draft (2026-07-30). Extends [D6](#d6-develop-evaluate-and-expand-lifecycle); does not alter the Accepted status of D1–D6 above.
+**Authors:** Architect agent, with maintainer review.
+
+### Context
+
+[D6](#d6-develop-evaluate-and-expand-lifecycle) made a portable eval a shipping precondition: every shipped artifact carries "a behavior specification, expressed independently of any runtime, that states the artifact's expected behavior **on fixed inputs**." D6 then constrained the *runner* — vendor-neutral, permissively licensed, free of a non-portable-harness dependency — and said nothing about the eval's *ground truth*. That silence held for most cases, whose expected verdict is a property of the case input alone, and broke for one class: cases whose expected verdict is a property of the **Risk Map corpus at the moment the case is graded**.
+
+`scripts/skills/altitude-check/` is where the class is sharpest. Its `C1` test is a three-outcome judgment — **absorb** into an existing component, keep as **new**, or **decompose** an existing too-broad component — and its guidance directs the executor to "check `risk-map/yaml/components.yaml`" (`SKILL.md`, C1). Two of the three outcomes are gradeable only against a corpus state, and they are not the same kind of assertion:
+
+- An **absorb** verdict asserts a *positive* existential: a named entry (`componentRAGContent`, `componentTools`) already covers the candidate's locus. `evals/evals.json` cases 9–11 are all of this shape.
+- A **new** verdict asserts a *negative* existential: *no* entry covers the candidate's niche.
+
+The two fail differently under corpus change. A positive existential is falsified only by a rename, merge, or removal of the named entry — infrequent, and when it does happen the failing case is a true signal that an anchor the skill's own guidance points at has moved. A negative existential is falsified by any *addition* that comes to cover the targeted niche, and addition is the corpus's routine direction of travel: [ADR-034 D1](034-corpus-change-landing-sequence.md) makes new-component additions Layer 1 of the standing landing sequence, and an in-flight corpus workstream is landing a batch of net-new components chosen precisely to cover architectural niches with no home today. A synthetic "keep as new" case graded against the live corpus is therefore pinned to a snapshot it never declares, and flips from **new** to **absorb** on ordinary corpus growth — a failing case with no defect behind it, whose diagnosis ("skill regression, or did the corpus move?") is re-derived from scratch every time it fires.
+
+The exposure is not specific to `altitude-check`. Every artifact whose eval encodes an "already covered, or genuinely new?" judgment carries it: `altitude-check` T6 (novelty-vs-absorb for controls), R1/R2 (merge-vs-distinct, wrong-home) and C1; `draft-issue-comment`'s duplicate-detection expectation (`evals/evals.json`, the `riskCrossTenantCredentialPropagation` overlap case); and the persona **necessity test** of [ADR-031 D5](031-authoring-time-agents-and-skills.md), whose entire question is whether an existing persona already covers a proposed role. The need surfaced during review of [#431](https://github.com/cosai-oasis/secure-ai-tooling/pull/431).
+
+### D7. A corpus-state-dependent eval expectation is grounded in a pinned fixture that ships with the artifact
+
+#### D7a. Classify the expectation: absence-grounded cases pin, presence-grounded cases may not
+
+The rule fires on any eval case where changing the corpus, without changing the artifact, would change the expected verdict. It does not fire on corpus-independent cases — objective-vs-implementation, threat-vs-control-gap, real-vs-hypothetical and their kin — which are graded from the case input alone and are unaffected by this amendment.
+
+For the cases it does reach, the grounding depends on which existential the expectation asserts:
+
+- **Absence-grounded expectations pin.** An expectation that rests on *no existing entry covering* the candidate — a "keep as new" verdict, a "the corpus lacks this domain" verdict, a "decompose the existing entry" verdict that presumes a specific too-broad entry — is graded against a **pinned fixture that ships with the artifact** (D7b), never against the live corpus file. The case states in its own prompt that the fixture is the sole ground truth for that verdict.
+- **Presence-grounded expectations may use the live corpus, and name what they depend on.** An expectation that rests on a *named existing entry* is graded against the live corpus file, and the case records the entry ids it depends on. Naming the dependency converts a future failure from an open question into a one-line diagnosis: the referenced entry moved, and the case is retired or repointed.
+
+#### D7b. What the fixture is, and where it lives
+
+A fixture is a **small, hand-authored, purpose-built stand-in** for the corpus file the test consults — on the order of 5–10 corpus-shaped entries — not a copy of the live file and not a snapshot of it. It is constructed to contain, by design, whatever conditions the artifact's absence-grounded cases need: a deliberate coverage gap to ground a "keep as new" verdict, a deliberately over-broad entry to ground a "decompose" verdict.
+
+- **One fixture per artifact, shared across its cases.** The artifact's absence-grounded cases draw against one consistent backdrop rather than each inventing an uncoordinated inline list, so adding the *n*th such case costs a case, not a new fixture.
+- **It ships inside the artifact.** The fixture lives under the artifact's own eval tree (`scripts/skills/<skill>/evals/fixtures/`), so it travels with the artifact on clone or vendor. This is what keeps the eval portable in the [D6](#d6-develop-evaluate-and-expand-lifecycle) sense — everything the grader needs is inside the directory a consumer copies — and what keeps [D1](#d1-canonical-only-neutral-cloneable)'s "single, complete, authoritative form" true of the shipped unit.
+- **It declares that it is not corpus content.** The fixture carries a header stating it is test input, is not Risk Map content, and must not be cited, validated, or consumed as corpus.
+- **It is refreshed on structural change only.** A fixture is revised when the entity *shape* changes — a schema change that adds a required field, a structural revision of the entity model — never in response to corpus content growth. Immunity to content growth is the point of pinning it.
+- **It is shipped material.** Fixtures sit under `scripts/skills/**` and are therefore inside the [D5](#d5-a-neutrality-check-is-required) check's scope; fixture content satisfies the [D2a](#d2a-mechanically-enumerable-constraints-machine-checkable) denylist like any other shipped material.
+
+**Relationship to [ADR-031 D1](031-authoring-time-agents-and-skills.md).** D1's "reference the source rather than re-deriving it" governs an artifact's *guidance*: a skill points at `risk-map/yaml/components.yaml` instead of restating its contents, so the guidance and the corpus cannot drift. A fixture is not guidance — it is test input, and fixing test input is what makes a test a test. The fixture asserts nothing about the real Risk Map; it stands in for a corpus so that a case has the fixed inputs D6 already requires. D7c is what keeps the two disciplines from pulling apart.
+
+#### D7c. Live-corpus exercise is retained, not replaced
+
+Fixture grounding is scoped to the expectations that need it. For each test whose guidance directs the executor to read a corpus file, the artifact's eval set **retains at least one case graded against that live file** — necessarily a presence-grounded case under D7a. Without that floor, an artifact could ship an eval that never exercises the corpus lookup its own guidance mandates, and would be testing placement judgment in the abstract while claiming to test the skill.
+
+### Alternatives considered
+
+- **Grade absence-grounded cases against the live corpus and accept the drift.** Simplest, and it exercises the lookup an executor really performs in production. Rejected: the expectation is falsified by the corpus's routine direction of change, so the case fails without a defect behind it. Annotating the case ("if this now absorbs, that is corpus growth") shortens the diagnosis but does not prevent the false alarm.
+- **Make every corpus-dependent case self-contained with an inline list, referencing no corpus at all.** Fully immune to drift. Rejected on two counts: it removes all live-corpus exercise (D7c), and it produces one uncoordinated backdrop per case, which does not scale to the several new-verdict and decompose-verdict cases the class needs.
+- **Pin a historical corpus snapshot from repository history** (`git show <sha>:risk-map/yaml/components.yaml`). Durable in principle and cheap to author. Rejected on portability: [D1](#d1-canonical-only-neutral-cloneable) ships the artifact as a self-contained cloneable unit and [D6](#d6-develop-evaluate-and-expand-lifecycle) makes the eval the consumer's portable trust anchor, but a repository-history reference does not resolve from a vendored or partially-cloned artifact directory — the eval stops being portable. It is also opaque to a future reader and drags in the entity shape of the pinned era rather than a backdrop built to make the gap and the over-broad entry obvious.
+- **Hold fixtures in one repo-wide eval-fixture directory outside the artifacts.** Rejected: it splits the eval from the artifact D1 requires to be a single complete cloneable form, and creates a shared surface every artifact must coordinate on for no gain — fixtures are per-artifact by construction.
+- **Record the rule in a contributing guide rather than here.** Rejected: D6 makes a conforming eval a *shipping admissibility* condition, so a constraint on what makes an eval valid is a constraint on admissibility, and belongs with the standard it qualifies. A guide entry would also be invisible to a reader arriving at D6.
+
+### Consequences
+
+**Positive**
+
+- An "already covered, or genuinely new?" expectation becomes stable under the corpus's routine direction of change. A failing case again means a defect.
+- D6's "fixed inputs" clause becomes operable for the one class where it was ambiguous, and is tightened rather than weakened: the corpus was an unacknowledged input, and pinning it makes the input set actually fixed.
+- The eval stays self-contained, so it remains portable in the D6 sense — a consumer who vendors the artifact directory gets a gradeable eval, not a dangling reference to repository state.
+- One shared backdrop supports several absence-grounded cases, so the outcome coverage a three-outcome test needs is cheap to complete.
+
+**Negative**
+
+- **Authoring cost rises per artifact.** An artifact with absence-grounded cases now needs a hand-authored fixture on top of its eval, and the fixture has to be built well enough that the gap and the over-broad entry are unambiguous.
+- **A fixture is content-shaped material that is not content.** Realistic-looking component, control, or risk entries under `scripts/skills/**` can be mistaken for corpus data by a contributor, a downstream consumer, or an authoring agent reading the directory. The non-authoritative header (D7b) mitigates this; nothing enforces it today.
+- **Fixtures are outside schema validation.** A structural schema change can leave a fixture shaped like an entity generation that no longer exists, quietly degrading the case's realism. The refresh trigger (D7b) is deliberate and manual.
+- **Two grounding regimes now coexist in one eval file.** A case author must classify the expectation (D7a) before writing it; misclassifying a negative existential as a presence case silently reintroduces the drift this rule exists to remove.
+- **Eval sets authored before this rule are not retrofitted by it.** Until the sweep below runs, absence-grounded expectations in the shipped set remain pinned to the live corpus.
+
+**Follow-up**
+
+- **Sweep the shipped eval sets** (`scripts/skills/**/evals/`, and agent evals as they land) for corpus-state-dependent expectations, classify each per D7a, and retrofit the absence-grounded ones with fixtures. Tracked as a backlog issue; routed per artifact as infrastructure (`swe` → `code-reviewer`).
+- **The first artifact to land a fixture fixes the pattern** — the `evals/fixtures/` layout and the non-authoritative header wording that later artifacts follow. This is the same "first PR sets the on-disk pattern" mechanism [ADR-031 D6](031-authoring-time-agents-and-skills.md) used for the skill layout itself.
+- **The eval-runner selection deferred by D6 inherits a constraint from this amendment:** whatever runner is chosen must be able to grade a case against a fixture shipped alongside the eval, not only against live repository state.
+- **A check that fixture files are never read or validated as corpus** is deferred. The boundary is review-enforced until one exists.
+
+### References
+
+- [D6](#d6-develop-evaluate-and-expand-lifecycle) — the portable-eval shipping requirement and its "fixed inputs" clause, which this amendment operationalizes
+- [D1](#d1-canonical-only-neutral-cloneable) — canonical-only, self-contained cloneable artifact; why the fixture ships inside the artifact directory
+- [D5](#d5-a-neutrality-check-is-required) / [D2a](#d2a-mechanically-enumerable-constraints-machine-checkable) — the neutrality check's scope, which fixtures fall inside
+- [ADR-031 D1](031-authoring-time-agents-and-skills.md) — "reference the source rather than re-deriving it"; the guidance-vs-test-input boundary drawn in D7b
+- [ADR-031 D5](031-authoring-time-agents-and-skills.md) — the persona necessity test, an absence-grounded judgment this rule will govern
+- [ADR-034 D1](034-corpus-change-landing-sequence.md) — new-entity additions as Layer 1 of the standing landing sequence; why corpus growth is the routine direction of change
+- [ADR-026 Amendment 2026-05-21](026-issue-template-domain.md#amendment-2026-05-21-component-categorysubcategory-valid-tuple-selector) — the dated in-file amendment instrument this amendment follows
+- `scripts/skills/altitude-check/SKILL.md` (C1, T6, R1, R2) and `scripts/skills/altitude-check/evals/evals.json` (cases 9–11) — the artifact where the class surfaced
+- [#431](https://github.com/cosai-oasis/secure-ai-tooling/pull/431) — the review in which the exposure was identified
