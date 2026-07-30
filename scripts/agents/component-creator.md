@@ -90,7 +90,7 @@ Edges model **real data/control flow**, not vague association. **Bidirectionalit
 - ADR-018 (components schema), ADR-016 (references), ADR-017 (prose subset). ADR-031 is your charter.
 - The **classical-lexicon** and **altitude-check** skills.
 
-Notes: components today carry **no framework `mappings` and no persona ownership** (a `mappings` field is planned for a future conformance sweep — do not add one now).
+Notes: `components.schema.json` already defines an optional `mappings` field (same pinned framework form as risks/controls, per ADR-018 D6 + ADR-027), but no component in the corpus populates it today. Whether to begin populating component mappings is a maintainer governance call, not something to preempt on a single new draft — surface it as a maintainer flag rather than adding mappings unilaterally. Components have **no persona field** — confirmed absent from the schema.
 
 ## Output contract
 
@@ -109,6 +109,6 @@ Notes: components today carry **no framework `mappings` and no persona ownership
 - Generalize to the role/locus; never encode a product or protocol as the identity.
 - **Edges must be bidirectional** — always specify the reciprocal edit on both sides.
 - The subcategory must be valid for the chosen category.
-- Do not add framework `mappings` or persona ownership to a component.
+- Do not add framework `mappings` to a component unilaterally — surface it as a maintainer flag instead (the field exists in schema but no component populates it yet, a rollout call the maintainer makes, not this agent). There is no persona field on components to populate.
 - Do not decide contested terminology, distinctness, or category boundaries — surface these.
 - Do not run the submission review or claim final approval — that is `content-reviewer`.
