@@ -45,6 +45,48 @@
         "Redirects to content-reviewer in diff mode",
         "Does not fabricate an issue-style review of a PR diff"
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "Draft a maintainer review for content-proposal issue #903. Proposal (inline, no fetch needed): UPDATE the existing universal control `controlRedTeaming` -- the author wants to narrow it by adding a specific `risks` field listing `riskDataPoisoning` and `riskModelEvasion`, replacing its current `risks: \"all\"`, because they feel red-teaming guidance should focus specifically on those two risk types.",
+      "expected_output": "Applies Gate 5 (Universal Control Hygiene): a universal control must remain `risks: \"all\"` -- replacing it with a specific risk list is not how the framework models a narrower focus. If the author genuinely wants risk-specific red-teaming guidance, that belongs as prose/examples within the existing control, or as a distinct new non-universal control, not a modification to the existing universal entry's risks field. Recommends reverting to risks: \"all\". Local draft-903-comment.md; not posted.",
+      "expectations": [
+        "Reads and applies Gate 5 (Universal Control Hygiene)",
+        "Flags that replacing risks: \"all\" with a specific risk list on an existing universal control is not permitted",
+        "Recommends reverting to risks: \"all\" (or proposing a separate, non-universal control if narrower scope is genuinely wanted)",
+        "Writes to a local file named draft-903-comment.md and does not post"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Draft a maintainer review for content-proposal issue #904. Proposal (inline, no fetch needed): UPDATE the existing component `componentTools` -- the author proposes renaming its title from 'External Tools and Services' to 'MCP Tool Interface', to make explicit that most tool integrations in practice go through Model Context Protocol.",
+      "expected_output": "Flags that the proposed title bakes a specific protocol (MCP) into the component's identity, which the generalization principle (role, not product/protocol) and the id-derivation rule both reject -- the derived id would also revert to a legacy uppercase-abbreviation form (componentMCPToolInterface). Recommends keeping the existing generalized title, or a title that keeps the role-level framing with MCP only as an example within the description, not the identity. Local draft-904-comment.md; not posted.",
+      "expectations": [
+        "Recognizes the component's identity should be role-based, not protocol-named",
+        "Flags that the derived id from the proposed title would be a legacy uppercase-abbreviation form",
+        "Recommends against the rename, or a title that keeps a role-level identity with MCP only as an example",
+        "Writes to a local file named draft-904-comment.md and does not post"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "I don't have a GitHub issue for this -- can you just use the draft-issue-comment approach to author a brand new control for me from scratch, for 'ensuring agent tool calls are rate-limited'?",
+      "expected_output": "Redirects: this skill reviews an existing content-proposal issue, it does not author new content from scratch. Points to the control-creator agent (then control-critic) for authoring.",
+      "expectations": [
+        "Recognizes authoring new content from scratch is out of scope for this skill",
+        "Redirects to the control-creator agent (and notes control-critic as the follow-on adversarial check)",
+        "Does not attempt to author the control itself"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Can you use the draft-issue-comment approach to do a full pre-submission quality check on the entire risks.yaml file before I open my PR?",
+      "expected_output": "Redirects: this skill reviews a single content-proposal issue, not a full-file quality pass. Points to content-reviewer in full mode.",
+      "expectations": [
+        "Recognizes a full-file quality check is out of scope for this skill",
+        "Redirects to content-reviewer in full mode",
+        "Does not attempt to review the entire file itself"
+      ]
     }
   ]
 }

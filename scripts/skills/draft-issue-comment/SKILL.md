@@ -23,7 +23,7 @@ Produce a structured maintainer review comment for a GitHub issue proposing new 
 ## Operational notes
 
 - **Local output only.** This skill writes a local draft; the maintainer posts it manually.
-- **Citations follow ADR-016/017.** Any YAML the review drafts uses `externalReferences` (`type`/`id`/`title`/`https` url) referenced by `{{ref:identifier}}` sentinels — **never** inline URLs or `<a>` HTML anchors, which the prose hooks reject at commit. The canonical spec enforces this; do not reintroduce HTML-anchor guidance.
+- **Citations follow the canonical spec's rules (ADR-016/017), not a copy of them here.** The earlier drift bug this skill was rewritten to fix was exactly an inline HTML-anchor citation rule going stale — do not reintroduce field-level citation mechanics in this file; read them from `issue-response-reviewer.md` each time.
 - **Keep this skill thin.** If the review logic changes, update `scripts/agents/issue-response-reviewer.md` (the authority), not this file.
 
 ## When NOT to use
