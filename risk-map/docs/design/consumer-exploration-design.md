@@ -74,16 +74,17 @@ design intent per mode:
 |---|---|---|
 | An **activity or role** ("I develop agents", "I use an AI coding assistant", "I host third-party models") | *"what risks am I exposed to if I &lt;do X with AI&gt;?"* | `explore-risks-by-activity` |
 | A **classical security concept** (PEP, least privilege, reference monitor, defense in depth, zero trust, attestation, provenance) | *"what CoSAI controls are like &lt;a classical concept&gt;?"* | `explore-controls-by-classical` |
-| A **named product / technology, or a component id** (AWS Nitro, Pinecone, LangChain, or `componentReasoningCore`) | *"what risks and controls attach to &lt;a product or component&gt;?"* | `explore-exposure` |
+| A **named product / technology, or a component id** (AWS Nitro, Pinecone, LangChain, or `componentReasoningCore`) | *"what risks and controls attach to &lt;a product or component&gt; in an agentic/AI system?"* | `explore-exposure` |
 | **Identity-first** — the consumer wants to be classified | *"which persona am I?"* (walk the persona `identificationQuestions`) | `explore-persona-self-id` |
-| An **external-framework entry** (EU AI Act Article 14, MITRE ATLAS AML.T0051, NIST AI RMF GOVERN-6.2, STRIDE Tampering, ISO 22989 AI Producer) | *"what does the Risk Map map to &lt;that framework entry&gt;?"* | `explore-framework-coverage` |
+| An **external-framework entry** (EU AI Act Article 14, MITRE ATLAS AML.T0051, NIST AI RMF GOVERN-6.2, STRIDE Tampering, ISO 22989 AI Producer) | *"show what the Risk Map maps to &lt;that framework entry&gt;?"* | `explore-framework-coverage` |
 | A **single entity id or name** the consumer wants defined | *"what is &lt;riskX / controlY / componentZ / personaW&gt;?"* | `explain-entity` |
 
 ## Disambiguating the modes
 
 Three boundaries carry most of the ambiguity. The design draws them by input type, and
-these are the same discriminators surfaced to consumers in the how-to guide; this note
-records *why* they are drawn where they are:
+these are the same discriminators surfaced to consumers in the how-to guide and encoded in
+the skills' own `description` frontmatter; this note records *why* they are drawn where
+they are — resync the bullets below if either surface's discriminator wording changes:
 
 - **Role/activity vs. specific product.** A generic category or role ("I build agentic
   apps") is an *activity* → `explore-risks-by-activity`. A *named* product, technology,
