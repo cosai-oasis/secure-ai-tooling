@@ -14,7 +14,7 @@ Compliance/audit and architects, who may not know CoSAI internals. Explain the f
 ## How to answer
 
 1. **Identify the framework and entry.** Resolve which framework and the specific entry the reader means.
-2. **Know where it can appear** (applicability — reuse the framework-mappings guide): MITRE ATLAS → risks (techniques `AML.T####`) and controls (mitigations `AML.M####`); NIST AI RMF → controls; STRIDE → risks; OWASP Top 10 for LLM → risks and controls; ISO 22989 → personas; EU AI Act → controls and personas. Only search the entity types where the framework actually applies.
+2. **Know where it can appear.** Consult the Framework Applicability table in `risk-map/docs/contributing/framework-mappings-style-guide.md` — do not restate it from memory, it changes when a framework is registered or its scope revised. Only search the entity types where the framework actually applies.
 3. **Search the corpus mappings** for the value. Values are **version-pinned** (ADR-027) — search the pinned form, e.g. `Article 14@2024`, `GOVERN-6.2@1.0`, `AML.T0051@5.0.1`, `LLM06:2025`, `Tampering`, `AI Producer@2022`. Grep the `mappings` blocks in `risk-map/yaml/{risks,controls,personas}.yaml`.
 4. **Report coverage.** The entities mapped to it (ids + titles), grouped by entity type; a one-line note of what the framework entry is; and any **coverage gap** ("no controls currently map to this" — a real and useful finding for an auditor).
 5. **Link ids**; adaptive output.
