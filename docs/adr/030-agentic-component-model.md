@@ -28,31 +28,32 @@ Content semantics — the risk taxonomy, the persona model, the per-component de
 
 ## Decision
 
-We adopt the component model described by D1–D17. Landing mechanics — the atomic schema-plus-YAML unit, the layer sequence, and the interim absence of control coverage — are governed by [ADR-034](034-corpus-change-landing-sequence.md) and are not restated here.
+We adopt the component model described by D1–D18. Landing mechanics — the atomic schema-plus-YAML unit, the layer sequence, and the interim absence of control coverage — are governed by [ADR-034](034-corpus-change-landing-sequence.md) and are not restated here.
 
 **Reading order.** The decisions are numbered in the order they were made, not in the order they are best read. The table below is the reading path; the sections that follow it stay in numeric order so a citation resolves by scanning down.
 
-*The five in bold are the rules. The rest are either their consequences or the taxonomy they operate on.*
+*The six in bold are the rules. The rest are either their consequences or the taxonomy they operate on.*
 
 | Read | Decision | Settles |
 |---|---|---|
-| 1 | **D11** | The model artifact is reachable only by training and by serving — the boundary most of the rest follows from |
-| 2 | D12 | Serving is therefore the model tier's enforcement point |
-| 3 | D13 | Confinement reaches serving through the hosting substrate, not directly |
-| 4 | **D4** | Operator authority individuates enforcement components; shared resources stay whole |
-| 5 | **D6** | Code ownership individuates hosting substrates |
-| 6 | D1 | The external-tools tier and its two subcategories |
-| 7 | D2 | The identity subcategory; the identity provider as information point; no administration point |
-| 8 | D3 | The deployment subcategory's retitle and id rename |
-| 9 | **D14** | No data path reaches the tool zone except through the tool network enforcement point |
-| 10 | D7 | The tool-boundary I/O-handling layer |
-| 11 | D8 | Tool-call re-anchoring and the reasoning-core decouple |
-| 12 | D5 | Two consent surfaces |
-| 13 | D15 | The audit record repository as a distinct storage locus |
-| 14 | D9 | Consult and containment edges land as mappings; typing deferred |
-| 15 | **D17** | Borrowed authority individuates a cross-domain intermediary from the authority it speaks for |
-| 16 | D10 | What this record defers |
-| 17 | D16 | How to read this model's zero control coverage |
+| 1 | **D18** | Components are shapes, not deployment instances — the reading rule the rest of the model assumes |
+| 2 | **D11** | The model artifact is reachable only by training and by serving — the boundary most of the rest follows from |
+| 3 | D12 | Serving is therefore the model tier's enforcement point |
+| 4 | D13 | Confinement reaches serving through the hosting substrate, not directly |
+| 5 | **D4** | Operator authority individuates enforcement components; shared resources stay whole |
+| 6 | **D6** | Code ownership individuates hosting substrates |
+| 7 | D1 | The external-tools tier and its two subcategories |
+| 8 | D2 | The identity subcategory; the identity provider as information point; no administration point |
+| 9 | D3 | The deployment subcategory's retitle and id rename |
+| 10 | **D14** | No data path reaches the tool zone except through the tool network enforcement point |
+| 11 | D7 | The tool-boundary I/O-handling layer |
+| 12 | D8 | Tool-call re-anchoring and the reasoning-core decouple |
+| 13 | D5 | Two consent surfaces |
+| 14 | D15 | The audit record repository as a distinct storage locus |
+| 15 | D9 | Consult and containment edges land as mappings; typing deferred |
+| 16 | **D17** | Borrowed authority individuates a cross-domain intermediary from the authority it speaks for |
+| 17 | D10 | What this record defers |
+| 18 | D16 | How to read this model's zero control coverage |
 
 ### D1. New top-level `componentsExternalTools` category with two subcategories
 
@@ -140,7 +141,7 @@ Two different isolation elements with different designs is what earns two compon
 
 Two further points make the fold precise:
 
-- **One component shape is not one instance.** Modeling application and agent execution as a single component does not assert that they run in the same instance of it. The component is a reusable substrate in that space; deployment topology is not what the component set records.
+- **The fold is a shape claim, not a co-residence claim.** Modeling application and agent execution on one substrate does not assert that they run on one instance of it (D18).
 - **Operator authority does not bisect hosting.** The individuation rule of D4 is about the authority whose *policy is enforced at a boundary*, and a hosting substrate enforces no such policy — the confinement it runs inside does (D13), and the egress policy its tenants cross is enforced at their own enforcement points. A bisect would also not be a bisect: with three tenants, splitting application from agent leaves `componentModelServing` unassigned to either half.
 
 The autonomy/workload difference that would otherwise separate an application workload from a higher-autonomy agent workload remains a deferred component attribute (D10), not a second node.
@@ -291,7 +292,7 @@ It is the storage locus, not the practice of using it.
 
 **What would unmake this decision.** The obligations that earn the node are the ones with no emitter to attach to: tamper-evident retention with external checkpointing and independent verification, separation of write from read and delete credentials, and an administrative plane outside the recorded workload's trust domain. An emitter cannot make its own records tamper-evident against itself, which is why security logging is deployed out of band from the workload it records. The test this decision should be held to is therefore concrete: **at least one control must list this component and state an obligation that could not have been stated on any emitter.** If the control layer produces only emission obligations — what to log, at which component — then the node is carrying edges and no obligations, and the correct response is to reconsider it rather than to stretch the requirements to fit. Components land ahead of their controls (D16), so this condition is recorded here and settled there.
 
-**One component is not one store.** This node is a single *component shape*, not a claim that every writer's records land in one instance under one authority. A deployment will normally have several — the records a model-serving operator retains are not the records an agent's operator retains, and they answer to different retention, access, and jurisdictional rules. The model does not represent that fan-out, for the same reason D4 does not individuate shared resources by authority: what earns a node here is the integrity property, and that property is identical wherever the substrate is instantiated. A per-authority split would multiply the node without changing what any control attached to it says. Centralized and decentralized deployments both satisfy it.
+**One component is not one store (D18).** A deployment will normally have several — the records a model-serving operator retains are not the records an agent's operator retains, and they answer to different retention, access, and jurisdictional rules. The model does not represent that fan-out, for the same reason D4 does not individuate shared resources by authority: what earns a node here is the integrity property, and that property is identical wherever the substrate is instantiated. A per-authority split would multiply the node without changing what any control attached to it says. Centralized and decentralized deployments both satisfy it.
 
 Its `edges.to` is empty by design: it is a terminal sink, and no log-consumer component is modeled. It is not isolated in the validator's sense, because it carries `from` edges from every writer.
 
@@ -317,9 +318,26 @@ Two consequences are decided here rather than left implicit:
 - **Placement is the identity plane.** The proxy mediates identity, so it belongs with identity (D2). It is not a tool-zone component: it stands out of flow, and the external-tools subcategory axis is layer — connection versus invocation path (D1) — which has no place for a component that sits on neither. The authority it carries is not the tool provider's either, so D4 does not reach it there.
 - **The identity subcategory admits non-authorities.** Most of its members are authorities — the trust root other components ground their decisions in — but membership is the identity *plane*, not authority. A component that speaks with borrowed authority carries a different threat model, and that is what earns it a place rather than what disqualifies it.
 
-**Why the corpus does not model the second trust domain.** A federation proxy bridges two identity domains, and only one identity authority appears in the corpus. That is not a gap: `componentIdentityProvider` is the authoritative source of identity *for a deployment*, and the corpus models component shapes rather than instances throughout (D6, D15). The second domain is another instance of the same shape, no more absent than the second hosting substrate. What the proxy mediates between is instances, which is why no second component is owed.
+**Why the corpus does not model the second trust domain.** A federation proxy bridges two identity domains, and only one identity authority appears in the corpus. That is not a gap: `componentIdentityProvider` is the authoritative source of identity *for a deployment*, and the corpus models shapes rather than instances (D18). The second domain is another instance of the same shape, no more absent than the second hosting substrate. What the proxy mediates between is instances, which is why no second component is owed.
 
 **Scope guard.** The rule is narrow by construction: it requires a *trust-domain* crossing and *borrowed* authority. It does not admit a component that merely forwards, carries, or terminates a connection — `componentAgentToolTransport` carries the wire without re-asserting anything, and the network enforcement points present a credential without minting or binding it. A future broker between instances of another shape — a registry federation, for instance — would be admitted by the same rule, which is the intended behaviour.
+
+### D18. The corpus models component shapes, not deployment instances
+
+**Every component in this model is a shape — a class of architectural element — not a singular instance of one. A deployment may hold several instances of one component shape, under different authorities, in different trust domains, at different points in a flow.** The component set records what kinds of element exist and what connects to what kind; it does not record how many of each a deployment runs, or which instance any particular edge terminates at.
+
+The rule is stated here because three consequences of it are not otherwise derivable, and each has been read the wrong way by a reviewer working from the record alone:
+
+- **An edge does not assert same-instance.** `componentIdentityProvider → componentToolNetworkPolicyEnforcementPoint` says that a tool-side enforcement point admits connections on identity context asserted by an identity provider. It does *not* say the tool provider's enforcement point consults the *caller's* identity provider. Each side of a trust boundary instantiates the shapes it needs; the corpus draws the shape relation once. A trust-domain crossing is therefore never inferable from the edge set alone — D17 is what individuates a component that genuinely carries authority across a boundary, and it does so by naming the borrowed-authority failure mode, not by reading an edge.
+- **A single node is not a claim of centralization.** `componentAuditRecordRepository` is one shape written by many components (D15); a deployment will normally run several stores under several retention authorities. `componentAuthorizationPolicyDecisionPoint` is one shape consulted by five enforcement loci (D9); a deployment may run one policy engine or one per tier. Both readings satisfy the model, and no control attached to either node distinguishes them.
+- **A folded component is not a claim of co-residence.** `componentRuntimeHosting` carries three hosted workloads (D6); modeling them on one substrate shape does not assert they run on one instance of it.
+
+What earns a node is a property that is identical wherever the shape is instantiated — an isolation design (D6), an integrity property (D15), an authority whose reviewed policy is enforced (D4). Where a would-be second node differs only in *which instance* is meant, it is not a second node. This is why D4's second half holds: a resource shared under a single authority stays one component, and a resource replicated across authorities stays one component too, because replication is instantiation.
+
+**What the model does record about multiplicity.** Nothing, directly — with one exception. Where the *relationship between* two instances of a shape is itself an architectural element with its own failure mode, that relationship earns a component: `componentFederationProxy` exists because mediating between two instances of `componentIdentityProvider` carries the confused-deputy failure mode that neither instance can exhibit (D17). The proxy is the model's only current statement about instance multiplicity, and it is a statement about the *bridge*, not about the instances.
+
+**How to read a description that sounds singular.** A definite noun phrase is how English names a class, so "the identity trust root" names a shape and reads correctly. The test is not the article but what the sentence claims: naming a kind is fine, asserting a count or a topology is not. Two descriptions failed that test and were repaired rather than reinterpreted — one had the identity provider reaching "every network enforcement point in the corpus", the other had "a single, auditable policy" applied across many enforcement loci. Both describe the model's contents as though they were one deployment's, and both are false of a deployment whose tool provider runs its own identity plane. Where singularity is genuinely load-bearing, a description says so and scopes it: `componentIdentityProvider` is the authoritative source of identity *for a deployment*, which bounds one instance's reach rather than claiming a deployment has one.
+
 
 ## Alternatives Considered
 
