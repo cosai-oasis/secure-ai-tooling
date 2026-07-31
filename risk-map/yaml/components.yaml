@@ -613,30 +613,27 @@ components:
       from:
         - componentModelServing
   - id: componentTools
-    title: External Tools and Services
+    title: External Tool Capabilities
     description:
       - >
-        Tools are the external APIs and services an agent uses to take action in the
-        world. Each tool must be secured with least-privilege permissions; failures in
-        tool functionality, authorization, or output handling produce risks distinct
-        from those at the catalog layer.
+        **External tool capabilities** are what a third-party provider exposes for an
+        agent to operate on: executable tools that act in the world, and retrievable
+        resources served under stable identifiers as reference material. Each must be
+        secured with least-privilege permissions; failures in capability functionality,
+        authorization, or output handling produce risks distinct from those at the
+        catalog layer.
       - >
-        The registration and cataloging layer that determines which tools an agent may
-        invoke (including parameter schemas, capability declarations, and invocation
-        methods) is handled separately by {{componentToolRegistry}}. Its entries are not
-        fetched by the agent directly: they reach the agent's outbound path as a
-        control-plane consult at {{componentAgentNetworkPolicyEnforcementPoint}}, which
-        admits a connection only to an endpoint the registry enumerates. This
-        component's scope is strictly the runtime tool services and their invocation
-        surface. It owns the served functionality itself; the tool server that
-        exposes it, the handling stages that screen its traffic, and the authorization
-        point that gates its invocations are separate components in the same category.
-      - Because these tools and services are sourced from many independent
-        providers, the agent's security depends on a distributed set of trust
-        relationships rather than a single vendor. Each provider is a separate point
-        of provenance, so the integrity of a tool's identity, description, and
-        supply chain must be established per provider rather than assumed across the
-        set.
+        The registration and cataloging layer that determines which capabilities an agent
+        may reach — parameter schemas, capability declarations, invocation methods —
+        belongs to {{componentToolRegistry}}. This component owns the served capability
+        itself and its invocation surface; the tool server that exposes it, the handling
+        stages that screen its traffic, and the authorization point that gates its
+        invocations are separate components in the same category.
+      - >
+        Because these capabilities come from many independent providers, the agent's
+        trust relationships are distributed rather than vendor-single. Each provider is
+        a separate point of provenance, so a capability's identity, description, and
+        supply chain must be established per provider.
     category: componentsExternalTools
     subcategory: componentsToolInvocationPath
     edges:
@@ -769,10 +766,15 @@ components:
     title: Retrieval Augmented Generation & Content
     description:
       - >
-        Content for Retrieval-Augmented Generation (RAG) provides the agent with curated  knowledge
-        to ground its responses and improve accuracy. The main security risk is  data
-        poisoning, where an attacker corrupts this knowledge source to manipulate the  agent's
+        Content for Retrieval-Augmented Generation (RAG) provides the agent with curated knowledge
+        to ground its responses and improve accuracy. The main security risk is data
+        poisoning, where an attacker corrupts this knowledge source to manipulate the agent's
         output.
+      - >
+        This is knowledge the system curates and retrieves from on its own authority, reaching the
+        model through the orchestration path. Reference material a third party serves under a stable
+        identifier is not this component: it is a capability of {{componentTools}}, fetched across
+        the tool boundary and screened by the handling stages on that path.
     category: componentsModel
     subcategory: componentsOrchestration
     edges:
@@ -994,33 +996,6 @@ components:
       from:
         - componentIdentityProvider
     subcategory: componentsIdentity
-  - id: componentExternalPromptTemplate
-    title: External Prompt Templates
-    description:
-      - >
-        **External prompt templates** are parameterized instruction or message templates
-        that a remote tooling or service provider supplies at runtime, which the tool
-        zone's content-layer handling fills in and injects into the model context.
-      - >
-        This component owns the provider-supplied template text. It originates at
-        {{componentToolServer}} and travels the path the server's other output takes: out
-        through {{componentToolOutputHandling}}, which screens it as it leaves the tool
-        boundary, and on toward the agent, where {{componentAgentInputHandling}} screens it
-        again before it reaches the model context. Both gates matter because the party at
-        risk is the consumer rather than the provider — a poisoned or impersonating
-        template harms whoever executes it, not whoever served it.
-      - >
-        The key distinction from locally authored system instructions is origin and trust:
-        because the text is *instruction-shaped* rather than reference data, yet enters
-        from outside the trusted system, it is an untrusted, instruction-shaped input
-        surface.
-    category: componentsExternalTools
-    subcategory: componentsToolInvocationPath
-    edges:
-      to:
-        - componentToolOutputHandling
-      from:
-        - componentToolServer
   - id: componentAgentConsentSurface
     title: Agent Consent Elicitation Surface
     description:
@@ -1131,7 +1106,8 @@ components:
     description:
       - >
         A **tool server** is the remote or out-of-process endpoint that hosts a set of
-        capabilities (tools, callable resources, and prompt templates) and exposes them
+        capabilities (tools, callable resources, and the instruction-shaped prompt templates
+        it advertises) and exposes them
         to an agent over a tooling protocol such as MCP, A2A, or a remote plugin interface
         ({{ref:mcp-spec}}).
       - >
@@ -1172,7 +1148,8 @@ components:
         client drive the hosted tools or lets a malicious server impersonate a trusted
         one. Capability exposure is also negotiated per connection rather than fixed in
         advance: the server determines, for each connecting client, which capabilities
-        that client may invoke, and a server that over-advertises capabilities or mutates
+        that client may invoke, and a server that over-advertises capabilities, substitutes
+        an over-scoped prompt template, or mutates
         an advertised tool's behavior after the client has already approved it expands
         the agent's effective authority beyond what the operator intended. Because it
         fronts the {{componentTools}} it serves, the tool server also inherits their deceptive-tool-description
@@ -1185,7 +1162,6 @@ components:
       to:
         - componentToolOutputHandling
         - componentTools
-        - componentExternalPromptTemplate
         - componentAuditRecordRepository
       from:
         - componentTools
@@ -1707,8 +1683,7 @@ components:
       - >
         **Tool input handling** is the content-layer handling stage on the tool side of
         the tool-server boundary that validates, sanitizes, and filters incoming tool-invocation
-        requests, and provider-supplied content such as {{componentExternalPromptTemplate}}
-        entering the serving surface, before the tool server acts on them. It is the
+        requests before the tool server acts on them. It is the
         tool-boundary instance of the in-flow input-handling pattern the corpus already
         models at the application, orchestration, and agent boundaries.
       - >
@@ -1765,7 +1740,6 @@ components:
         - componentAuditRecordRepository
       from:
         - componentToolServer
-        - componentExternalPromptTemplate
   - id: componentAuditRecordRepository
     title: Audit Record Repository
     description:

@@ -123,12 +123,11 @@ graph LR
 
     subgraph componentsExternalTools ["External Tools Components"]
         componentAuthorizationPolicyEnforcementPoint[Authorization Policy Enforcement Point]
-        componentExternalPromptTemplate[External Prompt Templates]
         componentToolInputHandling[Tool Input Handling]
         componentToolNetworkPolicyEnforcementPoint[Tool Network Policy Enforcement Point]
         componentToolOutputHandling[Tool Output Handling]
         componentToolServer[Tool Server]
-        componentTools[External Tools and Services]
+        componentTools[External Tool Capabilities]
     end
 
     end

@@ -137,7 +137,6 @@
             "componentToolRegistry",
             "componentIdentityProvider",
             "componentAuthorizationPolicyDecisionPoint",
-            "componentExternalPromptTemplate",
             "componentAgentConsentSurface",
             "componentIsolationRuntime",
             "componentToolServer",
