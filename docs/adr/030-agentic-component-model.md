@@ -164,7 +164,7 @@ The relationships below are not data-flow, but they land as plain `{to, from}` m
 - `componentIdentityProvider → componentAuthorizationPolicyDecisionPoint` — the identity provider serves identity attributes to the decision point (D2).
 - `componentAuthorizationPolicyDecisionPoint →` each network enforcement point, the authorization enforcement point, and `componentModelServing` — a decision source for every enforcement locus (D4, D12). An enforcement point without a decision source is inert.
 - `componentIdentityProvider →` each network enforcement point and `componentModelServing` — token and attribute context for connection admission.
-- `componentToolRegistry → componentToolNetworkPolicyEnforcementPoint` — the enumerated-endpoint consult at the tool boundary (D14).
+- `componentToolRegistry → componentAgentNetworkPolicyEnforcementPoint` — the enumerated-endpoint consult, on the caller's side of the boundary (D14).
 
 **Containment** (the target runs *inside* the boundary): `componentIsolationRuntime → componentToolHosting` and `componentIsolationRuntime → componentRuntimeHosting`, and those two only. The rule that fixes this set is D13.
 
