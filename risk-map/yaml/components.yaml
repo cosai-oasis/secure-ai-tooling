@@ -66,8 +66,8 @@ categories:
             Compromising these model weights can have a significant impact on the model's
             behavior and outputs. This makes attacks on model weights as potentially damaging
             as attacks targeting the code in traditional software development.
-      - id: componentsModelDeployment
-        title: Model deployment components
+      - id: componentsDeployment
+        title: Deployment components
         description:
           - >
             Infrastructure that stores trained model artifacts and serves them for inference.
@@ -315,7 +315,7 @@ components:
         model to retrieve is handled separately by {{componentModelRegistry}}; storage's
         scope is strictly the artifact bytes and their lifecycle.
     category: componentsInfrastructure
-    subcategory: componentsModelDeployment
+    subcategory: componentsDeployment
     edges:
       to:
         - componentTheModel
@@ -332,7 +332,7 @@ components:
         their own models, though, should consider the same Model Serving risks that
         apply to model creators.
     category: componentsInfrastructure
-    subcategory: componentsModelDeployment
+    subcategory: componentsDeployment
     edges:
       to:
         - componentTheModel

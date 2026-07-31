@@ -11,11 +11,18 @@ ADR-030 D2 (docs/adr/030-agentic-component-model.md, "Schema impact"):
   on the target base, it is added in the same edit so the registries keep a
   valid nesting."
 
+Quoted verbatim. The id it names, componentsModelDeployment, was subsequently
+renamed to componentsDeployment on this branch -- ADR-030 D3 called for the
+title change but stated the id was unchanged, and the rename was needed
+because the renderer derives subcategory labels from the id, not the title.
+That divergence is recorded as an amendment to ADR-030; the quotation above
+is left as the ADR reads, not as the code stands.
+
 This module tests the enum-level surface of that change:
   - definitions/subcategory/properties/id/enum gains 'componentsIdentity'
   - the componentsInfrastructure allOf then-block's subcategory enum gains
     'componentsIdentity' alongside the pre-existing componentsData /
-    componentsModelDeployment / componentsRegistries members
+    componentsDeployment / componentsRegistries members
   - definitions/component/properties/id/enum is UNCHANGED (D2 fixes the
     home for componentIdentityProvider and
     componentAuthorizationPolicyDecisionPoint; authoring those component
@@ -143,7 +150,7 @@ class TestSubcategoryIdEnumGainsIdentity:
             "componentsData",
             "componentsAgent",
             "componentsOrchestration",
-            "componentsModelDeployment",
+            "componentsDeployment",
             "componentsModelCore",
             "componentsApplicationCore",
             "componentsRegistries",
@@ -202,7 +209,7 @@ class TestInfrastructureBranchGainsIdentitySubcategory:
         """
         Given: the componentsInfrastructure allOf branch's subcategory enum
         When: its length is checked
-        Then: it has exactly 4 members (componentsData, componentsModelDeployment,
+        Then: it has exactly 4 members (componentsData, componentsDeployment,
               componentsRegistries, componentsIdentity)
         """
         assert len(infrastructure_subcategory_enum) == 4, (

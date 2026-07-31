@@ -49,7 +49,7 @@
             "componentsData",
             "componentsAgent",
             "componentsOrchestration",
-            "componentsModelDeployment",
+            "componentsDeployment",
             "componentsModelCore",
             "componentsApplicationCore",
             "componentsRegistries",
@@ -153,7 +153,7 @@
       "allOf": [
         {
           "if": { "properties": { "category": { "const": "componentsInfrastructure" } } },
-          "then": { "properties": { "subcategory": { "enum": ["componentsData", "componentsModelDeployment", "componentsRegistries", "componentsIdentity"] } } }
+          "then": { "properties": { "subcategory": { "enum": ["componentsData", "componentsDeployment", "componentsRegistries", "componentsIdentity"] } } }
         },
         {
           "if": { "properties": { "category": { "const": "componentsModel" } } },

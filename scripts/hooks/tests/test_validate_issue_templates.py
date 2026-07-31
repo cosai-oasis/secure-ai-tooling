@@ -1856,7 +1856,7 @@ class TestClosedEnumClosureContract:
             "componentsData",
             "componentsAgent",
             "componentsOrchestration",
-            "componentsModelDeployment",
+            "componentsDeployment",
             "componentsModelCore",
             "componentsApplicationCore",
             "componentsRegistries",
@@ -1969,7 +1969,7 @@ class TestClosedEnumClosureContract:
         # Valid (category, subcategory) tuples in components.yaml taxonomy order.
         expected_tuples = [
             "componentsInfrastructure: componentsData",
-            "componentsInfrastructure: componentsModelDeployment",
+            "componentsInfrastructure: componentsDeployment",
             "componentsInfrastructure: componentsRegistries",
             "componentsInfrastructure: componentsIdentity",
             "componentsModel: componentsModelTraining",

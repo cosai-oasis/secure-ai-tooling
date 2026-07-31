@@ -19,7 +19,7 @@ graph TD
             componentDataStorage[Data Storage Infrastructure]
             componentTrainingData[Training Data]
         end
-        subgraph componentsModelDeployment ["Model Deployment"]
+        subgraph componentsDeployment ["Deployment"]
             componentModelServing[Model Serving Infrastructure]
             componentModelStorage[Model Storage]
         end

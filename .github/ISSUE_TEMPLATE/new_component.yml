@@ -59,7 +59,7 @@ body:
         Splitting on ": " yields the category and subcategory field values directly (ADR-026 D8).
       options:
         - "componentsInfrastructure: componentsData"
-        - "componentsInfrastructure: componentsModelDeployment"
+        - "componentsInfrastructure: componentsDeployment"
         - "componentsInfrastructure: componentsRegistries"
         - "componentsInfrastructure: componentsIdentity"
         - "componentsModel: componentsModelTraining"
