@@ -68,7 +68,6 @@ _NET_NEW_PLACEMENTS: dict[str, tuple[str, str]] = {
     # External tools -- connection-layer enforcement, wrapping the invocation path
     "componentToolNetworkPolicyEnforcementPoint": ("componentsExternalTools", "componentsToolNetworkControls"),
     # External tools -- the invocation path itself
-    "componentExternalPromptTemplate": ("componentsExternalTools", "componentsToolInvocationPath"),
     "componentToolServer": ("componentsExternalTools", "componentsToolInvocationPath"),
     "componentAuthorizationPolicyEnforcementPoint": ("componentsExternalTools", "componentsToolInvocationPath"),
     "componentToolInputHandling": ("componentsExternalTools", "componentsToolInvocationPath"),
@@ -90,7 +89,6 @@ _EXACT_MEMBERSHIP: dict[str, set[str]] = {
     },
     "componentsToolInvocationPath": {
         "componentTools",
-        "componentExternalPromptTemplate",
         "componentToolServer",
         "componentAuthorizationPolicyEnforcementPoint",
         "componentToolInputHandling",

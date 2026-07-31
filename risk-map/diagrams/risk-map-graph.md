@@ -78,11 +78,10 @@ graph TD
     subgraph componentsExternalTools ["External Tools Components"]
         subgraph componentsToolInvocationPath ["Tool Invocation Path"]
             componentAuthorizationPolicyEnforcementPoint[Authorization Policy Enforcement Point]
-            componentExternalPromptTemplate[External Prompt Templates]
             componentToolInputHandling[Tool Input Handling]
             componentToolOutputHandling[Tool Output Handling]
             componentToolServer[Tool Server]
-            componentTools[External Tools and Services]
+            componentTools[External Tool Capabilities]
         end
         subgraph componentsToolNetworkControls ["Tool Network Controls"]
             componentToolNetworkPolicyEnforcementPoint[Tool Network Policy Enforcement Point]
@@ -152,13 +151,11 @@ graph TD
     componentAuthorizationPolicyDecisionPoint --> componentApplicationNetworkPolicyEnforcementPoint
     componentAuthorizationPolicyDecisionPoint --> componentModelServing
     componentAuthorizationPolicyDecisionPoint --> componentAuditRecordRepository
-    componentExternalPromptTemplate --> componentToolOutputHandling
     componentAgentConsentSurface --> componentAgentInputHandling
     componentIsolationRuntime --> componentToolHosting
     componentIsolationRuntime --> componentRuntimeHosting
     componentToolServer --> componentToolOutputHandling
     componentToolServer --> componentTools
-    componentToolServer --> componentExternalPromptTemplate
     componentToolServer --> componentAuditRecordRepository
     componentAgentToolTransport --> componentAgentNetworkPolicyEnforcementPoint
     componentAgentToolTransport --> componentToolNetworkPolicyEnforcementPoint
