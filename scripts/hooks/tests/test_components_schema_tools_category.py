@@ -194,7 +194,7 @@ class TestSubcategoryIdEnumGainsToolSubcategories:
             "componentsData",
             "componentsAgent",
             "componentsOrchestration",
-            "componentsModelDeployment",
+            "componentsDeployment",
             "componentsModelCore",
             "componentsApplicationCore",
             "componentsRegistries",

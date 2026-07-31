@@ -453,7 +453,7 @@ class TestPerSourceRegenerationDeterminism:
 # Tuple format: "<category-id>: <subcategory-id>" with ": " delimiter.
 _EXPECTED_TUPLES: list[str] = [
     "componentsInfrastructure: componentsData",
-    "componentsInfrastructure: componentsModelDeployment",
+    "componentsInfrastructure: componentsDeployment",
     "componentsInfrastructure: componentsRegistries",
     "componentsInfrastructure: componentsIdentity",
     "componentsModel: componentsModelTraining",
@@ -924,7 +924,7 @@ class TestRetiredSubcategoriesPlaceholder:
             "componentsData",
             "componentsAgent",
             "componentsOrchestration",
-            "componentsModelDeployment",
+            "componentsDeployment",
             "componentsModelCore",
             "componentsApplicationCore",
         ]
