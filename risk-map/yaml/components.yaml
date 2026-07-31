@@ -922,12 +922,17 @@ components:
         bindings and deployment forms such as a hosted IdP versus a self-run authorization
         server vary by deployment. The component is the identity trust root on which dependent components — notably
         {{componentAuthorizationPolicyDecisionPoint}} — base every authorization decision.
-        As that trust root it reaches every network enforcement point in the corpus as a
-        control-plane peer, not only the tool zone's: the identity context it asserts backs
-        connection admission at {{componentAgentNetworkPolicyEnforcementPoint}} and
-        {{componentApplicationNetworkPolicyEnforcementPoint}} the same way it already does
-        at {{componentToolNetworkPolicyEnforcementPoint}}, and at {{componentModelServing}}
-        acting as the model tier's own enforcement point.
+        As that trust root it stands as a control-plane peer to the network enforcement
+        points within its own trust domain, and the pattern is not limited to the tool
+        zone: asserted identity context backs connection admission at
+        {{componentAgentNetworkPolicyEnforcementPoint}},
+        {{componentApplicationNetworkPolicyEnforcementPoint}},
+        {{componentToolNetworkPolicyEnforcementPoint}}, and {{componentModelServing}}
+        acting as the model tier's own enforcement point. Each of those edges is a
+        relation between kinds, not a claim that one deployment's identity provider serves
+        every enforcement point in it: a tool provider admits connections on identity its
+        own domain asserts, which is why {{componentFederationProxy}} exists to carry a
+        principal's authority across that boundary.
     category: componentsInfrastructure
     subcategory: componentsIdentity
     edges:
@@ -976,13 +981,13 @@ components:
         are deployment variations of the same locus, not distinct components.
       - >
         The key distinction is the separation of the decision point from the enforcement
-        point: a single, auditable policy is applied consistently across many enforcement
-        loci rather than re-implemented inline at each tool or service boundary. That
-        consistency extends across every network enforcement point, not only the tool
-        zone's: {{componentAgentNetworkPolicyEnforcementPoint}}, {{componentApplicationNetworkPolicyEnforcementPoint}},
+        point: one reviewed policy is applied consistently across the enforcement loci in
+        its own trust domain rather than re-implemented inline at each tool or service
+        boundary. That reach is not limited to the tool zone:
+        {{componentAgentNetworkPolicyEnforcementPoint}}, {{componentApplicationNetworkPolicyEnforcementPoint}},
         and {{componentModelServing}} (acting as the model tier's own enforcement point)
-        consult the same policy evaluation this component already provides
-        {{componentToolNetworkPolicyEnforcementPoint}}, rather than each tier
+        each consult a decision point of this kind, as
+        {{componentToolNetworkPolicyEnforcementPoint}} does, rather than each tier
         re-implementing its own admission logic.
     category: componentsInfrastructure
     edges:
