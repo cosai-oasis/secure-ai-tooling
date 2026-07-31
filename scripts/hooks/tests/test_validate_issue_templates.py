@@ -1940,10 +1940,10 @@ class TestClosedEnumClosureContract:
             "Only the combined id='component-category-subcategory' tuple field should exist."
         )
 
-    def test_rendered_new_component_tuple_options_are_seven_strings(self, repo_root: Path) -> None:
+    def test_rendered_new_component_tuple_options_are_eleven_strings(self, repo_root: Path) -> None:
         """
         Asserts that the rendered new_component.yml tuple dropdown has exactly
-        7 string options equal to the expected pairs.
+        11 string options equal to the expected pairs.
 
         This test asserts the post-SWE-fix state: options must parse as strings
         (quoting required). It will FAIL against the current unquoted production
@@ -1952,10 +1952,12 @@ class TestClosedEnumClosureContract:
         Given: The rendered new_component.yml
         When: The component-category-subcategory dropdown options are extracted
               and YAML-parsed
-        Then: Options is a list of 7 strings matching _EXPECTED_TUPLES
+        Then: Options is a list of 11 strings matching _EXPECTED_TUPLES
 
         ADR-026 D3 + Amendment D8. Supersedes the retired test that compared
-        options to the flat subcategory schema enum.
+        options to the flat subcategory schema enum. Count is 11 (eight legacy
+        pairs + two added by ADR-030 D1's componentsExternalTools category + one added
+        by ADR-030 D2's componentsIdentity subcategory).
         """
         import sys
 
@@ -1969,11 +1971,14 @@ class TestClosedEnumClosureContract:
             "componentsInfrastructure: componentsData",
             "componentsInfrastructure: componentsModelDeployment",
             "componentsInfrastructure: componentsRegistries",
+            "componentsInfrastructure: componentsIdentity",
             "componentsModel: componentsModelTraining",
             "componentsModel: componentsModelCore",
             "componentsModel: componentsOrchestration",
             "componentsApplication: componentsAgent",
             "componentsApplication: componentsApplicationCore",
+            "componentsExternalTools: componentsToolNetworkControls",
+            "componentsExternalTools: componentsToolInvocationPath",
         ]
 
         gen = IssueTemplateGenerator(repo_root)

@@ -1224,16 +1224,11 @@ class TestBaseGraphEmitsCategoryWarnings:
         """
         No UserWarning emitted when the styling config covers all schema categories.
 
-        Given: A config_loader whose componentCategories contains all three schema
-               categories (componentsInfrastructure, componentsModel, componentsApplication)
+        Given: A config_loader whose componentCategories contains all four schema
+               categories (componentsInfrastructure, componentsModel,
+               componentsApplication, componentsExternalTools — ADR-030 D1)
         When: BaseGraph is instantiated with that loader
         Then: No UserWarning is emitted during __init__
-
-        Red phase: FAILS today because BaseGraph.__init__ never calls
-        emit_missing_category_warnings — warnings.catch_warnings sees nothing,
-        but the assertion that no warning was emitted PASSES (false green). This
-        is handled by the complementary test below that verifies a warning IS
-        emitted when a category IS missing; that test drives the actual red failure.
         """
         import warnings
 
@@ -1241,7 +1236,7 @@ class TestBaseGraphEmitsCategoryWarnings:
 
         loader = self._loader_with_categories(
             tmp_path,
-            ["componentsInfrastructure", "componentsModel", "componentsApplication"],
+            ["componentsInfrastructure", "componentsModel", "componentsApplication", "componentsExternalTools"],
         )
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
@@ -1295,7 +1290,7 @@ class TestBaseGraphEmitsCategoryWarnings:
         BaseGraph instantiated with the default singleton loader produces no warnings.
 
         Given: The real mermaid-styles.yaml and the real components.schema.json
-               (live state has all 3 categories present in styling config)
+               (live state has all 4 categories present in styling config)
         When: BaseGraph is instantiated with no explicit config_loader
               (uses the default singleton, which reads the real styles file)
         Then: No UserWarning is emitted

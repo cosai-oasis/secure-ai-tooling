@@ -140,6 +140,7 @@ graph LR
     end
 
     subgraph componentsModel ["Model Components"]
+        componentMemory[Model Memory]
         componentModelFrameworksAndCode[Model Frameworks and Code]
         componentRAGContent[Retrieval Augmented Generation & Content]
         componentTheModel[The Model]
@@ -147,11 +148,9 @@ graph LR
             componentModelEvaluation[Model Evaluation]
             componentModelTrainingTuning[Training and Tuning]
         end
-        subgraph componentsSubgroup4 ["Subgroup4"]
-            componentMemory[Model Memory]
+        subgraph componentsOrchestration ["Orchestration"]
             componentOrchestrationInputHandling[Input Handling]
             componentOrchestrationOutputHandling[Output Handling]
-            componentTools[External Tools and Services]
         end
     end
 
@@ -164,6 +163,10 @@ graph LR
         componentApplicationInputHandling[Input Handling]
         componentApplicationOutputHandling[Output Handling]
         componentReasoningCore[Agent Reasoning Core]
+    end
+
+    subgraph componentsExternalTools ["External Tools Components"]
+        componentTools[External Tools and Services]
     end
 
     end
@@ -339,16 +342,15 @@ graph LR
     controlAgentPluginPermissions --> componentMemory
     controlAgentPluginPermissions --> componentRAGContent
     controlAgentPluginPermissions --> componentReasoningCore
-    controlAgentPluginPermissions --> componentTools
+    controlAgentPluginPermissions --> componentsExternalTools
     controlRedTeaming -.-> components
     controlVulnerabilityManagement -.-> components
     controlThreatDetection -.-> components
     controlIncidentResponseManagement -.-> components
     controlAgentObservability --> componentAgentInputHandling
     controlAgentObservability --> componentAgentOutputHandling
-    controlAgentObservability --> componentOrchestrationInputHandling
-    controlAgentObservability --> componentOrchestrationOutputHandling
     controlAgentObservability --> componentReasoningCore
+    controlAgentObservability --> componentsOrchestration
     controlIsolatedConfidentialComputing --> componentMemory
     controlIsolatedConfidentialComputing --> componentModelServing
     controlIsolatedConfidentialComputing --> componentModelTrainingTuning
@@ -358,29 +360,27 @@ graph LR
     controlRetrievalAndVectorSystemIntegrity --> componentDataStorage
     controlOrchestratorAndRouteIntegrity --> componentApplication
     controlOrchestratorAndRouteIntegrity --> componentModelServing
-    controlAgentInventoryManagement --> componentOrchestrationInputHandling
-    controlAgentInventoryManagement --> componentOrchestrationOutputHandling
     controlAgentInventoryManagement --> componentReasoningCore
-    controlAgentInventoryManagement --> componentTools
+    controlAgentInventoryManagement --> componentsExternalTools
+    controlAgentInventoryManagement --> componentsOrchestration
     controlAgentIntegrityManagement --> componentModelServing
     controlAgentIntegrityManagement --> componentOrchestrationInputHandling
     controlAgentIntegrityManagement --> componentReasoningCore
-    controlAgentIntegrityManagement --> componentTools
+    controlAgentIntegrityManagement --> componentsExternalTools
+    controlAgentCredentialIsolation --> componentMemory
     controlAgentCredentialIsolation --> componentReasoningCore
-    controlAgentCredentialIsolation --> componentsSubgroup4
+    controlAgentCredentialIsolation --> componentsExternalTools
+    controlAgentCredentialIsolation --> componentsOrchestration
     controlInterComponentTransportSecurity --> componentApplication
     controlInterComponentTransportSecurity --> componentModelServing
-    controlInterComponentTransportSecurity --> componentOrchestrationInputHandling
-    controlInterComponentTransportSecurity --> componentOrchestrationOutputHandling
-    controlInterComponentTransportSecurity --> componentTools
+    controlInterComponentTransportSecurity --> componentsExternalTools
+    controlInterComponentTransportSecurity --> componentsOrchestration
     controlComponentIdentityProvenance --> componentApplication
     controlComponentIdentityProvenance --> componentModelServing
-    controlComponentIdentityProvenance --> componentOrchestrationInputHandling
-    controlComponentIdentityProvenance --> componentOrchestrationOutputHandling
-    controlComponentIdentityProvenance --> componentTools
-    controlAgentExecutionBounds --> componentOrchestrationInputHandling
-    controlAgentExecutionBounds --> componentOrchestrationOutputHandling
+    controlComponentIdentityProvenance --> componentsExternalTools
+    controlComponentIdentityProvenance --> componentsOrchestration
     controlAgentExecutionBounds --> componentReasoningCore
+    controlAgentExecutionBounds --> componentsOrchestration
     controlModelRegistryIntegrity --> componentModelRegistry
     controlToolRegistryAndDiscoveryIntegrity --> componentToolRegistry
 
@@ -402,4 +402,5 @@ graph LR
     style componentsInfrastructure fill:#e6f3e6,stroke:#333333,stroke-width:2px
     style componentsApplication fill:#e6f0ff,stroke:#333333,stroke-width:2px
     style componentsModel fill:#ffe6e6,stroke:#333333,stroke-width:2px
+    style componentsExternalTools fill:#f3e6ff,stroke:#333333,stroke-width:2px
 ```

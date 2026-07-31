@@ -4,7 +4,7 @@ from typing import Any
 
 import yaml
 
-from ..config import DEFAULT_MERMAID_CONFIG_FILE
+from ..config import DEFAULT_COMPONENTS_SCHEMA_FILE, DEFAULT_MERMAID_CONFIG_FILE
 
 # ---------------------------------------------------------------------------
 # Schema category helper
@@ -13,34 +13,81 @@ from ..config import DEFAULT_MERMAID_CONFIG_FILE
 _schema_categories_cache: set[str] | None = None
 
 
+class SchemaCategoriesUnavailableError(RuntimeError):
+    """Raised when component category IDs cannot be read from the schema.
+
+    Callers that use the category set as an assertion (the category
+    style guard) must surface this rather than proceed with an
+    empty set, which would make every category-keyed check iterate nothing
+    and report success.
+    """
+
+
 def _get_schema_categories() -> set[str]:
     """
     Read component category IDs from components.schema.json, with caching.
 
-    Resolves the schema path relative to this file's location:
-    scripts/hooks/riskmap_validator/graphing/graph_utils.py
-    parents[4] is the worktree root, giving:
-    <root>/risk-map/schemas/components.schema.json
+    Resolves the schema path relative to the current working directory, the
+    same way components.yaml, controls.yaml and mermaid-styles.yaml are
+    resolved (see riskmap_validator.config). Resolving it from this module's
+    own location instead breaks wherever the module tree is relocated
+    relative to the corpus — notably CI, which copies validate_riskmap.py and
+    riskmap_validator/* to the repo root before running them from there.
 
     Returns:
-        Set of category ID strings declared in the schema enum.
-        Returns empty set on any error (file missing, JSON parse error,
-        unexpected key structure) so callers degrade gracefully.
+        Non-empty set of category ID strings declared in the schema enum.
+
+    Raises:
+        SchemaCategoriesUnavailableError: The schema is missing, unreadable,
+            not valid JSON, structured unexpectedly, or declares an empty
+            category enum. Failures are not cached, so a later call from a
+            working directory that does have the schema still succeeds.
     """
     global _schema_categories_cache
     if _schema_categories_cache is not None:
         return _schema_categories_cache
 
+    schema_path = DEFAULT_COMPONENTS_SCHEMA_FILE
     try:
-        schema_path = Path(__file__).resolve().parents[4] / "risk-map" / "schemas" / "components.schema.json"
         with open(schema_path, encoding="utf-8") as fh:
             schema = json.load(fh)
-        _schema_categories_cache = set(schema["definitions"]["category"]["properties"]["id"]["enum"])
-    except Exception:
-        # Degrade gracefully: missing file, bad JSON, or unexpected key structure.
-        _schema_categories_cache = set()
+        categories = set(schema["definitions"]["category"]["properties"]["id"]["enum"])
+    except (OSError, json.JSONDecodeError, KeyError, TypeError) as e:
+        raise SchemaCategoriesUnavailableError(
+            f"Could not read component categories from {schema_path} (resolved from the "
+            f"current working directory): {e}"
+        ) from e
 
+    if not categories:
+        raise SchemaCategoriesUnavailableError(
+            f"{schema_path} declares an empty definitions.category.properties.id enum; "
+            f"no component categories to check"
+        )
+
+    _schema_categories_cache = categories
     return _schema_categories_cache
+
+
+def clear_schema_categories_cache() -> None:
+    """Drop the cached category set so the next call re-reads from disk.
+
+    The cache is a module-level global keyed on nothing, so anything that
+    changes the working directory within a single process — tests, most of
+    all — must clear it or leak one directory's categories into another's.
+    """
+    global _schema_categories_cache
+    _schema_categories_cache = None
+
+
+class MermaidStylesUnavailableError(RuntimeError):
+    """Raised when styling must come from real config but does not.
+
+    MermaidConfigLoader answers every style lookup, falling back to
+    _get_emergency_defaults() when the configured file cannot be loaded. That
+    keeps graph rendering working, but callers that use the styling config as
+    an assertion (the category style guard) must distinguish the two and
+    surface this rather than accept the hardcoded defaults as configuration.
+    """
 
 
 class MermaidConfigLoader:
@@ -169,6 +216,12 @@ class MermaidConfigLoader:
                         "stroke": "#333333",
                         "strokeWidth": "2px",
                         "subgroupFill": "#f0e6e6",
+                    },
+                    "componentsExternalTools": {
+                        "fill": "#f3e6ff",
+                        "stroke": "#333333",
+                        "strokeWidth": "2px",
+                        "subgroupFill": "#e6d4f0",
                     },
                 },
             },
@@ -590,6 +643,29 @@ class MermaidConfigLoader:
         if not self._loaded:
             self._load_config()
         return (self._config is not None, self._load_error)
+
+    def is_using_emergency_defaults(self) -> bool:
+        """
+        Report whether style lookups are being answered from hardcoded defaults.
+
+        Every getter on this class succeeds either way — _get_safe_value()
+        falls back to _get_emergency_defaults() when the configured file is
+        missing, unparseable, or missing required top-level keys — so a caller
+        cannot tell real configuration from the fallback by inspecting the
+        values it gets back. Rendering does not need to know (degrading is the
+        point); a guard asserting on the configured styling does, because the
+        defaults style every real category and would mask an absent or corrupt
+        styles file.
+
+        Triggers loading if not already attempted.
+
+        Returns:
+            True when the configured file could not be loaded and lookups are
+            served from _get_emergency_defaults(); False when real
+            configuration is in use.
+        """
+        loaded, _ = self.get_load_status()
+        return not loaded
 
 
 class UnionFind:

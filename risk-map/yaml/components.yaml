@@ -85,6 +85,16 @@ categories:
             threat surface — metadata tampering, namespace governance, publisher
             identity, and provenance attacks — regardless of what they catalog,
             spanning both model registries and tool registries.
+      - id: componentsIdentity
+        title: Identity components
+        description:
+          - >
+            The identity and access-management plane: the authorities that authenticate
+            principals, issue and validate the tokens other components rely on, and
+            evaluate authorization policy. Distinct from deployment infrastructure (which
+            hosts and serves workloads) and from registries (which catalog assets),
+            identity components are the trust root every other component's authentication
+            and authorization decisions are grounded in.
   - id: componentsModel
     title: Model components
     description:
@@ -151,6 +161,31 @@ categories:
             The application that consumes the model and the input/output handling that
             filters traffic crossing the application boundary. Agent components add
             autonomous reasoning and tool-use capabilities on top of this surface.
+  - id: componentsExternalTools
+    title: External tools components
+    description:
+      - >
+        External tools are third-party services an AI system integrates with but does
+        not own — a distinct trust domain from the system's own infrastructure, model,
+        and application tiers. This category collects the tool and tool-authorization
+        components: the runtime tool services agents invoke, and the control-plane
+        components that mediate and authorize that access.
+    subcategory:
+      - id: componentsToolNetworkControls
+        title: Tool network controls
+        description:
+          - >
+            The connection-layer enforcement that admits or denies traffic reaching
+            external tools. It sits outside the content and action layers, wrapping the
+            invocation path rather than standing on it.
+      - id: componentsToolInvocationPath
+        title: Tool invocation path
+        description:
+          - >
+            The request path that carries an invocation from validated input through
+            authorization to the external services themselves, together with the
+            primitives those services expose — executable tools, retrievable resources,
+            and provider-supplied prompt templates — and the responses returned along it.
 components:
   - id: componentDataSources
     title: Data Sources
@@ -505,8 +540,8 @@ components:
         invocation methods) is handled separately by {{componentToolRegistry}}; this
         component's scope is strictly the runtime tool services and their invocation
         surface.
-    category: componentsModel
-    subcategory: componentsOrchestration
+    category: componentsExternalTools
+    subcategory: componentsToolInvocationPath
     edges:
       to:
         - componentOrchestrationOutputHandling

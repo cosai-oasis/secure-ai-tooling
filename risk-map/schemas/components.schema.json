@@ -27,7 +27,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "enum": ["componentsInfrastructure", "componentsModel", "componentsApplication"]
+          "enum": ["componentsInfrastructure", "componentsModel", "componentsApplication", "componentsExternalTools"]
         },
         "title": { "type": "string" },
         "subcategory": {
@@ -52,7 +52,10 @@
             "componentsModelDeployment",
             "componentsModelCore",
             "componentsApplicationCore",
-            "componentsRegistries"
+            "componentsRegistries",
+            "componentsToolNetworkControls",
+            "componentsToolInvocationPath",
+            "componentsIdentity"
           ]
         },
         "title": { "type": "string" },
@@ -150,7 +153,7 @@
       "allOf": [
         {
           "if": { "properties": { "category": { "const": "componentsInfrastructure" } } },
-          "then": { "properties": { "subcategory": { "enum": ["componentsData", "componentsModelDeployment", "componentsRegistries"] } } }
+          "then": { "properties": { "subcategory": { "enum": ["componentsData", "componentsModelDeployment", "componentsRegistries", "componentsIdentity"] } } }
         },
         {
           "if": { "properties": { "category": { "const": "componentsModel" } } },
@@ -159,6 +162,10 @@
         {
           "if": { "properties": { "category": { "const": "componentsApplication" } } },
           "then": { "properties": { "subcategory": { "enum": ["componentsAgent", "componentsApplicationCore"] } } }
+        },
+        {
+          "if": { "properties": { "category": { "const": "componentsExternalTools" } } },
+          "then": { "properties": { "subcategory": { "enum": ["componentsToolNetworkControls", "componentsToolInvocationPath"] } } }
         }
       ]
     },

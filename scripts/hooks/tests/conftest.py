@@ -677,21 +677,223 @@ def make_component():
     return _make
 
 
+# The four component categories mermaid-styles.schema.json requires an entry
+# for (sharedElements.componentCategories.required). Kept here so synthetic
+# corpora get a styles file that is valid against the real schema rather than
+# an ad-hoc stub.
+_REAL_COMPONENT_CATEGORIES: tuple[str, ...] = (
+    "componentsInfrastructure",
+    "componentsApplication",
+    "componentsModel",
+    "componentsExternalTools",
+)
+
+
+# Sentinel distinguishing "caller said nothing" (write the default styles
+# file) from "caller passed None" (deliberately omit the file). A plain None
+# default cannot express both.
+_UNSET: Any = object()
+
+
+def build_mermaid_styles(styled_categories: tuple[str, ...] | list[str] | None = None) -> dict[str, Any]:
+    """Build a mermaid-styles.yaml body that validates against its schema.
+
+    Synthetic corpora need a *real* styles file, not the loader's emergency
+    defaults: validate_riskmap.py's category style guard (ADR-030 D1) treats
+    fallback-to-defaults as a failure, because the hardcoded defaults style
+    every real category and would mask a missing or corrupt styles file.
+
+    Args:
+        styled_categories: Category ids to emit under
+            sharedElements.componentCategories. Defaults to all four real
+            categories, which is what mermaid-styles.schema.json requires.
+            Pass a subset to build a deliberately unstyled-category fixture;
+            the result is then intentionally schema-invalid.
+
+    Returns:
+        A dict ready to be written with yaml.dump().
+    """
+    categories = tuple(styled_categories) if styled_categories is not None else _REAL_COMPONENT_CATEGORIES
+    flowchart_config = {"nodeSpacing": 25, "rankSpacing": 30, "padding": 5, "wrappingWidth": 250}
+    components_container = {
+        "fill": "#f0f0f0",
+        "stroke": "#666666",
+        "strokeWidth": "3px",
+        "strokeDasharray": "10 5",
+    }
+    controls_container = {"fill": "#f0f0f0", "stroke": "#666666", "strokeWidth": "3px"}
+    multi_edge_styles = [
+        {"stroke": "#9c27b0", "strokeWidth": "2px"},
+        {"stroke": "#ff9800", "strokeWidth": "2px", "strokeDasharray": "5 5"},
+        {"stroke": "#e91e63", "strokeWidth": "2px", "strokeDasharray": "10 2"},
+        {"stroke": "#c95792", "strokeWidth": "2px", "strokeDasharray": "10 5"},
+    ]
+    all_control_edges = {"stroke": "#4285f4", "strokeWidth": "3px", "strokeDasharray": "8 4"}
+    subgraph_edges = {"stroke": "#34a853", "strokeWidth": "2px"}
+
+    return {
+        "version": "1.0.0",
+        "foundation": {
+            "colors": {
+                "primary": "#4285f4",
+                "success": "#34a853",
+                "accent": "#9c27b0",
+                "warning": "#ff9800",
+                "error": "#e91e63",
+                "neutral": "#333333",
+                "lightGray": "#f0f0f0",
+                "darkGray": "#666666",
+            },
+            "strokeWidths": {"thin": "1px", "medium": "2px", "thick": "3px"},
+            "strokePatterns": {
+                "solid": "",
+                "dashed": "5 5",
+                "dotted": "8 4",
+                "longDash": "10 2",
+                "longDashSpaced": "10 5",
+            },
+        },
+        "sharedElements": {
+            "cssClasses": {
+                "hidden": "display: none;",
+                "allControl": "stroke:#4285f4,stroke-width:2px,stroke-dasharray: 5 5",
+            },
+            "componentCategories": {
+                category: {
+                    "fill": "#e6f3e6",
+                    "stroke": "#333333",
+                    "strokeWidth": "2px",
+                    "subgroupFill": "#d4e6d4",
+                }
+                for category in categories
+            },
+        },
+        "graphTypes": {
+            "component": {
+                "direction": "TD",
+                "flowchartConfig": flowchart_config,
+                "specialStyling": {},
+            },
+            "control": {
+                "direction": "LR",
+                "flowchartConfig": flowchart_config,
+                "specialStyling": {
+                    "componentsContainer": components_container,
+                    "controlsContainer": controls_container,
+                    "edgeStyles": {
+                        "allControlEdges": all_control_edges,
+                        "subgraphEdges": subgraph_edges,
+                        "multiEdgeStyles": multi_edge_styles,
+                    },
+                },
+            },
+            "risk": {
+                "direction": "TD",
+                "flowchartConfig": flowchart_config,
+                "specialStyling": {
+                    "riskCategories": {
+                        "risks": {
+                            "fill": "#ffeef0",
+                            "stroke": "#e91e63",
+                            "strokeWidth": "2px",
+                            "subgroupFill": "#ffe0e6",
+                        }
+                    },
+                    "componentsContainer": components_container,
+                    "controlsContainer": controls_container,
+                    "risksContainer": {"fill": "#f0f0f0", "stroke": "#666666", "strokeWidth": "3px"},
+                    "edgeStyles": {
+                        "riskControlEdges": [
+                            {"stroke": "#e91e63", "strokeWidth": "2px", "strokeDasharray": "5 3"},
+                            {"stroke": "#d81b60", "strokeWidth": "2px", "strokeDasharray": "8 4"},
+                            {"stroke": "#c2185b", "strokeWidth": "2px", "strokeDasharray": "10 2"},
+                            {"stroke": "#ad1457", "strokeWidth": "2px", "strokeDasharray": "12 5"},
+                        ],
+                        "allControlEdges": all_control_edges,
+                        "subgraphEdges": subgraph_edges,
+                        "multiEdgeStyles": multi_edge_styles,
+                    },
+                },
+            },
+        },
+    }
+
+
+def write_mermaid_styles(yaml_dir: Path, mermaid_styles: Any = _UNSET) -> None:
+    """Write a mermaid-styles.yaml under yaml_dir, or deliberately omit it.
+
+    Args:
+        yaml_dir: The corpus's risk-map/yaml/ directory.
+        mermaid_styles: Omit for the default schema-complete body; None to
+            write no file at all; a str to write it verbatim (corrupt-file
+            cases); a dict to write a custom body.
+    """
+    if mermaid_styles is _UNSET:
+        mermaid_styles = build_mermaid_styles()
+    if mermaid_styles is None:
+        return
+    body = mermaid_styles if isinstance(mermaid_styles, str) else yaml.dump(mermaid_styles)
+    (yaml_dir / "mermaid-styles.yaml").write_text(body, encoding="utf-8")
+
+
 @pytest.fixture
 def write_riskmap_corpus():
-    """Return a callable that writes a minimal three-file corpus and returns the base.
+    """Return a callable that writes a minimal synthetic corpus and returns the base.
 
-    The callable writes components.yaml, controls.yaml, and a risks.yaml stub
-    under base/risk-map/yaml/ — the minimum for validate_riskmap.py --force
-    to load without ENOENT on a missing risks file.
+    The callable writes components.yaml, controls.yaml, a risks.yaml stub and
+    a mermaid-styles.yaml under base/risk-map/yaml/ — the minimum for
+    validate_riskmap.py --force to load without ENOENT on a missing risks file
+    and without the styles loader degrading to emergency defaults — plus a
+    components.schema.json stub under base/risk-map/schemas/.
+
+    The schema stub carries only the one field the validator reads from it:
+    definitions.category.properties.id.enum, derived by default from the
+    components fixture's own `categories:` block. validate_riskmap.py resolves
+    the schema cwd-relatively like every other input, so without this the
+    category style check has no categories to check. Deriving the
+    enum from the corpus keeps synthetic corpora self-describing: a fixture
+    declares the categories it means to exercise and nothing else, instead of
+    having to enumerate whatever the real repo schema happens to contain.
+
+    Pass schema_categories to decouple the two — that is the case the guard
+    exists for, a category present in the schema but absent from the corpus.
+    Pass write_schema=False to exercise the schema-unavailable path.
+
+    The styles file defaults to build_mermaid_styles(), which styles all four
+    real categories. Pass mermaid_styles=None to omit the file (the
+    fallback-to-emergency-defaults path the guard rejects), a str to write it
+    verbatim (corrupt-file cases), or a dict to write a custom body.
     """
 
-    def _write(base: Path, components: dict[str, Any], controls: dict[str, Any]) -> Path:
+    def _write(
+        base: Path,
+        components: dict[str, Any],
+        controls: dict[str, Any],
+        schema_categories: list[str] | None = None,
+        write_schema: bool = True,
+        mermaid_styles: dict[str, Any] | str | None = _UNSET,
+    ) -> Path:
         yaml_dir = base / "risk-map" / "yaml"
         yaml_dir.mkdir(parents=True)
         (yaml_dir / "components.yaml").write_text(yaml.dump(components), encoding="utf-8")
         (yaml_dir / "controls.yaml").write_text(yaml.dump(controls), encoding="utf-8")
         (yaml_dir / "risks.yaml").write_text(yaml.dump({"risks": []}), encoding="utf-8")
+        write_mermaid_styles(yaml_dir, mermaid_styles)
+
+        if write_schema:
+            if schema_categories is None:
+                schema_categories = [entry["id"] for entry in components.get("categories", [])]
+            schemas_dir = base / "risk-map" / "schemas"
+            schemas_dir.mkdir(parents=True, exist_ok=True)
+            (schemas_dir / "components.schema.json").write_text(
+                json.dumps(
+                    {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "definitions": {"category": {"properties": {"id": {"enum": sorted(schema_categories)}}}},
+                    }
+                ),
+                encoding="utf-8",
+            )
         return base
 
     return _write

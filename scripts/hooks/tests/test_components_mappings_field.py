@@ -481,20 +481,47 @@ class TestCurrentYamlStillValid:
 # ============================================================================
 
 # Valid tuples per ADR-026 Amendment D8 taxonomy table.
+#
+# ADR-030 D1 adds a fourth top-level category, componentsExternalTools, a peer of
+# componentsInfrastructure/componentsModel/componentsApplication, with two
+# subcategories: componentsToolNetworkControls (control plane) and componentsToolInvocationPath
+# (data plane). These two pairs extend the D10 pairing-constraint contract to
+# the new category, matched by the componentsExternalTools allOf branch in
+# components.schema.json (ADR-030 "Schema impact").
+#
+# ADR-030 D2 adds componentsIdentity as a subcategory of
+# componentsInfrastructure, matched by the componentsInfrastructure allOf
+# branch.
 _D10_VALID_PAIRS: list[tuple[str, str]] = [
     ("componentsInfrastructure", "componentsData"),
     ("componentsInfrastructure", "componentsModelDeployment"),
+    ("componentsInfrastructure", "componentsIdentity"),  # ADR-030 D2
     ("componentsModel", "componentsModelTraining"),
     ("componentsModel", "componentsModelCore"),
     ("componentsModel", "componentsOrchestration"),
     ("componentsApplication", "componentsAgent"),
     ("componentsApplication", "componentsApplicationCore"),
+    ("componentsExternalTools", "componentsToolNetworkControls"),  # ADR-030 D1
+    ("componentsExternalTools", "componentsToolInvocationPath"),  # ADR-030 D1
 ]
 
 # An example of an invalid pair (category from Application, subcategory from
 # Infrastructure — a cross-category crossing the taxonomy nesting forbids).
 # componentsModelDeployment is under componentsInfrastructure, NOT componentsModel.
 _D10_INVALID_PAIR = ("componentsApplication", "componentsData")
+
+# ADR-030 D1: a pair that crosses INTO componentsExternalTools with a subcategory that
+# belongs to a different category (componentsAgent is nested under
+# componentsApplication, not componentsExternalTools). Exercises that the new allOf
+# branch is restrictive (only componentsToolNetworkControls/componentsToolInvocationPath),
+# not merely present.
+_D1_TOOLS_INVALID_PAIR = ("componentsExternalTools", "componentsAgent")
+
+# ADR-030 D2: componentsIdentity is nested under componentsInfrastructure only.
+# Pairing it with componentsModel exercises that D2 widened exactly one allOf
+# branch — a schema that added componentsIdentity to the subcategory enum
+# without confining it to componentsInfrastructure would accept this.
+_D2_IDENTITY_INVALID_PAIR = ("componentsModel", "componentsIdentity")
 
 # A minimal valid component object with no subcategory (subcategory is optional).
 # description must be a list (prose-strict enforced by riskmap.schema.json).
@@ -539,20 +566,24 @@ class TestSchemaContainsPairingConstraint:
 
     def test_allof_contains_one_clause_per_category(self, components_schema: dict) -> None:
         """
-        Test that definitions/component.allOf contains exactly three clauses
-        (one per category: Infrastructure, Model, Application).
+        Test that definitions/component.allOf contains exactly four clauses
+        (one per category: Infrastructure, Model, Application, Tools).
 
         Given: definitions/component.allOf
         When: Its length is checked
-        Then: It contains exactly 3 if/then clauses
+        Then: It contains exactly 4 if/then clauses
 
-        ADR-026 D10 shape: one if/then per category (3 categories = 3 clauses).
+        ADR-026 D10 shape: one if/then per category. ADR-030 D1 adds a fourth
+        top-level category (componentsExternalTools), which per the same D10 pattern
+        gets its own if/then branch restricting subcategory to
+        {componentsToolNetworkControls, componentsToolInvocationPath}. Was 3 (pre-ADR-030); is
+        4 with the componentsExternalTools branch (ADR-030 D1).
         """
         component_def = components_schema.get("definitions", {}).get("component", {})
         all_of = component_def.get("allOf", [])
-        assert len(all_of) == 3, (
-            f"definitions/component.allOf must contain exactly 3 if/then clauses "
-            f"(one per category per ADR-026 D10); got {len(all_of)}."
+        assert len(all_of) == 4, (
+            f"definitions/component.allOf must contain exactly 4 if/then clauses "
+            f"(one per category, including componentsExternalTools per ADR-030 D1); got {len(all_of)}."
         )
 
     def test_each_allof_clause_has_if_then(self, components_schema: dict) -> None:
@@ -745,6 +776,103 @@ class TestPairingConstraintBehavior:
             f"has not been added to the schema yet."
         )
 
+    def test_tools_category_invalid_subcategory_is_rejected(
+        self,
+        risk_map_schemas_dir: Path,
+        risk_map_yaml_dir: Path,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test that componentsExternalTools rejects a subcategory nested under a
+        different category.
+
+        Given: A synthetic components.yaml with one component having
+               category=componentsExternalTools and subcategory=componentsAgent
+               (componentsAgent is nested under componentsApplication, not
+               componentsExternalTools)
+        When: check-jsonschema validates it
+        Then: Exit code is non-zero (validation fails)
+
+        ADR-030 D1: the new componentsExternalTools allOf branch must be restrictive
+        — it permits only componentsToolNetworkControls/componentsToolInvocationPath, not any
+        subcategory in the enum. Without this test, an implementation that
+        adds componentsExternalTools to the category enum but forgets (or
+        over-permissively writes) the allOf branch would pass
+        test_valid_pair_is_accepted while silently accepting garbage nesting.
+        """
+        invalid_category, invalid_subcategory = _D1_TOOLS_INVALID_PAIR
+        component_instance = {
+            "id": "componentDataSources",
+            "title": "Test Component",
+            "description": ["Test."],
+            "category": invalid_category,
+            "subcategory": invalid_subcategory,
+            "edges": {"to": ["componentDataSources"]},
+        }
+        yaml_path = _write_minimal_components_yaml(
+            tmp_path / "tools_invalid_pair",
+            [component_instance],
+            risk_map_yaml_dir,
+        )
+
+        schema_path = risk_map_schemas_dir / SCHEMA_FILE
+        result = _run_check_jsonschema_for_components(schema_path, yaml_path)
+
+        assert result.returncode != 0, (
+            f"Invalid pair ({invalid_category!r}, {invalid_subcategory!r}) must be "
+            f"REJECTED by the componentsExternalTools allOf branch (ADR-030 D1). "
+            f"componentsAgent belongs to componentsApplication, not componentsExternalTools. "
+            f"check-jsonschema returned exit 0 (no errors), meaning the constraint "
+            f"has not been added (or is too permissive)."
+        )
+
+    def test_identity_subcategory_outside_infrastructure_is_rejected(
+        self,
+        risk_map_schemas_dir: Path,
+        risk_map_yaml_dir: Path,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test that componentsIdentity is rejected outside componentsInfrastructure.
+
+        Given: A synthetic components.yaml with one component having
+               category=componentsModel and subcategory=componentsIdentity
+               (componentsIdentity is nested under componentsInfrastructure)
+        When: check-jsonschema validates it
+        Then: Exit code is non-zero (validation fails)
+
+        ADR-030 D2 widened exactly one allOf branch. Paired with the
+        componentsInfrastructure/componentsIdentity entry in _D10_VALID_PAIRS,
+        this gives D2 the same accept/reject round-trip D1 has: an
+        implementation that added componentsIdentity to the subcategory enum
+        but left it unconfined would pass the accept case and fail here.
+        """
+        invalid_category, invalid_subcategory = _D2_IDENTITY_INVALID_PAIR
+        component_instance = {
+            "id": "componentDataSources",
+            "title": "Test Component",
+            "description": ["Test."],
+            "category": invalid_category,
+            "subcategory": invalid_subcategory,
+            "edges": {"to": ["componentDataSources"]},
+        }
+        yaml_path = _write_minimal_components_yaml(
+            tmp_path / "identity_invalid_pair",
+            [component_instance],
+            risk_map_yaml_dir,
+        )
+
+        schema_path = risk_map_schemas_dir / SCHEMA_FILE
+        result = _run_check_jsonschema_for_components(schema_path, yaml_path)
+
+        assert result.returncode != 0, (
+            f"Invalid pair ({invalid_category!r}, {invalid_subcategory!r}) must be "
+            f"REJECTED by the componentsModel allOf branch (ADR-030 D2). "
+            f"componentsIdentity belongs to componentsInfrastructure, not componentsModel. "
+            f"check-jsonschema returned exit 0 (no errors), meaning componentsIdentity "
+            f"was added to the subcategory enum without being confined to one category."
+        )
+
     def test_component_without_subcategory_is_accepted(
         self,
         risk_map_schemas_dir: Path,
@@ -843,6 +971,17 @@ RED items (fail until Phase-2 schema flip lands, #343):
 - TestMappingsFieldPresence.test_framework_items_ref_points_at_pinned_block
 - TestPinnedValuesAccepted (all pinned forms require @-token or :year)
 - TestLegacyFormsRejected (all legacy forms currently accepted)
+
+ADR-030 D1 componentsExternalTools schema branch coverage:
+- TestSchemaContainsPairingConstraint.test_allof_contains_one_clause_per_category
+  (asserts 4 clauses: Infrastructure, Model, Application, Tools)
+- TestPairingConstraintBehavior.test_valid_pair_is_accepted[componentsExternalTools-...]
+  (2 parametrized cases: componentsToolNetworkControls, componentsToolInvocationPath)
+- TestPairingConstraintBehavior.test_tools_category_invalid_subcategory_is_rejected
+
+ADR-030 D2 componentsIdentity schema branch coverage:
+- TestPairingConstraintBehavior.test_valid_pair_is_accepted[componentsInfrastructure-componentsIdentity]
+- TestPairingConstraintBehavior.test_identity_subcategory_outside_infrastructure_is_rejected
 
 Coverage areas:
 - mappings field: presence, strict structure, optional status

@@ -61,11 +61,14 @@ body:
         - "componentsInfrastructure: componentsData"
         - "componentsInfrastructure: componentsModelDeployment"
         - "componentsInfrastructure: componentsRegistries"
+        - "componentsInfrastructure: componentsIdentity"
         - "componentsModel: componentsModelTraining"
         - "componentsModel: componentsModelCore"
         - "componentsModel: componentsOrchestration"
         - "componentsApplication: componentsAgent"
         - "componentsApplication: componentsApplicationCore"
+        - "componentsExternalTools: componentsToolNetworkControls"
+        - "componentsExternalTools: componentsToolInvocationPath"
     validations:
       required: true
 

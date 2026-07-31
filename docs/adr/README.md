@@ -45,7 +45,7 @@ If a decision is about *how the Risk Map content model is shaped*, it belongs in
 | [027](027-framework-versioning-and-mapping-convention.md) | Per-mapping framework version pinning | Accepted | 2026-05-22 |
 | [028](028-prose-linter-bracket-matching-architecture.md) | Prose-linter emphasis enforcement via bracket-matching depth pass over a Token-shape contract | Accepted | 2026-05-28 |
 | [029](029-dual-python-package-management.md) | Dual Python package-management path with `uv` devcontainers | Accepted | 2026-06-06 |
-| [030](030-agentic-component-model.md) | Agentic component model — external tools tier and identity grouping | Accepted | 2026-06-30 |
+| [030](030-agentic-component-model.md) | Agentic component model — model-access boundary, enforcement-point individuation, and the external tools tier | Draft | 2026-07-29 |
 | [031](031-authoring-time-agents-and-skills.md) | Authoring-time agents and skills for Risk Map content — creator + critic agents, classical-lexicon / mapping-selection / altitude-check / audit-framework-mappings skills | Accepted | 2026-07-01 |
 | [032](032-consumer-exploration-skills.md) | Read-only consumer exploration skill surface (explore-* skills) | Accepted | 2026-07-06 |
 | [033](033-vendor-neutral-agent-skill-shipping.md) | Vendor-neutral shipping and lifecycle for CoSAI agents and skills — canonical-only neutral cloneable artifacts, the neutrality contract (machine-checkable denylist + framework-authority allowlist), consumer adaptation, required neutrality check, develop/eval/expand lifecycle | Accepted | 2026-07-08 |

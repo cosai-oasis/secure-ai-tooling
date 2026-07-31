@@ -43,7 +43,6 @@ graph TD
             componentOrchestrationInputHandling[Input Handling]
             componentOrchestrationOutputHandling[Output Handling]
             componentRAGContent[Retrieval Augmented Generation & Content]
-            componentTools[External Tools and Services]
         end
     end
 
@@ -59,6 +58,12 @@ graph TD
             componentAgentSystemInstruction[Agent System Instructions]
             componentAgentUserQuery[Agent User Query]
             componentReasoningCore[Agent Reasoning Core]
+        end
+    end
+
+    subgraph componentsExternalTools ["External Tools Components"]
+        subgraph componentsToolInvocationPath ["Tool Invocation Path"]
+            componentTools[External Tools and Services]
         end
     end
 
@@ -107,4 +112,5 @@ graph TD
     style componentsInfrastructure fill:#e6f3e6,stroke:#333333,stroke-width:2px
     style componentsApplication fill:#e6f0ff,stroke:#333333,stroke-width:2px
     style componentsModel fill:#ffe6e6,stroke:#333333,stroke-width:2px
+    style componentsExternalTools fill:#f3e6ff,stroke:#333333,stroke-width:2px
 ```
