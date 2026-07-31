@@ -99,24 +99,24 @@ graph LR
             componentModelEvaluation[Model Evaluation]
             componentModelServing[Model Serving Infrastructure & Policy Enforcement Point]
             componentModelTrainingTuning[Training and Tuning]
-            componentOrchestrationInputHandling[Input Handling]
-            componentOrchestrationOutputHandling[Output Handling]
+            componentOrchestrationInputHandling[Orchestration Input Handling]
+            componentOrchestrationOutputHandling[Orchestration Output Handling]
         end
     end
 
     subgraph componentsApplication ["Application Components"]
         componentAgentConsentSurface[Agent Consent Elicitation Surface]
-        componentAgentInputHandling[Input Handling]
+        componentAgentInputHandling[Agent Input Handling]
         componentAgentNetworkPolicyEnforcementPoint[Agent Network Policy Enforcement Point]
-        componentAgentOutputHandling[Output Handling]
+        componentAgentOutputHandling[Agent Output Handling]
         componentAgentSystemInstruction[Agent System Instructions]
         componentAgentToolTransport[Agent Tool Transport Channel]
         componentAgentUserQuery[Agent User Query]
         componentApplication[Application]
         componentApplicationConsentSurface[Application Consent Surface]
-        componentApplicationInputHandling[Input Handling]
+        componentApplicationInputHandling[Application Input Handling]
         componentApplicationNetworkPolicyEnforcementPoint[Application Network Policy Enforcement Point]
-        componentApplicationOutputHandling[Output Handling]
+        componentApplicationOutputHandling[Application Output Handling]
         componentReasoningCore[Agent Reasoning Core]
     end
 

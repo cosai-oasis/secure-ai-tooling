@@ -2246,8 +2246,10 @@ risks:
         descriptions, altered schemas, or shadowed tool names.
     longDescription:
       - >
-        Agents depend on tool metadata from registries, MCP server manifests,
-        and discovery endpoints to decide which tools to invoke. When these
+        The tool metadata an agent acts on originates in registries, MCP server
+        manifests, and discovery endpoints — governing both which endpoints are
+        admitted as reachable and what the served model knows about the tools
+        available to it. When these
         sources are adopted without provenance verification, cryptographic
         signing, or publisher identity validation, the agent may receive
         deliberately deceptive tool descriptions or schemas. Three gaps widen
@@ -2262,8 +2264,10 @@ risks:
         constructed. Unlike {{riskPromptInjection}}, which
         targets model input processing, {{riskToolSourceProvenance}} targets the trust
         assumptions
-        in tool discovery. The agent's reasoning core treats tool metadata
-        as authoritative, and unvetted sources exploit that trust.
+        in tool discovery. Registry-sourced metadata is treated as authoritative
+        wherever it lands — at the admission decision that enumerates reachable
+        endpoints, and in whatever the served model already knows about available
+        tools — and unvetted sources exploit that trust.
       - >
         Attack patterns include Tool Poisoning (malicious logic hidden in
         tool descriptions), Tool Shadowing and Typosquatting (lookalike tools
@@ -2303,9 +2307,9 @@ risks:
           provenance verification or publisher identity validation.
       exposed:
         - >
-          This risk is exposed during tool discovery and selection when
-          agents consume unvetted tool metadata and make invocation
-          decisions based on unverified descriptions or schemas.
+          This risk is exposed during tool discovery and selection, when
+          unvetted metadata shapes which endpoints an agent may reach and
+          which tool it selects, on unverified descriptions or schemas.
       mitigated:
         - >
           Mitigation involves cryptographic signing of tool manifests,

@@ -49,8 +49,8 @@ graph TD
         end
         subgraph componentsOrchestration ["Orchestration"]
             componentMemory[Model Memory]
-            componentOrchestrationInputHandling[Input Handling]
-            componentOrchestrationOutputHandling[Output Handling]
+            componentOrchestrationInputHandling[Orchestration Input Handling]
+            componentOrchestrationOutputHandling[Orchestration Output Handling]
             componentRAGContent[Retrieval Augmented Generation & Content]
         end
     end
@@ -59,15 +59,15 @@ graph TD
         subgraph componentsApplicationCore ["Application Core"]
             componentApplication[Application]
             componentApplicationConsentSurface[Application Consent Surface]
-            componentApplicationInputHandling[Input Handling]
+            componentApplicationInputHandling[Application Input Handling]
             componentApplicationNetworkPolicyEnforcementPoint[Application Network Policy Enforcement Point]
-            componentApplicationOutputHandling[Output Handling]
+            componentApplicationOutputHandling[Application Output Handling]
         end
         subgraph componentsAgent ["Agent"]
             componentAgentConsentSurface[Agent Consent Elicitation Surface]
-            componentAgentInputHandling[Input Handling]
+            componentAgentInputHandling[Agent Input Handling]
             componentAgentNetworkPolicyEnforcementPoint[Agent Network Policy Enforcement Point]
-            componentAgentOutputHandling[Output Handling]
+            componentAgentOutputHandling[Agent Output Handling]
             componentAgentSystemInstruction[Agent System Instructions]
             componentAgentToolTransport[Agent Tool Transport Channel]
             componentAgentUserQuery[Agent User Query]
@@ -97,6 +97,7 @@ graph TD
     componentModelFrameworksAndCode --> componentModelTrainingTuning
     componentModelEvaluation --> componentModelTrainingTuning
     componentModelTrainingTuning --> componentTheModel
+    componentModelTrainingTuning --> componentModelStorage
     componentModelTrainingTuning --> componentModelRegistry
     componentModelStorage --> componentModelServing
     componentModelServing --> componentTheModel
@@ -106,6 +107,7 @@ graph TD
     componentModelServing --> componentOrchestrationInputHandling
     componentModelRegistry --> componentModelServing
     componentModelRegistry --> componentModelStorage
+    componentModelRegistry --> componentAuditRecordRepository
     componentTheModel --> componentModelEvaluation
     componentTheModel --> componentModelServing
     componentApplication --> componentApplicationOutputHandling
@@ -127,6 +129,7 @@ graph TD
     componentTools --> componentToolRegistry
     componentTools --> componentAuditRecordRepository
     componentToolRegistry --> componentAgentNetworkPolicyEnforcementPoint
+    componentToolRegistry --> componentAuditRecordRepository
     componentMemory --> componentOrchestrationOutputHandling
     componentRAGContent --> componentOrchestrationOutputHandling
     componentAgentUserQuery --> componentAgentInputHandling
@@ -142,22 +145,26 @@ graph TD
     componentIdentityProvider --> componentAgentNetworkPolicyEnforcementPoint
     componentIdentityProvider --> componentApplicationNetworkPolicyEnforcementPoint
     componentIdentityProvider --> componentModelServing
+    componentIdentityProvider --> componentAuditRecordRepository
     componentAuthorizationPolicyDecisionPoint --> componentAuthorizationPolicyEnforcementPoint
     componentAuthorizationPolicyDecisionPoint --> componentToolNetworkPolicyEnforcementPoint
     componentAuthorizationPolicyDecisionPoint --> componentAgentNetworkPolicyEnforcementPoint
     componentAuthorizationPolicyDecisionPoint --> componentApplicationNetworkPolicyEnforcementPoint
     componentAuthorizationPolicyDecisionPoint --> componentModelServing
-    componentExternalPromptTemplate --> componentToolInputHandling
+    componentAuthorizationPolicyDecisionPoint --> componentAuditRecordRepository
+    componentExternalPromptTemplate --> componentToolOutputHandling
     componentAgentConsentSurface --> componentAgentInputHandling
     componentIsolationRuntime --> componentToolHosting
     componentIsolationRuntime --> componentRuntimeHosting
     componentToolServer --> componentToolOutputHandling
     componentToolServer --> componentTools
+    componentToolServer --> componentExternalPromptTemplate
     componentToolServer --> componentAuditRecordRepository
     componentAgentToolTransport --> componentAgentNetworkPolicyEnforcementPoint
     componentAgentToolTransport --> componentToolNetworkPolicyEnforcementPoint
     componentFederationProxy --> componentAgentNetworkPolicyEnforcementPoint
     componentFederationProxy --> componentToolNetworkPolicyEnforcementPoint
+    componentFederationProxy --> componentAuditRecordRepository
     componentAgentNetworkPolicyEnforcementPoint --> componentAgentInputHandling
     componentAgentNetworkPolicyEnforcementPoint --> componentAgentToolTransport
     componentAgentNetworkPolicyEnforcementPoint --> componentModelServing
