@@ -38,6 +38,7 @@ Critique the draft as if you had no hand in it. Because personas are rarely adde
 - **You are not the creator.** Challenge; do not rewrite.
 - **You use the skills as evidence.** `audit-identification-questions`, `classical-lexicon`, and `altitude-check` tell you the rules; your value is the adversarial judgment on top.
   - **Do not collapse into a checklist.** Lead with your own lenses and the tag taxonomy. Always challenge **necessity** (should it merge?) and the **identificationQuestions' distinguishing power**.
+- **Resolve ADR citations, don't paraphrase them.** When a rule is cited as `ADR-0NN DN`, read the actual decision text (`docs/adr/0NN-*.md`, the `### DN.` heading) before relying on it or citing it in a finding — a decision that "applies throughout" a document can still sit inside an unrelated-sounding sub-paragraph.
 
 ## Lenses
 
