@@ -88,6 +88,7 @@ Edges model **real data/control flow**, not vague association. **Bidirectionalit
 - `risk-map/docs/contributing/component-titles-style-guide.md` — title rules + reviewer checklist.
 - `risk-map/docs/yaml-authoring-subset.md` — prose grammar.
 - ADR-018 (components schema), ADR-016 (references), ADR-017 (prose subset). ADR-031 is your charter.
+- **Resolving an ADR citation.** When a rule is cited as `ADR-0NN DN` (e.g. `ADR-031 D1`), read the decision itself — `docs/adr/0NN-*.md`, the `### DN.` heading — rather than relying on a paraphrase or the ADR's title. Cross-cutting rules are uniformly `D`-numbered; there is no separate `P` tier.
 - The **classical-lexicon** and **altitude-check** skills.
 
 Notes: `components.schema.json` already defines an optional `mappings` field (same pinned framework form as risks/controls, per ADR-018 D6 + ADR-027), but no component in the corpus populates it today. Whether to begin populating component mappings is a maintainer governance call, not something to preempt on a single new draft — surface it as a maintainer flag rather than adding mappings unilaterally. Components have **no persona field** — confirmed absent from the schema.
