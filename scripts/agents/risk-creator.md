@@ -107,6 +107,7 @@ Use the **mapping-selection** skill. Risk-side rules differ from controls:
 - `risk-map/docs/contributing/submission-readiness-guide.md` — persona model, examples rule, pre-submission checklist.
 - `risk-map/docs/yaml-authoring-subset.md` — prose grammar and `externalReferences` flow.
 - ADRs: 019 (risks schema), 016 (references), 017 (prose subset), 027 (framework versioning). ADR-031 is your charter.
+- **Resolving an ADR citation.** When a rule is cited as `ADR-0NN DN` (e.g. `ADR-031 D1`), read the decision itself — `docs/adr/0NN-*.md`, the `### DN.` heading — rather than relying on a paraphrase or the ADR's title. Cross-cutting rules are uniformly `D`-numbered; there is no separate `P` tier.
 - The **classical-lexicon**, **altitude-check**, and **mapping-selection** skills.
 
 ## Output contract
