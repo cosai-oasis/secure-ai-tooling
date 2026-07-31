@@ -202,31 +202,29 @@ class TestComponentToolsRecategorized:
             f"got: {subcategory!r}"
         )
 
-    def test_componenttools_edges_unchanged_by_recategorization(self, components_by_id: dict[str, dict]):
+    def test_componenttools_publication_edge_preserved(self, components_by_id: dict[str, dict]):
         """
         Given: the componentTools component entry
         When: its edges are inspected
-        Then: componentToolRegistry is still present on both to/from — D1 is a
-              taxonomy (category/subcategory) change only; it does not decide
-              edge-set rewiring (that is D8, a separate decision, and applies to
-              tool-call re-anchoring at the application/agent boundary, not to
-              componentTools' existing registry edge).
+        Then: componentToolRegistry is still present in componentTools.to (the
+              publication/registration edge — a new tool's metadata entering
+              the registry — is a lifecycle concern D1's taxonomy-only change
+              never touched).
 
-        This guards against an over-eager implementation that also touches
-        edges while recategorizing, which is out of D1's scope.
+              The reverse edge (componentToolRegistry -> componentTools) was a
+              separate, later removal: a legacy reasoning-time consult edge
+              superseded by componentToolRegistry's admission-time consult
+              into componentToolNetworkPolicyEnforcementPoint (a cross-tier PEP
+              bypass fix, unrelated to D1's recategorization). It is
+              deliberately NOT asserted here.
         """
         if "componentTools" not in components_by_id:
             pytest.fail("componentTools component not present; cannot check edges")
         edges = components_by_id["componentTools"].get("edges", {})
         to_edges = edges.get("to", [])
-        from_edges = edges.get("from", [])
         assert "componentToolRegistry" in to_edges, (
             f"Expected componentToolRegistry preserved in componentTools.edges.to "
-            f"(D1 is taxonomy-only, not an edge rewire); got to: {to_edges}"
-        )
-        assert "componentToolRegistry" in from_edges, (
-            f"Expected componentToolRegistry preserved in componentTools.edges.from "
-            f"(D1 is taxonomy-only, not an edge rewire); got from: {from_edges}"
+            f"(the publication/registration lifecycle edge); got to: {to_edges}"
         )
 
 
@@ -396,7 +394,7 @@ Total Tests: 15
 - TestCategoriesBlockDeclaresComponentsTools (6): category present, title,
   description, exactly-2-subcategories, per-subcategory titles (parametrized x2)
 - TestComponentToolsRecategorized (4): entry still exists, category ==
-  componentsExternalTools, subcategory == componentsToolInvocationPath, edges untouched
+  componentsExternalTools, subcategory == componentsToolInvocationPath, publication edge preserved
 - TestRegistriesStayInInfrastructure (2, parametrized): componentModelRegistry
   and componentToolRegistry remain componentsInfrastructure
 - TestLiveCorpusValidatesAfterRecategorization (1): atomic schema+yaml pairing
@@ -413,7 +411,7 @@ the categories: block declares componentsExternalTools with its two subcategorie
   and test_componenttools_subcategory_is_componentstoolcore — componentTools
   is category=componentsExternalTools, subcategory=componentsToolInvocationPath
 - TestComponentToolsRecategorized.test_componenttools_entry_exists
-- TestComponentToolsRecategorized.test_componenttools_edges_unchanged_by_recategorization
+- TestComponentToolsRecategorized.test_componenttools_publication_edge_preserved
 - TestRegistriesStayInInfrastructure (both parametrized cases) — recategorization
   is scoped to componentTools only
 - TestLiveCorpusValidatesAfterRecategorization — componentTools' new

@@ -73,14 +73,20 @@ graph LR
 
     subgraph components
     subgraph componentsInfrastructure ["Infrastructure Components"]
+        componentAuditRecordRepository[Audit Record Repository]
+        componentAuthorizationPolicyDecisionPoint[Authorization Policy Decision Point]
         componentDataFilteringAndProcessing[Data Filtering and Processing]
         componentDataSources[Data Sources]
         componentDataStorage[Data Storage Infrastructure]
+        componentFederationProxy[Authorization Federation Proxy]
+        componentIdentityProvider[Identity Provider]
+        componentIsolationRuntime[Isolation Runtime Boundary]
+        componentRuntimeHosting[Runtime Hosting]
+        componentToolHosting[Tool Hosting]
         componentToolRegistry[Tool Registry and Discovery]
         componentTrainingData[Training Data]
         subgraph componentsModelInfrastructure ["Model Infrastructure"]
             componentModelRegistry[Model Registry and Marketplace]
-            componentModelServing[Model Serving Infrastructure]
             componentModelStorage[Model Storage]
         end
     end
@@ -90,55 +96,73 @@ graph LR
         componentModelFrameworksAndCode[Model Frameworks and Code]
         componentRAGContent[Retrieval Augmented Generation & Content]
         componentTheModel[The Model]
-        subgraph componentsModelSubgroup ["Model Subgroup"]
+        subgraph componentsSubgroup2 ["Subgroup2"]
             componentModelEvaluation[Model Evaluation]
+            componentModelServing[Model Serving Infrastructure & Policy Enforcement Point]
             componentModelTrainingTuning[Training and Tuning]
-        end
-        subgraph componentsOrchestration ["Orchestration"]
             componentOrchestrationInputHandling[Input Handling]
             componentOrchestrationOutputHandling[Output Handling]
         end
     end
 
     subgraph componentsApplication ["Application Components"]
+        componentAgentConsentSurface[Agent Consent Elicitation Surface]
         componentAgentInputHandling[Input Handling]
+        componentAgentNetworkPolicyEnforcementPoint[Agent Network Policy Enforcement Point]
         componentAgentOutputHandling[Output Handling]
         componentAgentSystemInstruction[Agent System Instructions]
+        componentAgentToolTransport[Agent Tool Transport Channel]
         componentAgentUserQuery[Agent User Query]
         componentApplication[Application]
+        componentApplicationConsentSurface[Application Consent Surface]
         componentApplicationInputHandling[Input Handling]
+        componentApplicationNetworkPolicyEnforcementPoint[Application Network Policy Enforcement Point]
         componentApplicationOutputHandling[Output Handling]
         componentReasoningCore[Agent Reasoning Core]
     end
 
     subgraph componentsExternalTools ["External Tools Components"]
+        componentAuthorizationPolicyEnforcementPoint[Authorization Policy Enforcement Point]
+        componentExternalPromptTemplate[External Prompt Templates]
+        componentToolInputHandling[Tool Input Handling]
+        componentToolNetworkPolicyEnforcementPoint[Tool Network Policy Enforcement Point]
+        componentToolOutputHandling[Tool Output Handling]
+        componentToolServer[Tool Server]
         componentTools[External Tools and Services]
     end
 
     end
 
     %% Control to Component relationships
-    controlModelPrivacyEnhancingTechnologies --> componentsModelSubgroup
+    controlModelPrivacyEnhancingTechnologies --> componentModelEvaluation
+    controlModelPrivacyEnhancingTechnologies --> componentModelTrainingTuning
     controlRuntimePrivacyEnhancingTechnologies --> componentApplicationOutputHandling
     controlRuntimePrivacyEnhancingTechnologies --> componentModelServing
     controlTrainingDataManagement --> componentDataSources
+    controlTrainingDataManagement --> componentModelEvaluation
+    controlTrainingDataManagement --> componentModelTrainingTuning
     controlTrainingDataManagement --> componentTrainingData
-    controlTrainingDataManagement --> componentsModelSubgroup
     controlTrainingDataSanitization --> componentDataFilteringAndProcessing
     controlUserDataManagement --> componentDataStorage
+    controlModelAndDataInventoryManagement --> componentModelEvaluation
+    controlModelAndDataInventoryManagement --> componentModelServing
+    controlModelAndDataInventoryManagement --> componentModelTrainingTuning
     controlModelAndDataInventoryManagement --> componentsModelInfrastructure
-    controlModelAndDataInventoryManagement --> componentsModelSubgroup
+    controlModelAndDataAccessControls --> componentModelEvaluation
     controlModelAndDataAccessControls --> componentModelServing
     controlModelAndDataAccessControls --> componentModelStorage
-    controlModelAndDataAccessControls --> componentsModelSubgroup
+    controlModelAndDataAccessControls --> componentModelTrainingTuning
+    controlModelAndDataIntegrityManagement --> componentModelEvaluation
+    controlModelAndDataIntegrityManagement --> componentModelServing
+    controlModelAndDataIntegrityManagement --> componentModelTrainingTuning
     controlModelAndDataIntegrityManagement --> componentsModelInfrastructure
-    controlModelAndDataIntegrityManagement --> componentsModelSubgroup
     controlModelAndDataExecutionIntegrity --> componentModelServing
     controlModelAndDataExecutionIntegrity --> componentModelStorage
     controlModelAndDataExecutionIntegrity --> componentTheModel
+    controlSecureByDefaultMLTooling --> componentModelEvaluation
     controlSecureByDefaultMLTooling --> componentModelServing
     controlSecureByDefaultMLTooling --> componentModelStorage
-    controlSecureByDefaultMLTooling --> componentsModelSubgroup
+    controlSecureByDefaultMLTooling --> componentModelTrainingTuning
     controlInputValidationAndSanitization --> componentAgentInputHandling
     controlInputValidationAndSanitization --> componentApplicationInputHandling
     controlInputValidationAndSanitization --> componentOrchestrationInputHandling
@@ -152,15 +176,16 @@ graph LR
     controlAgentPluginPermissions --> componentMemory
     controlAgentPluginPermissions --> componentRAGContent
     controlAgentPluginPermissions --> componentReasoningCore
-    controlAgentPluginPermissions --> componentsExternalTools
+    controlAgentPluginPermissions --> componentTools
     controlRedTeaming -.-> components
     controlVulnerabilityManagement -.-> components
     controlThreatDetection -.-> components
     controlIncidentResponseManagement -.-> components
     controlAgentObservability --> componentAgentInputHandling
     controlAgentObservability --> componentAgentOutputHandling
+    controlAgentObservability --> componentOrchestrationInputHandling
+    controlAgentObservability --> componentOrchestrationOutputHandling
     controlAgentObservability --> componentReasoningCore
-    controlAgentObservability --> componentsOrchestration
     controlIsolatedConfidentialComputing --> componentMemory
     controlIsolatedConfidentialComputing --> componentModelServing
     controlIsolatedConfidentialComputing --> componentModelTrainingTuning
@@ -170,27 +195,32 @@ graph LR
     controlRetrievalAndVectorSystemIntegrity --> componentDataStorage
     controlOrchestratorAndRouteIntegrity --> componentApplication
     controlOrchestratorAndRouteIntegrity --> componentModelServing
+    controlAgentInventoryManagement --> componentOrchestrationInputHandling
+    controlAgentInventoryManagement --> componentOrchestrationOutputHandling
     controlAgentInventoryManagement --> componentReasoningCore
-    controlAgentInventoryManagement --> componentsExternalTools
-    controlAgentInventoryManagement --> componentsOrchestration
+    controlAgentInventoryManagement --> componentTools
     controlAgentIntegrityManagement --> componentModelServing
     controlAgentIntegrityManagement --> componentOrchestrationInputHandling
     controlAgentIntegrityManagement --> componentReasoningCore
-    controlAgentIntegrityManagement --> componentsExternalTools
+    controlAgentIntegrityManagement --> componentTools
     controlAgentCredentialIsolation --> componentMemory
+    controlAgentCredentialIsolation --> componentOrchestrationInputHandling
+    controlAgentCredentialIsolation --> componentOrchestrationOutputHandling
     controlAgentCredentialIsolation --> componentReasoningCore
-    controlAgentCredentialIsolation --> componentsExternalTools
-    controlAgentCredentialIsolation --> componentsOrchestration
+    controlAgentCredentialIsolation --> componentTools
     controlInterComponentTransportSecurity --> componentApplication
     controlInterComponentTransportSecurity --> componentModelServing
-    controlInterComponentTransportSecurity --> componentsExternalTools
-    controlInterComponentTransportSecurity --> componentsOrchestration
+    controlInterComponentTransportSecurity --> componentOrchestrationInputHandling
+    controlInterComponentTransportSecurity --> componentOrchestrationOutputHandling
+    controlInterComponentTransportSecurity --> componentTools
     controlComponentIdentityProvenance --> componentApplication
     controlComponentIdentityProvenance --> componentModelServing
-    controlComponentIdentityProvenance --> componentsExternalTools
-    controlComponentIdentityProvenance --> componentsOrchestration
+    controlComponentIdentityProvenance --> componentOrchestrationInputHandling
+    controlComponentIdentityProvenance --> componentOrchestrationOutputHandling
+    controlComponentIdentityProvenance --> componentTools
+    controlAgentExecutionBounds --> componentOrchestrationInputHandling
+    controlAgentExecutionBounds --> componentOrchestrationOutputHandling
     controlAgentExecutionBounds --> componentReasoningCore
-    controlAgentExecutionBounds --> componentsOrchestration
     controlModelRegistryIntegrity --> componentModelRegistry
     controlToolRegistryAndDiscoveryIntegrity --> componentToolRegistry
 
@@ -201,12 +231,12 @@ graph LR
     controlVulnerabilityManagement:::allControl
 
     %% Edge styling
-    linkStyle 35,36,37,38 stroke:#4285f4,stroke-width:3px,stroke-dasharray: 8 4
-    linkStyle 0,5,8,9,12,13,14,20,34,42,53,54,58,61,62,65,66,69,70,72 stroke:#34a853,stroke-width:2px
-    linkStyle 3,10,15,18,21,24,31,39,43,47,52,55,59,63,67 stroke:#9c27b0,stroke-width:2px
-    linkStyle 4,11,16,19,22,25,32,40,44,48,56,60,64,68 stroke:#ff9800,stroke-width:2px,stroke-dasharray: 5 5
-    linkStyle 17,23,26,33,41,45,49,57 stroke:#e91e63,stroke-width:2px,stroke-dasharray: 10 2
-    linkStyle 46 stroke:#C95792,stroke-width:2px,stroke-dasharray: 10 5
+    linkStyle 43,44,45,46 stroke:#4285f4,stroke-width:3px,stroke-dasharray: 8 4
+    linkStyle 13,21 stroke:#34a853,stroke-width:2px
+    linkStyle 4,10,14,18,22,25,29,32,39,47,51,52,56,61,65,69,73,74,78,79,83,84 stroke:#9c27b0,stroke-width:2px
+    linkStyle 5,11,15,19,23,26,30,33,40,48,53,57,62,66,70,75,80,85 stroke:#ff9800,stroke-width:2px,stroke-dasharray: 5 5
+    linkStyle 6,12,16,20,24,27,31,34,41,49,54,58,63,67,71,76,81,86 stroke:#e91e63,stroke-width:2px,stroke-dasharray: 10 2
+    linkStyle 7,17,28,42,50,55,64,68,72,77,82 stroke:#C95792,stroke-width:2px,stroke-dasharray: 10 5
 
 %% Node style definitions
     style components fill:#f0f0f0,stroke:#666666,stroke-width:3px,stroke-dasharray: 10 5
@@ -216,6 +246,5 @@ graph LR
     style componentsModel fill:#ffe6e6,stroke:#333333,stroke-width:2px
     style componentsExternalTools fill:#f3e6ff,stroke:#333333,stroke-width:2px
     style componentsModelInfrastructure fill:#d4e6d4,stroke:#333,stroke-width:1px
-    style componentsModelSubgroup fill:#f0e6e6,stroke:#333,stroke-width:1px
-    style componentsOrchestration fill:#f0e6e6,stroke:#333,stroke-width:1px
+    style componentsSubgroup2 fill:#f0e6e6,stroke:#333,stroke-width:1px
 ```
