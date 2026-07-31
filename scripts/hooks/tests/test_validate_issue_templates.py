@@ -1810,21 +1810,21 @@ class TestClosedEnumClosureContract:
             "The tuple-selector COMPONENT_CATEGORY_SUBCATEGORY replaces it."
         )
 
-    def test_tuple_selector_covers_all_seven_subcategory_ids(self, repo_root: Path) -> None:
+    def test_tuple_selector_covers_all_subcategory_ids(self, repo_root: Path) -> None:
         """
-        Asserts that all seven subcategory IDs from the taxonomy appear in the
+        Asserts that every subcategory ID in the taxonomy appears in the
         rendered tuple-selector dropdown, satisfying D3's closure requirement.
 
         The closure rule says: every closed-enum schema field solicited by a
         template must be covered via PLACEHOLDER_MAPPINGS. Under D8, subcategory
         coverage is provided by the tuple-selector, which renders exactly the
-        valid (category, subcategory) pairs. Since each of the 7 subcategory IDs
-        appears in exactly one tuple, all 7 IDs are covered.
+        valid (category, subcategory) pairs. Since each subcategory ID appears
+        in exactly one tuple, listing them all here covers the whole enum.
 
         Given: A renderer backed by real schemas and components.yaml
         When: {{COMPONENT_CATEGORY_SUBCATEGORY}} is expanded
-        Then: Each of the 7 subcategory IDs appears in the rendered output
-              (as part of a tuple string), confirming closed-enum coverage
+        Then: Each subcategory ID appears in the rendered output (as part of a
+              tuple string), confirming closed-enum coverage
 
         ADR-026 D3 closure contract + Amendment D8.
         """
@@ -1860,6 +1860,9 @@ class TestClosedEnumClosureContract:
             "componentsModelCore",
             "componentsApplicationCore",
             "componentsRegistries",
+            "componentsIdentity",
+            "componentsToolNetworkControls",
+            "componentsToolInvocationPath",
         ]
         for sub_id in subcategory_ids:
             assert sub_id in result, (

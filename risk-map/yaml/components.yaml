@@ -70,31 +70,38 @@ categories:
         title: Deployment components
         description:
           - >
-            Infrastructure that stores trained model artifacts and serves them for inference.
-            Distinct from training infrastructure (which produces models) and from data
-            infrastructure (which feeds training), model deployment infrastructure carries
-            the production-time risks of model integrity, availability, and access control.
+            Infrastructure that stores trained model artifacts and hosts the execution
+            environments first-party and third-party workloads run in. Distinct from
+            training infrastructure (which produces models), from data infrastructure
+            (which feeds training), and from model serving (a Model component, since
+            serving is the inference-time locus that touches the model artifact directly
+            rather than the hosting substrate underneath it), deployment infrastructure
+            carries the production-time risks of artifact integrity, availability, and
+            access control.
       - id: componentsRegistries
         title: Registry components
         description:
           - >
             Registration-authority, catalog, and discovery infrastructure for AI/ML
-            assets. Distinct from deployment infrastructure (which stores and serves
-            artifacts), registries hold the authoritative metadata and pointers that
-            inform which asset to select and how to obtain it. They share a common
-            threat surface — metadata tampering, namespace governance, publisher
-            identity, and provenance attacks — regardless of what they catalog,
-            spanning both model registries and tool registries.
+            assets. Distinct from deployment infrastructure (which stores artifacts) and
+            from model serving (which serves them for inference), registries hold the
+            authoritative metadata and pointers that inform which asset to select and how
+            to obtain it. They share a common threat surface — metadata tampering,
+            namespace governance, publisher identity, and provenance attacks — regardless
+            of what they catalog, spanning both model registries and tool registries.
       - id: componentsIdentity
         title: Identity components
         description:
           - >
-            The identity and access-management plane: the authorities that authenticate
-            principals, issue and validate the tokens other components rely on, and
-            evaluate authorization policy. Distinct from deployment infrastructure (which
-            hosts and serves workloads) and from registries (which catalog assets),
-            identity components are the trust root every other component's authentication
-            and authorization decisions are grounded in.
+            The identity and access-management plane: the components that authenticate
+            principals, issue and validate the tokens others rely on, evaluate authorization
+            policy, and carry a principal's authority across a trust-domain boundary.
+            Distinct from deployment infrastructure (which hosts and serves workloads) and
+            from registries (which catalog assets). Most members are authorities — the
+            trust root every other component's authentication and authorization decisions
+            are grounded in — but the plane also holds the intermediaries that speak with
+            borrowed rather than originating authority, which is a different threat model
+            and not a lesser membership.
   - id: componentsModel
     title: Model components
     description:
@@ -108,28 +115,37 @@ categories:
         title: Model training components
         description:
           - >
-            Primary processes and artifacts leveraged in the training of models from source data
+            Primary processes and artifacts leveraged in the training of models from source
+            data
             and algorithms.
       - id: componentsModelCore
         title: Model core
         description:
           - >
-            The trained model artifact itself — the pairing of code and weights produced by
-            training and consumed at inference. Distinct from the training-time processes
-            that produce it and from the orchestration tooling that augments it at runtime.
+            The trained model artifact itself — the pairing of code and weights produced
+            by training and consumed at inference — together with the serving component
+            that makes it available for inference. Distinct from the training-time
+            processes that produce the artifact, from the deployment substrate that hosts
+            the serving stack, and from the orchestration tooling that augments the model
+            at runtime.
       - id: componentsOrchestration
         title: Orchestration
         description:
           - >
-            Beyond its core reasoning and planning capabilities, an agent relies on a 
-            variety of external components to access information, process data, and 
-            execute actions. This process is called orchestration because it involves 
-            managing and coordinating a variety of independent services and data sources 
-            to achieve a single, complex task. These resources provide the agent with its 
-            memory, its ability to act in the physical world, and the specific knowledge 
-            needed to complete tasks. Securing these external components is critical, 
-            since they represent key interaction points that can be targeted by attackers 
-            to manipulate the agent’s behavior.
+            Beyond its core reasoning and planning capabilities, a served model relies on
+            a variety of auxiliary components to access information, process data, and
+            coordinate actions. This process is called orchestration because it involves
+            managing and coordinating a variety of independent services and data sources
+            to achieve a single, complex task. These resources provide the model with its
+            memory, its ability to act in the physical world, and the specific knowledge
+            needed to complete tasks. Orchestration is the served model's own machinery,
+            not a separate trust domain the agent operator controls — it has no network
+            enforcement point of its own, reaching the outside world only through
+            {{componentModelServing}}, which is what actually stands at the boundary these
+            components' work eventually crosses. Securing orchestration is still critical:
+            the actions and data it coordinates on the model's behalf are exactly what an
+            attacker who compromises the boundary would target to manipulate the agent's
+            behavior.
   - id: componentsApplication
     title: Application components
     description:
@@ -153,7 +169,8 @@ categories:
         title: Agent components
         description:
           - >
-            Agentic systems differ from other AI systems in their ability to take autonomous actions.
+            Agentic systems differ from other AI systems in their ability to take autonomous
+            actions.
       - id: componentsApplicationCore
         title: Application core
         description:
@@ -168,8 +185,10 @@ categories:
         External tools are third-party services an AI system integrates with but does
         not own — a distinct trust domain from the system's own infrastructure, model,
         and application tiers. This category collects the tool and tool-authorization
-        components: the runtime tool services agents invoke, and the in-flow
-        components that mediate, authorize, and carry those invocations.
+        components: the invocation path that carries a request through authorization to
+        the external services and the primitives they expose — executable tools,
+        retrievable resources, and provider-supplied prompt templates — and the network
+        controls that wrap that path at the connection layer.
     subcategory:
       - id: componentsToolNetworkControls
         title: Tool network controls
@@ -259,12 +278,13 @@ components:
     edges:
       to:
         - componentModelTrainingTuning
+      from: []
   - id: componentModelEvaluation
     title: Model Evaluation
     description:
       - >
-        The process of testing the model against new data to see how well it performs (evaluation). 
-        Evaluation happens in two stages: during the training
+        The process of testing the model against new data to see how well it performs
+        (evaluation).  Evaluation happens in two stages: during the training
         process, when each checkpointed update to the model is evaluated, and after
         the model is trained, to assess how well it performs at its intended purpose.
     category: componentsModel
@@ -318,11 +338,11 @@ components:
     subcategory: componentsDeployment
     edges:
       to:
-        - componentTheModel
+        - componentModelServing
       from:
         - componentModelRegistry
   - id: componentModelServing
-    title: Model Serving Infrastructure
+    title: Model Serving Infrastructure & Policy Enforcement Point
     description:
       - >
         The systems and process to deploy a model in production, making them available
@@ -331,13 +351,51 @@ components:
         Note: Many model consumers use remote models served via API. Those that serve
         their own models, though, should consider the same Model Serving risks that
         apply to model creators.
-    category: componentsInfrastructure
-    subcategory: componentsDeployment
+      - When serving infrastructure is deployed remotely or as a shared,
+        multi-tenant service rather than on a local or single-operator host, its
+        security posture shifts to the hosting environment's cloud infrastructure
+        controls. Such deployments depend on tenant isolation, centrally managed
+        identity, and access control at the platform layer to prevent cross-tenant
+        access to served endpoints and model artifacts.
+      - >
+        Serving is the sole runtime toucher of {{componentTheModel}}: every path that
+        reaches the model for inference arrives through this component rather than the
+        model artifact directly. The agent and application tiers each cross their own
+        client-side network enforcement point first — {{componentAgentNetworkPolicyEnforcementPoint}}
+        and {{componentApplicationNetworkPolicyEnforcementPoint}} respectively — and this
+        component itself enforces ingress against the tenant-isolation and access-control
+        posture described above. Orchestration ({{componentOrchestrationInputHandling}},
+        {{componentOrchestrationOutputHandling}}) connects directly, with no PEP of its
+        own, because it is the served model's own machinery rather than a separate trust
+        domain: this component's ingress enforcement is what stands between orchestration
+        and every external caller, the same role a dedicated PEP plays for the agent and
+        application tiers. As that enforcement point it consults {{componentIdentityProvider}}
+        and {{componentAuthorizationPolicyDecisionPoint}} as control-plane peers, the same
+        relationship {{componentToolNetworkPolicyEnforcementPoint}} already has with them,
+        and {{componentModelRegistry}} for which model version and deployment endpoint a
+        request should resolve to — the model-tier parallel to the registry consult the
+        tool network PEP already performs against {{componentToolRegistry}}. It executes
+        on the hosting substrate provided by {{componentRuntimeHosting}}, within the
+        confinement {{componentIsolationRuntime}} owns.
+    category: componentsModel
+    subcategory: componentsModelCore
     edges:
       to:
         - componentTheModel
+        - componentAuditRecordRepository
+        - componentApplicationNetworkPolicyEnforcementPoint
+        - componentAgentNetworkPolicyEnforcementPoint
+        - componentOrchestrationInputHandling
       from:
         - componentModelRegistry
+        - componentModelStorage
+        - componentRuntimeHosting
+        - componentTheModel
+        - componentApplicationNetworkPolicyEnforcementPoint
+        - componentAgentNetworkPolicyEnforcementPoint
+        - componentOrchestrationOutputHandling
+        - componentIdentityProvider
+        - componentAuthorizationPolicyDecisionPoint
   - id: componentModelRegistry
     title: Model Registry and Marketplace
     description:
@@ -368,12 +426,16 @@ components:
         are not required in all deployments — internal-only or air-gapped environments
         may operate without any public registry layer. Controls targeting registry
         integrity apply only where a registry is part of the deployment.
+      - >
+        {{componentModelServing}} consults this registry to resolve which model version
+        and deployment endpoint a request should reach — the model-tier instance of the
+        same registry-consult pattern {{componentToolNetworkPolicyEnforcementPoint}} runs
+        against {{componentToolRegistry}} at the tool boundary.
     category: componentsInfrastructure
     subcategory: componentsRegistries
     edges:
       to:
         - componentModelServing
-        - componentTheModel
         - componentModelStorage
       from:
         - componentModelTrainingTuning
@@ -383,25 +445,26 @@ components:
       - >
         A pairing of code and weights, created with data during a training process.
         In the CoSAI Risk Map, the model is represented as the result of the output
-        of the Data Components being trained, stored, and served using the Infrastructure
-        Components. A model is ultimately useful when deployed in applications, using
-        Application Components.
+        of the Data Components being trained and stored using the Infrastructure
+        Components, and served using {{componentModelServing}}, a Model component. A
+        model is ultimately useful when deployed in applications, using Application
+        Components.
+      - >
+        The model artifact itself is reached only through {{componentModelServing}} for
+        inference; the agent and application tiers each cross their own network
+        enforcement point to reach it, and orchestration connects to
+        {{componentModelServing}} directly as the served model's own machinery, with no
+        network enforcement point of its own. None of the three ever reaches the model
+        artifact directly.
     category: componentsModel
     subcategory: componentsModelCore
     edges:
       to:
         - componentModelEvaluation
-        - componentAgentInputHandling
-        - componentApplicationInputHandling
-        - componentOrchestrationInputHandling
+        - componentModelServing
       from:
         - componentModelTrainingTuning
         - componentModelServing
-        - componentModelStorage
-        - componentModelRegistry
-        - componentAgentOutputHandling
-        - componentApplicationOutputHandling
-        - componentOrchestrationOutputHandling
   - id: componentApplication
     title: Application
     description:
@@ -417,10 +480,10 @@ components:
     edges:
       to:
         - componentApplicationOutputHandling
-        - componentAgentInputHandling
+        - componentAuditRecordRepository
       from:
         - componentApplicationInputHandling
-        - componentAgentOutputHandling
+        - componentRuntimeHosting
   - id: componentApplicationOutputHandling
     title: Output Handling
     description:
@@ -429,11 +492,23 @@ components:
         protect against unwanted, unexpected or dangerous outputs from a model. Output
         handling is a major line of defense against various risks and an area primed
         for more development.
+      - >
+        This is also the application's own outbound gate: any influence the application
+        directs outward — including handing off to an agent it hosts — passes through
+        this component rather than reaching another tier's core directly, mirroring
+        the discipline this corpus already applies to reaching cores through their
+        own input gate. The agent handoff crosses {{componentApplicationNetworkPolicyEnforcementPoint}}
+        like every other outbound path from this gate — never directly into the agent
+        operator's own enforcement point — with the two PEPs connecting to each other
+        as peers to carry the handoff onward; a same-deployment composition does not
+        exempt this gate from its own operator's egress enforcement.
     category: componentsApplication
     subcategory: componentsApplicationCore
     edges:
       to:
-        - componentTheModel
+        - componentApplicationNetworkPolicyEnforcementPoint
+        - componentApplicationConsentSurface
+        - componentAuditRecordRepository
       from:
         - componentApplication
   - id: componentApplicationInputHandling
@@ -449,83 +524,83 @@ components:
     edges:
       to:
         - componentApplication
+        - componentAuditRecordRepository
       from:
-        - componentTheModel
+        - componentApplicationNetworkPolicyEnforcementPoint
+        - componentApplicationConsentSurface
   - id: componentReasoningCore
     title: Agent Reasoning Core
     description:
       - >
         The core of an agent’s functionality is its ability to reason about a user’s goal
         and create a plan to achieve it. The reasoning core processes system instructions,
-        user queries, and contextual information to generate a sequence of actions. The 
-        actions, or tool calls, allow the agent to affect the real world—interacting with 
-        external systems, retrieving new information, or making changes to data and resources.
+        user queries, and contextual information to generate a sequence of actions. The  actions,
+        or tool calls, allow the agent to affect the real world—interacting with  external
+        systems, retrieving new information, or making changes to data and resources.
 
-        The reasoning core typically consists of one or more models—possibly separate 
-        models for the reasoning and then planning steps, or potentially one large model 
-        able to do both. The process of planning is often iterative, taking place in a 
-        “reasoning loop” where the plan is refined based on new information or the results 
-        of previous actions. This iterative nature, combined with the ingestion of 
-        external data, creates a vulnerability to indirect prompt injection, where 
-        adversarially crafted information can manipulate the agent's planning process.
+        The reasoning core typically consists of one or more models—possibly separate  models
+        for the reasoning and then planning steps, or potentially one large model  able
+        to do both. The process of planning is often iterative, taking place in a  “reasoning
+        loop” where the plan is refined based on new information or the results  of previous
+        actions. This iterative nature, combined with the ingestion of  external data,
+        creates a vulnerability to indirect prompt injection, where  adversarially crafted
+        information can manipulate the agent's planning process.
 
-        The complexity of plans determines the agent’s level of autonomy, which can 
-        range from selecting a predefined workflow to dynamically orchestrating 
-        multi-step actions. This level of autonomy directly governs the potential 
-        severity of a security failure—the more an agent can do on its own, the greater 
-        the risk from manipulation or misalignment. This risk can be, at least partially, 
-        mitigated through guardrails that constrain actions taken by an agent; for 
-        example, by making certain actions subject to mandatory user confirmation. 
-        However, this can in turn result in limitations on the agent's autonomy, thus 
-        requiring a careful tradeoff between autonomy and security.
+        The complexity of plans determines the agent’s level of autonomy, which can  range
+        from selecting a predefined workflow to dynamically orchestrating  multi-step
+        actions. This level of autonomy directly governs the potential  severity of a
+        security failure—the more an agent can do on its own, the greater  the risk from
+        manipulation or misalignment. This risk can be, at least partially,  mitigated
+        through guardrails that constrain actions taken by an agent; for  example, by
+        making certain actions subject to mandatory user confirmation.  However, this
+        can in turn result in limitations on the agent's autonomy, thus  requiring a careful
+        tradeoff between autonomy and security.
     category: componentsApplication
     subcategory: componentsAgent
     edges:
       to:
         - componentAgentOutputHandling
-        - componentOrchestrationInputHandling
+        - componentAuditRecordRepository
       from:
         - componentAgentInputHandling
-        - componentOrchestrationOutputHandling
+        - componentRuntimeHosting
   - id: componentOrchestrationOutputHandling
     title: Output Handling
     description:
       - >
-        Orchestration output is responsible for validating, sanitizing, and safely 
-        formatting data as it exits the system to external or downstream components. 
-        This control ensures outbound data meets defined schemas, strips sensitive 
-        information that shouldn't be exposed, prevents injection attacks by properly 
-        encoding outputs for their destination context (such as HTML encoding for 
-        web responses or parameterization for database queries), and enforces 
-        data classification policies.
+        Orchestration output is responsible for validating, sanitizing, and safely  formatting
+        data as it exits the system to external or downstream components.  This control
+        ensures outbound data meets defined schemas, strips sensitive  information that
+        shouldn't be exposed, prevents injection attacks by properly  encoding outputs
+        for their destination context (such as HTML encoding for  web responses or parameterization
+        for database queries), and enforces  data classification policies.
     category: componentsModel
     subcategory: componentsOrchestration
     edges:
       to:
-        - componentReasoningCore
-        - componentTheModel
+        - componentAuditRecordRepository
+        - componentModelServing
       from:
-        - componentTools
         - componentMemory
         - componentRAGContent
+        - componentOrchestrationInputHandling
   - id: componentOrchestrationInputHandling
     title: Input Handling
     description:
       - >
-        Orchestration input handling  is responsible for validating, sanitizing, and 
-        normalizing all data entering the system from external sources before it 
-        reaches core orchestration logic.
+        Orchestration input handling  is responsible for validating, sanitizing, and  normalizing
+        all data entering the system from external sources before it  reaches core orchestration
+        logic.
     category: componentsModel
     subcategory: componentsOrchestration
     edges:
       to:
-        - componentTools
         - componentMemory
         - componentRAGContent
+        - componentAuditRecordRepository
+        - componentOrchestrationOutputHandling
       from:
-        - componentTheModel
-        - componentReasoningCore
-        - componentToolRegistry
+        - componentModelServing
   - id: componentTools
     title: External Tools and Services
     description:
@@ -539,16 +614,24 @@ components:
         tool to invoke (including parameter schemas, capability declarations, and
         invocation methods) is handled separately by {{componentToolRegistry}}; this
         component's scope is strictly the runtime tool services and their invocation
-        surface.
+        surface. As that runtime tool-services component, it is one member of the
+        broader Tools components category, not the category itself — which also groups
+        the tool server, transport, and tool-authorization components.
+      - Because these tools and services are sourced from many independent
+        providers, the agent's security depends on a distributed set of trust
+        relationships rather than a single vendor. Each provider is a separate point
+        of provenance, so the integrity of a tool's identity, description, and
+        supply chain must be established per provider rather than assumed across the
+        set.
     category: componentsExternalTools
     subcategory: componentsToolInvocationPath
     edges:
       to:
-        - componentOrchestrationOutputHandling
+        - componentToolServer
         - componentToolRegistry
+        - componentAuditRecordRepository
       from:
-        - componentOrchestrationInputHandling
-        - componentToolRegistry
+        - componentToolServer
   - id: componentToolRegistry
     title: Tool Registry and Discovery
     description:
@@ -583,18 +666,53 @@ components:
       - >
         Registries are decoupled from tools: the same tool may be referenced by multiple
         registries from different sector-focused authorities (compliance-flavored,
-        performance-flavored, licensing-flavored), and registries are not required in all
+        performance-flavored, licensing-flavored), and registries are not required in
+        all
         deployments — internal-only or air-gapped agent systems may operate without any
-        public registry layer. Controls targeting registry integrity apply only where a
+        public registry layer. Controls targeting registry integrity apply only where
+        a
         registry is part of the deployment.
+      - The registry's scope also extends to the *publication and registration* step
+        through which extensible artifacts — plugins, connectors, skill packages,
+        and MCP server bundles — are made available and added to the catalog before
+        they are installed into the agentic system. This is the point at which a new
+        extension's metadata (its capability declarations, publisher identity, and
+        invocation method) first enters the registry, expanding the set of
+        {{componentTools}} an agent can invoke; it precedes and feeds the selection
+        and invocation metadata this component already governs.
+      - "The registry also functions as the asset-inventory population that governance
+        processes and shadow-deployment detection act over — the same inventory
+        discipline {{ref:nist-800-53-cm-8}} and {{ref:cis-control-2}} require of software
+        assets generally, applied to the tool zone: the enumerated set of tools,
+        services, and serving endpoints an agentic system is permitted to reach, each
+        carrying a trust-state marker that lets stale or unauthorized entries be flagged
+        before a call is routed to them. This enumerated-endpoint role is protocol-agnostic
+        — MCP server manifests, A2A peer directories, and classical service-discovery
+        endpoints are deployment variations of the same function — and it is what
+        {{componentToolNetworkPolicyEnforcementPoint}} consults as a control-plane peer,
+        alongside {{componentIdentityProvider}} and {{componentAuthorizationPolicyDecisionPoint}},
+        to admit a connection only to an endpoint the registry actually enumerates. This
+        moves registry consultation to the network admission decision rather than the
+        reasoning-time tool-selection step, which draws on the registry's data
+        indirectly through whatever the served model already knows about available
+        tools."
     category: componentsInfrastructure
     subcategory: componentsRegistries
     edges:
       to:
-        - componentOrchestrationInputHandling
-        - componentTools
+        - componentToolNetworkPolicyEnforcementPoint
       from:
         - componentTools
+    externalReferences:
+      - type: spec
+        id: nist-800-53-cm-8
+        title: NIST SP 800-53 Rev. 5 CM-8 System Component Inventory
+        url: https://csrc.nist.gov/projects/risk-management/sp800-53-controls/release-search#!/control?version=5.1&number=CM-8
+      - type: other
+        id: cis-control-2
+        title: 'CIS Critical Security Controls v8.1 Control 2: Inventory and Control of
+          Software Assets'
+        url: https://www.cisecurity.org/controls/inventory-and-control-of-software-assets
   - id: componentMemory
     title: Model Memory
     description:
@@ -622,10 +740,10 @@ components:
     title: Retrieval Augmented Generation & Content
     description:
       - >
-        Content for Retrieval-Augmented Generation (RAG) provides the agent with curated 
-        knowledge to ground its responses and improve accuracy. The main security risk is 
-        data poisoning, where an attacker corrupts this knowledge source to manipulate the 
-        agent's output.
+        Content for Retrieval-Augmented Generation (RAG) provides the agent with curated  knowledge
+        to ground its responses and improve accuracy. The main security risk is  data
+        poisoning, where an attacker corrupts this knowledge source to manipulate the  agent's
+        output.
     category: componentsModel
     subcategory: componentsOrchestration
     edges:
@@ -637,10 +755,10 @@ components:
     title: Agent User Query
     description:
       - >
-        These contain the specific details of a user’s request after being processed. The 
-        query is then combined with system instructions and other contextual data, like 
-        agent memory or external information, to create a single, structured prompt for 
-        the reasoning core to process.
+        These contain the specific details of a user’s request after being processed.
+        The  query is then combined with system instructions and other contextual data,
+        like  agent memory or external information, to create a single, structured prompt
+        for  the reasoning core to process.
     category: componentsApplication
     subcategory: componentsAgent
     edges:
@@ -651,11 +769,10 @@ components:
     title: Agent System Instructions
     description:
       - >
-        These define an agent’s capabilities, permissions, and limitations, such as the 
-        actions it can take and the tools it is allowed to use. For security, it’s 
-        critical to unambiguously separate these instructions from user data and other 
-        inputs, often using special control tokens as a defense against prompt 
-        injection attacks.
+        These define an agent’s capabilities, permissions, and limitations, such as the  actions
+        it can take and the tools it is allowed to use. For security, it’s  critical to
+        unambiguously separate these instructions from user data and other  inputs, often
+        using special control tokens as a defense against prompt  injection attacks.
     category: componentsApplication
     subcategory: componentsAgent
     edges:
@@ -666,58 +783,981 @@ components:
     title: Input Handling
     description:
       - >
-        An agent’s interaction with the world begins at the User or Application, which 
-        serves as the interface for collecting both explicit user instructions and passively 
-        collected contextual data from its environment. This blend of inputs creates a 
-        primary security challenge of reliably distinguishing trusted commands from the 
-        controlling user versus potentially untrusted information from other sources. 
-        An agent application processes explicit user instructions, which can be given 
-        directly (synchronously) like a typed command, or be configured to execute 
-        automatically when a specific event occurs (asynchronously). It also gathers 
-        implicit contextual inputs—data that isn’t a direct command but is passively 
-        collected from the environment, such as sensor readings, application state, tool
+        An agent’s interaction with the world begins at the User or Application, which  serves
+        as the interface for collecting both explicit user instructions and passively  collected
+        contextual data from its environment. This blend of inputs creates a  primary
+        security challenge of reliably distinguishing trusted commands from the  controlling
+        user versus potentially untrusted information from other sources.  An agent application
+        processes explicit user instructions, which can be given  directly (synchronously)
+        like a typed command, or be configured to execute  automatically when a specific
+        event occurs (asynchronously). It also gathers  implicit contextual inputs—data
+        that isn’t a direct command but is passively  collected from the environment,
+        such as sensor readings, application state, tool
         call responses or the content of recently opened documents.
 
-        Input Handling is is responsible for processing and understanding these inputs 
-        before they are sent to the agent’s reasoning core. This handoff is a critical 
-        security juncture, as the perception layer must reliably distinguish trusted user 
-        commands from untrusted data to prevent manipulation of the agent’s core logic.
+        Input Handling is responsible for processing and understanding these inputs  before
+        they are sent to the agent’s reasoning core. This handoff is a critical  security
+        juncture, as the perception layer must reliably distinguish trusted user  commands
+        from untrusted data to prevent manipulation of the agent’s core logic.
+      - Tool metadata and descriptors a remote server returns (for example a
+        {{ref:mcp-security}}-style tools/list response) pass through this facet
+        before reaching {{componentReasoningCore}} — arriving via the tool
+        server's own output gate and the network policy enforcement chain, not
+        a direct connection from the tool server — so a compromised or
+        impersonating server advertising deceptive tool capabilities is caught at
+        the same perception-layer gate that screens every other implicit input,
+        rather than reaching the reasoning core unchecked.
     category: componentsApplication
     subcategory: componentsAgent
     edges:
       to:
         - componentReasoningCore
+        - componentAuditRecordRepository
       from:
         - componentAgentUserQuery
         - componentAgentSystemInstruction
-        - componentTheModel
-        - componentApplication
+        - componentAgentConsentSurface
+        - componentAgentNetworkPolicyEnforcementPoint
+    externalReferences:
+      - type: spec
+        id: mcp-security
+        title: MCP Security Best Practices / Threat Model
+        url: https://modelcontextprotocol.io/specification
   - id: componentAgentOutputHandling
     title: Output Handling
     description:
       - >
-        The final step in an agent’s workflow is response rendering, the process or 
-        formatting of an AI agent’s generated output for display and interaction within a 
-        user application. This stage is a critical security boundary because it involves 
-        taking dynamic content from the agent and displaying it within the trusted context 
-        of a user’s application, such as a web browser or mobile application. Flaws in 
-        this process can allow malicious content generated by a compromised agent to be 
-        executed by the application, leading to significant security breaches.
+        The final step in an agent’s workflow is response rendering, the process or  formatting
+        of an AI agent’s generated output for display and interaction within a  user application.
+        This stage is a critical security boundary because it involves  taking dynamic
+        content from the agent and displaying it within the trusted context  of a user’s
+        application, such as a web browser or mobile application. Flaws in  this process
+        can allow malicious content generated by a compromised agent to be  executed by
+        the application, leading to significant security breaches.
 
-        Agents often produce content in a universal format like Markdown, which is then 
-        interpreted and rendered by the specific client application. If this output isn’t 
-        properly sanitized according to the content type, it can create severe 
-        vulnerabilities. For example, unsanitized output can enable data exfiltration when 
-        content-embedded resources like images are automatically loaded by the 
-        application, implicitly passing sensitive information to an attacker's server via 
-        the resource's URL. Similarly, improper sanitization can lead to cross-site 
-        scripting (XSS) attacks.
-
+        Agents often produce content in a universal format like Markdown, which is then  interpreted
+        and rendered by the specific client application. If this output isn’t  properly
+        sanitized according to the content type, it can create severe  vulnerabilities.
+        For example, unsanitized output can enable data exfiltration when  content-embedded
+        resources like images are automatically loaded by the  application, implicitly
+        passing sensitive information to an attacker's server via  the resource's URL.
+        Similarly, improper sanitization can lead to cross-site  scripting (XSS) attacks.
+      - >
+        Handing this output back to the hosting application crosses
+        {{componentAgentNetworkPolicyEnforcementPoint}} like every other outbound path
+        from this gate — never directly into the application operator's own enforcement
+        point — with the two PEPs connecting to each other as peers to carry the handoff
+        onward, the same treatment this gate's own outbound traffic already gets.
     category: componentsApplication
     subcategory: componentsAgent
     edges:
       to:
-        - componentApplication
-        - componentTheModel
+        - componentAgentConsentSurface
+        - componentAgentNetworkPolicyEnforcementPoint
+        - componentAuditRecordRepository
       from:
         - componentReasoningCore
+  - id: componentIdentityProvider
+    title: Identity Provider
+    description:
+      - >
+        The external identity and access management plane that authenticates principals
+        and issues and validates the tokens downstream services and tools rely on for
+        authorization. It is the authoritative source of identity for a deployment:
+        it registers calling services as clients and mints scoped credentials so that
+        every action taken by a served model, agent, or tool is attributable to an originating
+        principal. Its authority is originating and domain-scoped — it speaks for principals
+        it has itself authenticated. Re-asserting a principal's authority into a *different*
+        trust domain is {{componentFederationProxy}}'s role, not this plane's.
+      - >
+        In classical access-control terms ({{ref:nist-sp-800-162-abac}}) this plane is
+        the Policy Information Point: the authoritative source of the subject identity
+        and attributes — roles, claims, scopes — that an authorization decision consults.
+        It does not itself decide whether a requested action is permitted ({{componentAuthorizationPolicyDecisionPoint}}
+        evaluates policy against the identity this plane asserts) nor enforce that verdict
+        ({{componentAuthorizationPolicyEnforcementPoint}}). Standard realizations include
+        OAuth 2.0 ({{ref:rfc-6749-oauth2}}) authorization servers and OIDC identity providers,
+        with Dynamic Client Registration ({{ref:rfc-7591-dynamic-client-registration}})
+        admitting calling services that cannot be provisioned in advance. Token exchange
+        ({{ref:rfc-8693-token-exchange}}) is the mechanism by which a verified principal
+        propagates across a trust-domain boundary; the endpoint may be this plane's, but the
+        component that holds and binds the resulting delegated authority is
+        {{componentFederationProxy}}.
+      - >
+        The plane is cross-cutting rather than specific to any one protocol. Protocol
+        bindings and deployment forms such as a hosted IdP versus a self-run authorization
+        server are attributes of how identity is wired in, not the identity of the component
+        itself; it remains the identity trust root on which dependent components — notably
+        {{componentAuthorizationPolicyDecisionPoint}} — base every authorization decision.
+        As that trust root it reaches every network enforcement point in the corpus as a
+        control-plane peer, not only the tool zone's: the identity context it asserts backs
+        connection admission at {{componentAgentNetworkPolicyEnforcementPoint}} and
+        {{componentApplicationNetworkPolicyEnforcementPoint}} the same way it already does
+        at {{componentToolNetworkPolicyEnforcementPoint}}, and at {{componentModelServing}}
+        acting as the model tier's own enforcement point.
+    category: componentsInfrastructure
+    subcategory: componentsIdentity
+    edges:
+      to:
+        - componentAuthorizationPolicyDecisionPoint
+        - componentFederationProxy
+        - componentToolNetworkPolicyEnforcementPoint
+        - componentAgentNetworkPolicyEnforcementPoint
+        - componentApplicationNetworkPolicyEnforcementPoint
+        - componentModelServing
+      from: []
+    externalReferences:
+      - type: spec
+        id: rfc-6749-oauth2
+        title: 'RFC 6749: The OAuth 2.0 Authorization Framework'
+        url: https://www.rfc-editor.org/rfc/rfc6749
+      - type: spec
+        id: rfc-8693-token-exchange
+        title: 'RFC 8693: OAuth 2.0 Token Exchange'
+        url: https://www.rfc-editor.org/rfc/rfc8693
+      - type: spec
+        id: rfc-7591-dynamic-client-registration
+        title: 'RFC 7591: OAuth 2.0 Dynamic Client Registration Protocol'
+        url: https://www.rfc-editor.org/rfc/rfc7591
+      - type: spec
+        id: nist-sp-800-162-abac
+        title: 'NIST SP 800-162: Guide to Attribute Based Access Control (ABAC)'
+        url: https://csrc.nist.gov/pubs/sp/800/162/upd2/final
+  - id: componentAuthorizationPolicyDecisionPoint
+    title: Authorization Policy Decision Point
+    description:
+      - >
+        The **authorization decision point** evaluates whether a requested action is permitted
+        and returns an allow or deny verdict that enforcement points apply before the
+        action proceeds. It implements a policy decision point (PDP) in the **NIST SP
+        800-162** sense: given an authorization query, it evaluates subject, resource,
+        and environmental attributes against a policy and returns a decision. It evaluates
+        role-based or attribute-based policy against identity-provider claims such as
+        role membership, job title, or work location.
+      - >
+        This component owns policy evaluation only. The attribute sources it consults
+        (a policy information point) and the policy authoring surface (a policy administration
+        point) are upstream; the enforcement that applies the verdict happens at the action
+        and orchestration boundaries. Policy languages and engines that realize this role
+        are deployment variations of the same locus, not distinct components.
+      - >
+        The key distinction is the separation of the decision point from the enforcement
+        point: a single, auditable policy is applied consistently across many enforcement
+        loci rather than re-implemented inline at each tool or service boundary. That
+        consistency extends across every network enforcement point, not only the tool
+        zone's: {{componentAgentNetworkPolicyEnforcementPoint}}, {{componentApplicationNetworkPolicyEnforcementPoint}},
+        and {{componentModelServing}} (acting as the model tier's own enforcement point)
+        consult the same policy evaluation this component already provides
+        {{componentToolNetworkPolicyEnforcementPoint}}, rather than each tier
+        re-implementing its own admission logic.
+    category: componentsInfrastructure
+    edges:
+      to:
+        - componentAuthorizationPolicyEnforcementPoint
+        - componentToolNetworkPolicyEnforcementPoint
+        - componentAgentNetworkPolicyEnforcementPoint
+        - componentApplicationNetworkPolicyEnforcementPoint
+        - componentModelServing
+      from:
+        - componentIdentityProvider
+    subcategory: componentsIdentity
+  - id: componentExternalPromptTemplate
+    title: External Prompt Templates
+    description:
+      - >
+        **External prompt templates** are parameterized instruction or message templates
+        that a remote tooling or service provider supplies at runtime, which the tool
+        zone's content-layer handling fills in and injects into the model context.
+      - >
+        This component owns the provider-supplied template text and its injection point
+        at the tool boundary. Upstream, the template originates outside the trusted
+        system and is fetched from a third party; downstream, it enters through
+        {{componentToolInputHandling}} — the same content-layer gate that screens every
+        other tool-invocation request — rather than reaching {{componentToolServer}}
+        directly, so a poisoned or impersonating template is caught at that gate instead
+        of injecting straight into what the server serves.
+      - >
+        The key distinction from locally authored system instructions is origin and trust:
+        because the text is *instruction-shaped* rather than reference data, yet enters
+        from outside the trusted system, it is an untrusted, instruction-shaped input
+        surface.
+    category: componentsExternalTools
+    subcategory: componentsToolInvocationPath
+    edges:
+      to:
+        - componentToolInputHandling
+      from: []
+  - id: componentAgentConsentSurface
+    title: Agent Consent Elicitation Surface
+    description:
+      - >
+        The **agent consent elicitation surface** is the control point at which an autonomous
+        agent pauses its own workflow to elicit explicit human confirmation before performing
+        a consequential or irreversible tool action. It renders an elicitation request
+        describing the pending action and returns the user's allow-or-deny decision to
+        gate execution, generalizing protocol-specific confirmation primitives such as
+        the server-side elicitation requests defined in {{ref:mcp-elicitation-spec}}.
+      - >
+        This surface owns the agent-driven elicitation prompt and the decision it returns.
+        Because the agent itself initiates the request mid-loop and the prompt content
+        can be populated by agent- or server-returned data, the surface is also an untrusted
+        input channel: confirmation content must be sanitized before display and each
+        returned approval must be integrity-bound to the exact action it described, so
+        a compromised upstream cannot spoof, replay, or re-target the consent. It is distinct
+        from the {{componentApplicationConsentSurface}}: that surface is the application's
+        deliberate user-facing approval step, whereas this one is driven by the agent's
+        autonomous reasoning loop.
+      - >
+        The defining attribute of this surface is request volume under autonomy. A naively
+        designed agent elicits confirmation on a high proportion of its tool calls, so
+        this is the locus where elicitation traffic concentrates and where habituation
+        pressure on the human approver accumulates. Effective designs reserve elicitation
+        for genuinely consequential or irreversible actions and bind each approval to
+        one specific action rather than a standing class.
+    category: componentsApplication
+    subcategory: componentsAgent
+    edges:
+      to:
+        - componentAgentInputHandling
+      from:
+        - componentAgentOutputHandling
+    externalReferences:
+      - type: spec
+        id: mcp-elicitation-spec
+        title: 'Model Context Protocol Specification: Elicitation'
+        url: https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation
+  - id: componentIsolationRuntime
+    title: Isolation Runtime Boundary
+    description:
+      - >
+        The **isolation runtime boundary** is the execution locus that runs untrusted
+        or partially-trusted code under enforced confinement. It is the runtime trust
+        boundary around code whose behavior cannot be fully vouched for in advance: agent
+        tool invocations, remotely-served tool backends, and model- or agent-generated
+        code that is executed rather than merely returned.
+      - >
+        The role is realized through a spectrum of mechanisms with different boundary
+        strengths, from process and OS-level confinement (seccomp, AppArmor/SELinux, namespaces)
+        through application containers to hardware- and hypervisor-backed isolation ({{ref:gvisor}},
+        {{ref:kata-containers}}, microVMs, TEE/confidential-computing enclaves), consistent
+        with container-hardening guidance such as {{ref:nist-sp-800-190}}. The mechanism
+        is an attribute of a given deployment, not the identity of the component; sizing
+        the boundary to the trust level of the enclosed code is a *least-privilege* and
+        *defense-in-depth* decision.
+      - >
+        This is a distinct architectural locus from the workloads it contains. Serving
+        infrastructure makes a model available, and tools and the reasoning core do work;
+        the isolation runtime is the confinement layer those workloads execute inside.
+        The key distinction is that it owns the boundary itself rather than the code that
+        runs within it.
+      - >
+        The boundary faces two inverse directions. Outward, it confines untrusted or agent-generated
+        code so that a compromise inside it cannot reach the host (software sandboxing).
+        Inward, hardware-backed enclaves and confidential-compute instances raise the
+        cost and shrink the surface for a hostile host, administrator, or co-tenant to
+        observe or tamper with a trusted workload's code and data in use (remote-attested
+        hardware isolation). The inward direction is a hardening measure, not a guarantee:
+        it does not fully protect against a malicious host — physical and hardware attacks,
+        side channels, and vulnerabilities in the enclosed code itself remain outside
+        its reach.
+      - "At its hardware-backed instantiations, this boundary is anchored in a **hardware
+        root of trust**: the enclave exposes a cryptographic measurement that a relying
+        party checks through *remote attestation* before extending trust to it, for example
+        before releasing data or credentials into the enclave. That verification step
+        is not a property of the boundary itself — validating the attestation evidence
+        and gating access on the result are control activities performed against this
+        component, separate from the structural fact of the boundary's existence."
+    category: componentsInfrastructure
+    subcategory: componentsDeployment
+    edges:
+      to:
+        - componentToolHosting
+        - componentRuntimeHosting
+      from: []
+    externalReferences:
+      - type: spec
+        id: nist-sp-800-190
+        title: 'NIST SP 800-190: Application Container Security Guide'
+        url: https://csrc.nist.gov/pubs/sp/800/190/final
+      - type: other
+        id: gvisor
+        title: gVisor application kernel sandbox
+        url: https://gvisor.dev/
+      - type: other
+        id: kata-containers
+        title: Kata Containers lightweight-VM isolation runtime
+        url: https://katacontainers.io/
+  - id: componentToolServer
+    title: Tool Server
+    description:
+      - >
+        A **tool server** is the remote or out-of-process endpoint that hosts a set of
+        capabilities (tools, callable resources, and prompt templates) and exposes them
+        to an agent over a tooling protocol such as MCP, A2A, or a remote plugin interface
+        ({{ref:mcp-spec}}).
+      - >
+        It owns the serving and brokering boundary where capabilities are advertised,
+        discovered, and invoked. It is distinct from the {{componentTools}} it fronts:
+        rather than being the underlying service, the tool server stands between the agent
+        and those services, authenticating callers, presenting downstream credentials,
+        and delegating to downstream services on behalf of multiple users. Invocations
+        reach it only after {{componentAuthorizationPolicyEnforcementPoint}} has authorized
+        them and forwarded them on; the enforcement point authorizes, but this component
+        is the one that actually reaches {{componentTools}}.
+      - >
+        Its key distinction is deployment-dependent trust posture: an instance can range
+        from a local subprocess sharing the host's user context to a multi-tenant remote
+        service, so its trust boundary and isolation posture vary by deployment pattern
+        — a zero-trust posture that verifies trust at each boundary rather than assuming
+        it from position or prior connection ({{ref:nist-sp-800-207-zero-trust}}) applies
+        regardless of deployment form.
+      - "A tenant-isolation failure at a multi-tenant tool server is not hypothetical:
+        in the 2025 Asana MCP incident ({{ref:bleepingcomputer-2025-asana-mcp-data-exposure}}),
+        a flaw in tenant-session handling let one organization's data reach other organizations'
+        users, affecting approximately 1,000 customers. The same incident is documented
+        under {{riskCrossTenantCredentialPropagation}}; cited here, it grounds the deployment-dependent
+        trust posture described above — the failure occurred at the server's own isolation
+        boundary, not within any individual tool it fronted."
+      - "In practice, this trust boundary is where standing-credential exposure can occur:
+        a tool server provisioned with direct, broadly scoped access to a backing service
+        — rather than a narrowly scoped, per-call delegation — holds a credential the
+        direct caller does not have. If input that ultimately reaches the agent's request
+        path is attacker-influenced, the tool server can be driven to exercise that standing
+        access on the attacker's behalf, disclosing data or taking actions the caller
+        was never authorized to reach directly. The exposure sits in the width of the
+        credential the tool server itself holds and presents on the caller's behalf."
+      - "Because callers reach this endpoint over a network, authentication at this boundary
+        must be mutual rather than assumed: the connecting client and the server establish
+        identity through mechanisms such as bearer tokens, OAuth, or mTLS before any capability
+        is exposed, and weak, absent, or replayable authentication here lets an unauthorized
+        client drive the hosted tools or lets a malicious server impersonate a trusted
+        one. Capability exposure is also negotiated per connection rather than fixed in
+        advance: the server determines, for each connecting client, which capabilities
+        that client may invoke, and a server that over-advertises capabilities or mutates
+        an advertised tool's behavior after the client has already approved it expands
+        the agent's effective authority beyond what the operator intended. Because it
+        fronts the {{componentTools}} it serves, the tool server also inherits their deceptive-tool-description
+        and least-privilege concerns, so capability advertisements arriving from downstream
+        must be treated as untrusted input subject to validation, not accepted at face
+        value."
+    category: componentsExternalTools
+    subcategory: componentsToolInvocationPath
+    edges:
+      to:
+        - componentToolOutputHandling
+        - componentTools
+        - componentAuditRecordRepository
+      from:
+        - componentTools
+        - componentToolHosting
+        - componentAuthorizationPolicyEnforcementPoint
+    externalReferences:
+      - type: spec
+        id: mcp-spec
+        title: Model Context Protocol Specification
+        url: https://modelcontextprotocol.io/specification
+      - type: spec
+        id: nist-sp-800-207-zero-trust
+        title: 'NIST SP 800-207: Zero Trust Architecture'
+        url: https://csrc.nist.gov/pubs/sp/800/207/final
+      - type: news
+        id: bleepingcomputer-2025-asana-mcp-data-exposure
+        title: Asana warns MCP AI feature exposed customer data to other orgs
+        url: https://www.bleepingcomputer.com/news/security/asana-warns-mcp-ai-feature-exposed-customer-data-to-other-orgs/
+  - id: componentAgentToolTransport
+    title: Agent Tool Transport Channel
+    description:
+      - >
+        The communications channel that carries request and response messages between
+        the agent's own network enforcement point and the tool provider's network
+        enforcement point. It frames, delivers, and returns structured calls — typically
+        JSON-RPC 2.0 messages ({{ref:jsonrpc-2-0}}) — over either a local inter-process
+        stream or a networked session, abstracting the same agent-to-tool exchange across
+        local and distributed deployments, as specified for remote-tooling protocols such
+        as the Model Context Protocol ({{ref:mcp-spec-overview}}).
+      - >
+        This channel owns the transport between {{componentAgentNetworkPolicyEnforcementPoint}}
+        and {{componentToolNetworkPolicyEnforcementPoint}}: the underlying stream or
+        socket and the session that carries messages in flight across the network
+        boundary the two PEPs sit at opposite ends of. It is the wire the PEP pairing
+        enforces over, not a separate path around it — the client-PEP / channel /
+        resource-PEP shape this specific trust-boundary crossing uses, distinct from the
+        bare PEP-to-PEP peering used elsewhere in the corpus where no separate channel
+        component exists. Mutual authentication of the calling and serving ends is
+        exercised here, though issuing and deciding that authentication is the job of
+        dedicated components elsewhere in the graph ({{componentIdentityProvider}},
+        {{componentAgentNetworkPolicyEnforcementPoint}}). It is distinct from the tool
+        itself, which performs the invoked action; the channel only conveys the call to
+        and from that endpoint.
+      - >
+        The key distinction is that this is a connecting locus rather than an action endpoint.
+        Transport-level assurances are established or lost here, independent of whether
+        the tool endpoint is itself sound.
+      - "This channel also multiplexes calls across one or more remote servers from a
+        single agent. Identity verification is not limited to session establishment: each
+        incoming response is checked against the remote server's verified identity, so
+        a server impersonated or substituted after the session begins is caught before
+        its response is trusted. Scoped, short-lived credentials issued per session are
+        preferred over forwarding long-lived tokens, bounding what a captured credential
+        can reach and for how long."
+      - "This channel is also a trust boundary: tool servers and network intermediaries
+        reaching it are often untrusted, so malformed or hostile frames, deserialization
+        of attacker-controlled payloads, and session-lifecycle confusion from replayed
+        or out-of-order initialization are the primary threats it must withstand, independent
+        of whether the invoked tool logic is itself sound. The session it carries follows
+        a defined lifecycle of initialization, capability negotiation, and teardown, governing
+        how a connection is established and retired rather than just how messages are
+        carried once in flight. Realizations extend beyond {{ref:jsonrpc-2-0}} framing
+        under the Model Context Protocol to other agent-to-tool wire protocols such as
+        gRPC and REST-over-HTTP, with encoding and deployment form varying while the channel's
+        role stays the same. Payload-level validation of the calls themselves is out of
+        scope for this channel and belongs to {{componentToolInputHandling}} and
+        {{componentToolOutputHandling}} on the far side of the resource-side PEP."
+    category: componentsApplication
+    subcategory: componentsAgent
+    edges:
+      to:
+        - componentAgentNetworkPolicyEnforcementPoint
+        - componentToolNetworkPolicyEnforcementPoint
+      from:
+        - componentAgentNetworkPolicyEnforcementPoint
+        - componentToolNetworkPolicyEnforcementPoint
+    externalReferences:
+      - id: mcp-spec-overview
+        title: Model Context Protocol specification — architecture and JSON-RPC
+          messaging
+        url: https://modelcontextprotocol.io/specification
+        type: spec
+      - id: jsonrpc-2-0
+        title: JSON-RPC 2.0 Specification
+        url: https://www.jsonrpc.org/specification
+        type: spec
+  - id: componentFederationProxy
+    title: Authorization Federation Proxy
+    description:
+      - >
+        The authorization federation proxy holds and presents delegated credentials on
+        an agent's behalf when it invokes external tools. It is a federation proxy ({{ref:nist-sp-800-63c}}):
+        a relying party toward the upstream identity provider and an identity provider
+        toward the downstream tool, re-asserting the agent's identity to authorize the
+        call. The presented credential is typically minted by on-behalf-of token exchange
+        ({{ref:rfc-8693-token-exchange}}, over {{ref:rfc-6749-oauth2}}), so the proxy
+        acts for the principal rather than as itself.
+      - >
+        Speaking for a principal other than itself makes the proxy the confused-deputy
+        locus ({{ref:cwe-441}}): serving multiple users or tenants, it must bind each
+        outbound request to the correct authorization context ({{ref:nist-sp-800-162-abac}}),
+        or one principal's request travels under another's authority. As a proxy it inherits
+        both roles' obligations — relying party upstream, identity provider downstream
+        — and the standard mitigation is constrained delegation: an explicit allow-list
+        of downstream targets and contexts rather than open delegation authority.
+      - >
+        It is distinct from {{componentIdentityProvider}}, which authenticates principals
+        and originates credentials within its own trust domain, and from
+        {{componentAuthorizationPolicyEnforcementPoint}}, which adjudicates allow-or-deny:
+        the proxy carries and binds authorization context across domains rather than
+        originating it or deciding. That is what places it in the identity plane without
+        making it an identity authority — it speaks with borrowed authority, and a
+        component that originates its own credentials cannot be confused about whose
+        authority it holds. Its lineage is the classical credential-delegation role — WS-Trust
+        security token services, OAuth token-exchange brokers, Kerberos constrained delegation
+        — each re-presenting a principal's authority across a trust boundary.
+      - >
+        It serves whichever party needs to cross an identity boundary. It hands the
+        delegated credential to {{componentAgentNetworkPolicyEnforcementPoint}}, the
+        agent operator's own egress gate, which presents it on the outbound connection;
+        and it is reachable as a control-plane peer at the tool provider's admission
+        point, {{componentToolNetworkPolicyEnforcementPoint}}, the same way
+        {{componentIdentityProvider}} and {{componentAuthorizationPolicyDecisionPoint}}
+        are. Tool invocation is agent-exclusive in this model, so the agent egress gate
+        is the only first-party presenter today; an application that crossed an identity
+        boundary directly would reach the proxy on the same terms.
+    category: componentsInfrastructure
+    subcategory: componentsIdentity
+    edges:
+      to:
+        - componentAgentNetworkPolicyEnforcementPoint
+        - componentToolNetworkPolicyEnforcementPoint
+      from:
+        - componentIdentityProvider
+    externalReferences:
+      - type: spec
+        id: rfc-6749-oauth2
+        title: RFC 6749 — The OAuth 2.0 Authorization Framework
+        url: https://datatracker.ietf.org/doc/html/rfc6749
+      - type: spec
+        id: rfc-8693-token-exchange
+        title: RFC 8693 — OAuth 2.0 Token Exchange
+        url: https://datatracker.ietf.org/doc/html/rfc8693
+      - type: spec
+        id: nist-sp-800-63c
+        title: 'NIST SP 800-63C-4 — Digital Identity Guidelines: Federation and Assertions'
+        url: https://pages.nist.gov/800-63-4/sp800-63c.html
+      - type: spec
+        id: nist-sp-800-162-abac
+        title: NIST SP 800-162 — Guide to Attribute Based Access Control (ABAC)
+          Definition and Considerations
+        url: https://csrc.nist.gov/pubs/sp/800/162/upd2/final
+      - type: cwe
+        id: cwe-441
+        title: "CWE-441: Unintended Proxy or Intermediary ('Confused Deputy')"
+        url: https://cwe.mitre.org/data/definitions/441.html
+  - id: componentAgentNetworkPolicyEnforcementPoint
+    title: Agent Network Policy Enforcement Point
+    description:
+      - >
+        The agent network policy enforcement point is the client-side data-plane control
+        through which the agent's outbound traffic transits — its tool-call traffic to
+        external tool servers and services, typically over a tooling protocol such as the
+        Model Context Protocol ({{ref:model-context-protocol}}), and its model-serving
+        traffic to {{componentModelServing}}, and traffic handed off to or received from
+        the hosting application via {{componentApplicationNetworkPolicyEnforcementPoint}}
+        as a peer — the two enforcement points connect directly to each other rather than
+        either one reaching past its counterpart into the other tier's output/input gates.
+        These classes of traffic share this one enforcement point because they cross the
+        same operator's egress boundary under the same reviewed policy; splitting them
+        across separate agent-side PEPs would create two narrower gates an attacker could
+        arbitrage between. Orchestration is not a further class of traffic here: it has
+        no PEP of its own and no edge to this one, reaching {{componentModelServing}}
+        directly as the served model's own machinery rather than as agent-operator-controlled
+        egress. It is a Policy Enforcement Point in the {{ref:nist-sp-800-207}} sense —
+        the runtime element that
+        enables, monitors, and terminates connections — applied at the network layer on
+        the agent operator's side: it admits or blocks each outbound connection against
+        the operator's reviewed egress policy and enforces transport protections such as
+        allowed destinations, TLS/mTLS, rate limiting, and audit on the traffic it carries
+        ({{ref:nist-sp-800-162-abac}}).
+      - >
+        Its security value is enforcement of a reviewed policy, not centralization. Realized
+        as a per-agent sidecar in a service-mesh data plane rather than a single shared
+        gateway, each agent container gets its own enforcement instance — the same control
+        without a single chokepoint to compromise or take offline, with {{ref:mitre-attack-m1037}}-style
+        egress filtering applied close to the workload. It remains a high-value trust
+        boundary: a compromised or misconfigured instance can blind the audit trail, leak
+        the credentials it terminates, or relax the policy it enforces.
+      - >
+        It is distinct from {{componentAuthorizationPolicyEnforcementPoint}}, which enforces
+        an allow-or-deny authorization decision on whether an action is permitted: this
+        component governs how and to where the traffic may flow, not whether the action
+        is allowed. As a network-layer control it nests outside the content-layer input
+        and output handling — connection enforcement wraps prompt and context enforcement.
+        It is the client-side half of a pair: the resource-side {{componentToolNetworkPolicyEnforcementPoint}}
+        enforces the remote tool provider's ingress policy at the other end of the same
+        connection, carried between them by {{componentAgentToolTransport}} rather than a
+        direct link — the pairing is the logical relationship the two PEPs have, not a
+        second, redundant graph edge alongside the transport that already models the wire.
+        It consults {{componentIdentityProvider}} and {{componentAuthorizationPolicyDecisionPoint}}
+        as control-plane peers for the identity and policy context its own egress decisions
+        rest on, the same relationship the resource-side PEP already has with them. Where the
+        call crosses into another identity domain it receives the delegated credential from
+        {{componentFederationProxy}} and presents it on the outbound connection, which is why
+        a compromised instance can leak the credentials it terminates: it is the only
+        first-party component that both holds borrowed authority and puts it on a wire.
+    category: componentsApplication
+    subcategory: componentsAgent
+    edges:
+      to:
+        - componentAgentInputHandling
+        - componentAgentToolTransport
+        - componentModelServing
+        - componentApplicationNetworkPolicyEnforcementPoint
+        - componentAuditRecordRepository
+      from:
+        - componentAgentOutputHandling
+        - componentAgentToolTransport
+        - componentModelServing
+        - componentApplicationNetworkPolicyEnforcementPoint
+        - componentIdentityProvider
+        - componentAuthorizationPolicyDecisionPoint
+        - componentFederationProxy
+    externalReferences:
+      - type: spec
+        id: nist-sp-800-207
+        title: NIST SP 800-207 — Zero Trust Architecture
+        url: https://doi.org/10.6028/NIST.SP.800-207
+      - type: spec
+        id: nist-sp-800-162-abac
+        title: NIST SP 800-162 — Guide to Attribute Based Access Control (ABAC)
+          Definition and Considerations
+        url: https://csrc.nist.gov/pubs/sp/800/162/upd2/final
+      - type: other
+        id: mitre-attack-m1037
+        title: 'MITRE ATT&CK M1037: Filter Network Traffic'
+        url: https://attack.mitre.org/mitigations/M1037/
+      - type: spec
+        id: model-context-protocol
+        title: Model Context Protocol specification
+        url: https://modelcontextprotocol.io/specification
+  - id: componentAuthorizationPolicyEnforcementPoint
+    title: Authorization Policy Enforcement Point
+    description:
+      - >
+        The **Authorization Policy Enforcement Point** is the locus at which a requested
+        action's authorization is enforced: for each consequential operation a caller
+        attempts — invoking a tool, calling a service, reaching a downstream resource
+        — it obtains an allow-or-deny decision and applies it before the operation proceeds.
+        In classical access-control terms ({{ref:nist-sp-800-162-abac}}) it is the Policy
+        Enforcement Point, paired with {{componentAuthorizationPolicyDecisionPoint}}:
+        it presents the request and the caller's identity to the decision point and forwards
+        or blocks the operation on the returned verdict.
+      - >
+        It enforces the authorization decision but neither makes it nor sources identity:
+        the decision is {{componentAuthorizationPolicyDecisionPoint}}'s, and the identity
+        claims it submits — role, attributes, scope — come from {{componentIdentityProvider}}
+        via a verified token or assertion, carried to the decision rather than re-derived
+        here. It is distinct from the action surface it guards, such as {{componentTools}},
+        and from {{componentToolServer}}, which fronts that surface: invocations reach
+        this component in flow from {{componentToolInputHandling}} once their content has
+        been validated, and it forwards them on or blocks them on the returned verdict
+        rather than handing a verdict back for another component to apply. The tool server
+        it forwards to is what presents downstream credentials and performs the actual
+        delegation to {{componentTools}}. Sitting ahead of that credential swap is what
+        keeps the authorized identity the caller's own rather than the standing downstream
+        credential the server presents. Realizations vary — a sidecar policy engine or
+        API-gateway authorization — deployment attributes, not the identity of the component.
+      - >
+        Its scope is the authorization of the action, not the network path. It governs
+        *whether* a given identity may perform a specific operation on a specific resource
+        — least privilege at the level of permitted actions — and is distinct from {{componentAgentNetworkPolicyEnforcementPoint}},
+        which governs *how and to where* traffic may flow. The two compose: the network
+        enforcement point admits the connection; this enforcement point authorizes the
+        action carried over it.
+    category: componentsExternalTools
+    subcategory: componentsToolInvocationPath
+    edges:
+      from:
+        - componentAuthorizationPolicyDecisionPoint
+        - componentToolInputHandling
+      to:
+        - componentToolServer
+        - componentAuditRecordRepository
+    externalReferences:
+      - type: spec
+        id: nist-sp-800-162-abac
+        title: NIST SP 800-162 — Guide to Attribute Based Access Control (ABAC)
+          Definition and Considerations
+        url: https://csrc.nist.gov/pubs/sp/800/162/upd2/final
+  - id: componentToolNetworkPolicyEnforcementPoint
+    title: Tool Network Policy Enforcement Point
+    description:
+      - >
+        The tool network policy enforcement point is the resource-side data-plane control
+        that fronts a remote tool server or service and admits or blocks inbound agent
+        connections against the tool provider's reviewed ingress policy. It is the resource-side
+        Policy Enforcement Point in the {{ref:nist-sp-800-207}} sense — the runtime element
+        that terminates and authenticates incoming connections at the protected resource's
+        edge.
+      - >
+        It is the counterpart to {{componentAgentNetworkPolicyEnforcementPoint}}: the
+        two sit at opposite ends of the same connection but serve different owners and
+        goals — the agent PEP enforces the operator's egress policy (self protecting self),
+        this PEP enforces the tool provider's ingress policy (remote protecting self). The
+        connection between them is carried by {{componentAgentToolTransport}}. Realized as
+        a sidecar or gateway in front of {{componentToolServer}}, it applies allowed-source,
+        TLS/mTLS, rate-limit, and audit controls ({{ref:mitre-attack-m1037}}) at the
+        resource boundary, admitting a connection only to an endpoint
+        {{componentToolRegistry}} actually enumerates, alongside the identity and policy
+        context {{componentIdentityProvider}} and {{componentAuthorizationPolicyDecisionPoint}}
+        supply as control-plane peers.
+      - >
+        As a network-layer control it is distinct from the tool server itself, which performs
+        the served action, and from content-layer handling: it governs which connections
+        reach the server, not what the server does or what the payloads say.
+    category: componentsExternalTools
+    subcategory: componentsToolNetworkControls
+    edges:
+      to:
+        - componentAgentToolTransport
+        - componentToolInputHandling
+        - componentAuditRecordRepository
+      from:
+        - componentAgentToolTransport
+        - componentToolOutputHandling
+        - componentAuthorizationPolicyDecisionPoint
+        - componentIdentityProvider
+        - componentFederationProxy
+        - componentToolRegistry
+    externalReferences:
+      - type: spec
+        id: nist-sp-800-207
+        title: NIST SP 800-207 — Zero Trust Architecture
+        url: https://doi.org/10.6028/NIST.SP.800-207
+      - type: other
+        id: mitre-attack-m1037
+        title: 'MITRE ATT&CK M1037: Filter Network Traffic'
+        url: https://attack.mitre.org/mitigations/M1037/
+  - id: componentApplicationConsentSurface
+    title: Application Consent Surface
+    description:
+      - >
+        The **application consent surface** is the control point inside a user-facing
+        AI application at which the application obtains explicit human approval before
+        executing a consequential action. It presents the pending action to the user and
+        returns the allow-or-deny decision that gates execution. It is the application-layer
+        realization of the classical explicit-consent / dual-control (four-eyes) authorization
+        locus, sited in the application the system itself builds.
+      - >
+        This surface is a distinct locus from the {{componentAgentConsentSurface}}, and
+        the distinction is a profile difference, not just a placement one. Application
+        approvals are low-volume and high-stakes: each is an explicit, per-action authorization
+        deliberately surfaced to the user, rather than the high-volume elicitation an
+        autonomous agent generates. Because the approval is scoped to one specific action
+        rather than a standing class, the human decision point stays aligned with the
+        action actually executed downstream.
+      - >
+        The approval request and the returned decision cross the application's input/output
+        boundary, so the surface owns the integrity of that exchange: the request content
+        must be presented unambiguously and the returned decision must be bound to the
+        exact action shown, so it cannot be spoofed or re-targeted by content originating
+        elsewhere in the application flow.
+    category: componentsApplication
+    subcategory: componentsApplicationCore
+    edges:
+      to:
+        - componentApplicationInputHandling
+      from:
+        - componentApplicationOutputHandling
+  - id: componentApplicationNetworkPolicyEnforcementPoint
+    title: Application Network Policy Enforcement Point
+    description:
+      - >
+        The application network policy enforcement point is the client-side data-plane
+        control through which the application's outbound traffic transits — its
+        model-serving traffic to the model-serving endpoint it consumes, and its handoff
+        traffic to an agent it hosts, carried to {{componentAgentNetworkPolicyEnforcementPoint}}
+        as a peer rather than reaching the agent's input gate directly. Both classes of
+        traffic cross the same operator's egress boundary under the same reviewed policy,
+        so neither bypasses this gate. It is a Policy Enforcement Point in the
+        {{ref:nist-sp-800-207}} sense — the runtime element that enables, monitors, and
+        terminates connections — applied at the network layer on the application
+        operator's side: it admits or blocks each outbound connection against the
+        operator's reviewed egress policy and enforces transport protections such as
+        allowed destinations, TLS/mTLS, rate limiting, and audit on the traffic it carries
+        ({{ref:nist-sp-800-162-abac}}).
+      - >
+        It is distinct from {{componentAgentNetworkPolicyEnforcementPoint}}: the two
+        enforce the same class of egress policy but for different authorities. The
+        application is operated by the application developer/operator; the agent is
+        operated separately (an agentic platform or framework provider). Routing the
+        application's model-serving or agent-handoff
+        traffic through the agent's enforcement point directly, rather than peering PEP
+        to PEP, would place one operator's egress under another operator's reviewed
+        policy, so each authority gets its own enforcement instance rather than sharing
+        one across a trust boundary.
+      - >
+        Its security value is enforcement of a reviewed policy, not centralization,
+        matching the same {{ref:mitre-attack-m1037}}-style egress-filtering posture as
+        its agent-side counterpart. It remains a high-value trust boundary: a compromised
+        or misconfigured instance can blind the audit trail, leak the credentials it
+        terminates, or relax the policy it enforces. It consults {{componentIdentityProvider}}
+        and {{componentAuthorizationPolicyDecisionPoint}} as control-plane peers for the
+        identity and policy context its own egress decisions rest on, the same relationship
+        its agent-side counterpart and the resource-side tool PEP already have with them.
+    category: componentsApplication
+    subcategory: componentsApplicationCore
+    edges:
+      to:
+        - componentApplicationInputHandling
+        - componentModelServing
+        - componentAgentNetworkPolicyEnforcementPoint
+        - componentAuditRecordRepository
+      from:
+        - componentApplicationOutputHandling
+        - componentModelServing
+        - componentAgentNetworkPolicyEnforcementPoint
+        - componentIdentityProvider
+        - componentAuthorizationPolicyDecisionPoint
+    externalReferences:
+      - type: spec
+        id: nist-sp-800-207
+        title: NIST SP 800-207 — Zero Trust Architecture
+        url: https://doi.org/10.6028/NIST.SP.800-207
+      - type: spec
+        id: nist-sp-800-162-abac
+        title: NIST SP 800-162 — Guide to Attribute Based Access Control (ABAC)
+          Definition and Considerations
+        url: https://csrc.nist.gov/pubs/sp/800/162/upd2/final
+      - type: other
+        id: mitre-attack-m1037
+        title: 'MITRE ATT&CK M1037: Filter Network Traffic'
+        url: https://attack.mitre.org/mitigations/M1037/
+  - id: componentToolHosting
+    title: Tool Hosting
+    description:
+      - >
+        **Tool hosting** is the serving substrate that runs untrusted external tool code
+        — third-party tool backends and plugin implementations — on behalf of the AI system.
+        It owns the execution environment in which that external code actually runs, as
+        a peer of {{componentRuntimeHosting}} among the deployment substrates.
+      - >
+        Its defining attribute is the trust posture of what it hosts. Because the hosted
+        code is third-party and cannot be vouched for in advance, the controlling threat
+        is arbitrary code execution, so strong isolation and sandboxing — process and
+        OS-level confinement, application containers, and hardware/hypervisor-backed boundaries
+        ({{ref:nist-sp-800-190}}) — together with least-privilege confinement are first-order
+        rather than optional. This is what separates it from {{componentModelServing}}:
+        model serving makes the system's own trusted model available for inference, while
+        tool hosting runs code the system did not write and cannot vouch for.
+      - >
+        Tool hosting is the hosted workload, not the boundary it runs inside; the confinement
+        itself is owned by {{componentIsolationRuntime}}, within which this substrate
+        executes. It is what {{componentToolServer}} — the process fronting external tool
+        capabilities — runs on, the same relationship {{componentRuntimeHosting}} has to
+        {{componentModelServing}}.
+    category: componentsInfrastructure
+    subcategory: componentsDeployment
+    edges:
+      to:
+        - componentToolServer
+      from:
+        - componentIsolationRuntime
+    externalReferences:
+      - type: spec
+        id: nist-sp-800-190
+        title: 'NIST SP 800-190: Application Container Security Guide'
+        url: https://doi.org/10.6028/NIST.SP.800-190
+  - id: componentRuntimeHosting
+    title: Runtime Hosting
+    description:
+      - >
+        **Runtime hosting** is the serving substrate on which the AI system's own
+        first-party workloads execute: the application and agent code, and the model-serving
+        stack ({{componentModelServing}}) that makes the model available for inference.
+        It owns the execution environment for these first-party workloads, as distinct
+        from external tool code, and sits alongside tool hosting within the deployment
+        substrate.
+      - >
+        Application execution and agent execution share this one substrate and one set
+        of hosting controls, so they are modeled as a single component rather than two.
+        The autonomy/workload difference that would otherwise separate an application
+        workload from a higher-autonomy agent workload is a deferred component attribute,
+        not a second node; in the interim this component carries the agent / higher-autonomy
+        control set as the conservative default. This keeps the distinction an attribute
+        question rather than component sprawl.
+      - >
+        It is distinct from {{componentToolHosting}}, which runs untrusted external tool
+        code rather than a first-party workload; runtime hosting runs the system's own
+        application and agent logic and hosts the model-serving stack. Like its peer it
+        is the hosted workload, executing inside the confinement owned by
+        {{componentIsolationRuntime}}. Its three hosted workloads are
+        {{componentApplication}}, {{componentReasoningCore}} (the agent code), and
+        {{componentModelServing}} — the same hosting-substrate relationship
+        {{componentToolHosting}} has to {{componentToolServer}}.
+    category: componentsInfrastructure
+    subcategory: componentsDeployment
+    edges:
+      to:
+        - componentModelServing
+        - componentApplication
+        - componentReasoningCore
+      from:
+        - componentIsolationRuntime
+  - id: componentToolInputHandling
+    title: Tool Input Handling
+    description:
+      - >
+        **Tool input handling** is the content-layer handling stage on the tool side of
+        the tool-server boundary that validates, sanitizes, and filters incoming tool-invocation
+        requests, and provider-supplied content such as {{componentExternalPromptTemplate}}
+        entering the serving surface, before the tool server acts on them. It is the
+        tool-boundary instance of the in-flow input-handling pattern the corpus already
+        models at the application, orchestration, and agent boundaries.
+      - >
+        It sits between the connection-layer admission performed by {{componentToolNetworkPolicyEnforcementPoint}},
+        which decides whether a request reaches the tool zone at all, and {{componentAuthorizationPolicyEnforcementPoint}},
+        which decides whether the validated request may perform the action it names. Its
+        responsibility is the *content* of the admitted request, not the connection: argument
+        validation, schema and type checking, and filtering of malformed or over-scoped
+        invocations at the resource edge.
+      - >
+        The threats it answers are tool-request-shaped — argument injection and malformed
+        or coerced invocations arriving at the tool boundary — which are distinct from
+        the orchestration-context filtering performed deeper in the agent. Keeping it
+        separate from the tool server preserves the validation-locus / action-locus distinction
+        the in-flow handling pattern relies on.
+    category: componentsExternalTools
+    subcategory: componentsToolInvocationPath
+    edges:
+      to:
+        - componentAuthorizationPolicyEnforcementPoint
+        - componentAuditRecordRepository
+      from:
+        - componentToolNetworkPolicyEnforcementPoint
+        - componentExternalPromptTemplate
+  - id: componentToolOutputHandling
+    title: Tool Output Handling
+    description:
+      - >
+        **Tool output handling** is the content-layer handling stage that validates, sanitizes,
+        and filters tool responses as they leave the tool server, before they cross the
+        tool boundary back toward the agent. It is the output-side counterpart of {{componentToolInputHandling}}
+        and the fourth instance of the in-flow output-handling pattern the corpus models
+        at the application, orchestration, and agent boundaries.
+      - >
+        Its defining threat is tool-response poisoning and output injection: a compromised,
+        malicious, or confused tool can embed instruction-shaped or otherwise harmful
+        content in its response to steer the agent that consumes it. This surface is where
+        response content is schema-checked, sanitized, and trust-labeled at the {{componentToolServer}}
+        egress before it is handed to the connection-layer boundary at {{componentToolNetworkPolicyEnforcementPoint}}.
+      - >
+        These tool-response threats are distinct from orchestration-context filtering
+        deeper in the agent: they originate at the tool boundary and target whatever consumes
+        the tool output. Keeping the response-handling locus separate from the tool server
+        preserves the action-locus / validation-locus distinction the handling pattern
+        depends on.
+    category: componentsExternalTools
+    subcategory: componentsToolInvocationPath
+    edges:
+      to:
+        - componentToolNetworkPolicyEnforcementPoint
+        - componentAuditRecordRepository
+      from:
+        - componentToolServer
+  - id: componentAuditRecordRepository
+    title: Audit Record Repository
+    description:
+      - >
+        The durable, tamper-evident storage substrate that other components write their
+        logs and audit records to. Log storage here is treated as **write-once, append-only**
+        infrastructure — comparable to WORM (write once, read many) storage and hash-chained
+        or Merkle-linked audit trails — so that a written record cannot be silently altered
+        or deleted after the fact, and any tampering is detectable.
+      - >
+        This substrate may be **centralized**, a single log store shared across the deployment,
+        or **decentralized**, with each component or service maintaining its own tamper-evident
+        log locally; either posture satisfies the same integrity property. It is distinct
+        from {{componentDataStorage}} and {{componentModelStorage}}, which persist training
+        data and model artifacts respectively, rather than the runtime record of what
+        the system did.
+      - >
+        The repository is the storage locus, not the practice of using it: {{controlAgentObservability}}
+        and the detective controls it supports ({{controlThreatDetection}}, {{controlIncidentResponseManagement}})
+        consume the records held here to provide auditability, debugging, and incident
+        investigation. A compromised or unavailable repository undermines every control
+        that depends on record integrity for its evidentiary value. In classical terms this
+        is the audit record repository of NIST SP 800-53, whose AU-9 enhancements record the
+        separation this component rests on: the store held apart from the system being
+        audited, access restricted to a subset of privileged users, deletion requiring dual
+        authorization, and read-only access for those who only need to read.
+    category: componentsInfrastructure
+    subcategory: componentsDeployment
+    edges:
+      to: []
+      from:
+        - componentModelServing
+        - componentReasoningCore
+        - componentTools
+        - componentOrchestrationInputHandling
+        - componentOrchestrationOutputHandling
+        - componentAgentInputHandling
+        - componentAgentOutputHandling
+        - componentAgentNetworkPolicyEnforcementPoint
+        - componentApplicationNetworkPolicyEnforcementPoint
+        - componentToolNetworkPolicyEnforcementPoint
+        - componentApplicationInputHandling
+        - componentApplicationOutputHandling
+        - componentToolInputHandling
+        - componentToolOutputHandling
+        - componentApplication
+        - componentToolServer
+        - componentAuthorizationPolicyEnforcementPoint
