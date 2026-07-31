@@ -331,9 +331,11 @@ components:
         that store models themselves, though, should consider the same Model Storage
         risks that apply to model creators.
       - >
-        The discovery, cataloging, and metadata layer that consumers query to find which
-        model to retrieve is handled separately by {{componentModelRegistry}}; storage's
-        scope is strictly the artifact bytes and their lifecycle.
+        The registration and cataloging layer that determines which model may be
+        retrieved is handled separately by {{componentModelRegistry}}. Its entries are not
+        fetched by a consumer tier directly: {{componentModelServing}} consults it to
+        resolve which version and endpoint a request reaches. Storage's scope is strictly
+        the artifact bytes and their lifecycle.
     category: componentsInfrastructure
     subcategory: componentsDeployment
     edges:
@@ -373,8 +375,9 @@ components:
         and {{componentAuthorizationPolicyDecisionPoint}} as control-plane peers, the same
         relationship {{componentToolNetworkPolicyEnforcementPoint}} already has with them,
         and {{componentModelRegistry}} for which model version and deployment endpoint a
-        request should resolve to — the model-tier parallel to the registry consult the
-        tool network PEP already performs against {{componentToolRegistry}}. It executes
+        request should resolve to — the model-tier parallel to the registry consult
+        {{componentAgentNetworkPolicyEnforcementPoint}} performs against
+        {{componentToolRegistry}} before an outbound tool call. It executes
         on the hosting substrate provided by {{componentRuntimeHosting}}, within the
         confinement {{componentIsolationRuntime}} owns.
     category: componentsModel
@@ -400,12 +403,17 @@ components:
     title: Model Registry and Marketplace
     description:
       - >
-        The infrastructure that serves as the registration authority for AI/ML models:
-        cataloging and indexing them, holding the authoritative metadata (model cards,
+        The infrastructure that carries two roles for AI/ML models. It is the registration
+        authority — the locus at which an entry is admitted and the terms under which the
+        model may be listed are set — and the catalog that holds and serves what was
+        admitted: indexing the entries, holding the authoritative metadata (model cards,
         provenance records, evaluation results, licensing terms, version history), and
         publishing authoritative pointers to the storage endpoints where artifacts are
-        retrieved. This includes model hubs (e.g., HuggingFace Hub), model marketplaces,
-        enterprise model catalogs, and model discovery APIs.
+        retrieved. How rigorously admission is exercised varies by deployment and is a
+        control question, not a property of the locus: public model hubs (e.g., HuggingFace
+        Hub) admit on self-assertion, while an enterprise catalog may gate on review. This
+        includes model hubs, model marketplaces, enterprise model catalogs, and model
+        discovery APIs.
       - >
         Model registries serve a fundamentally different function from model storage
         ({{componentModelStorage}}). Storage holds the physical artifacts (weights,
@@ -429,8 +437,8 @@ components:
       - >
         {{componentModelServing}} consults this registry to resolve which model version
         and deployment endpoint a request should reach — the model-tier instance of the
-        same registry-consult pattern {{componentToolNetworkPolicyEnforcementPoint}} runs
-        against {{componentToolRegistry}} at the tool boundary.
+        same registry-consult pattern {{componentAgentNetworkPolicyEnforcementPoint}} runs
+        against {{componentToolRegistry}} before an outbound tool call.
     category: componentsInfrastructure
     subcategory: componentsRegistries
     edges:
@@ -610,9 +618,12 @@ components:
         tool functionality, authorization, or output handling produce risks distinct
         from those at the catalog layer.
       - >
-        The discovery, cataloging, and metadata layer that agents query to find which
-        tool to invoke (including parameter schemas, capability declarations, and
-        invocation methods) is handled separately by {{componentToolRegistry}}; this
+        The registration and cataloging layer that determines which tools an agent may
+        invoke (including parameter schemas, capability declarations, and invocation
+        methods) is handled separately by {{componentToolRegistry}}. Its entries are not
+        fetched by the agent directly: they reach the agent's outbound path as a
+        control-plane consult at {{componentAgentNetworkPolicyEnforcementPoint}}, which
+        admits a connection only to an endpoint the registry enumerates. This
         component's scope is strictly the runtime tool services and their invocation
         surface. As that runtime tool-services component, it is one member of the
         broader Tools components category, not the category itself — which also groups
@@ -636,13 +647,21 @@ components:
     title: Tool Registry and Discovery
     description:
       - >
-        The infrastructure that serves as the registration authority for tools available
-        to AI agents: cataloging and indexing them, holding the authoritative metadata
-        (tool descriptions, parameter schemas, capability declarations, publisher identity
+        The infrastructure that carries two roles for tools available to AI agents. It is
+        the registration authority — the locus at which an entry is admitted and the terms
+        under which the tool may be listed are set — and the catalog that holds and serves
+        what was admitted: indexing the entries, holding the authoritative metadata (tool
+        descriptions, parameter schemas, capability declarations, publisher identity
         information, invocation methods, and org-specific use restrictions), and publishing
-        authoritative pointers to the tool endpoints where invocations are made. This
-        includes tool registries, MCP server manifest repositories, tool discovery
-        endpoints, schema definition services, and namespace governance systems.
+        authoritative pointers to the tool endpoints where invocations are made. How
+        rigorously admission is exercised varies by deployment and is a control question,
+        not a property of the locus; a registry that admits without verifying publisher
+        identity is the premise of {{riskToolSourceProvenance}}. A deployment may realize
+        the two roles in one service or in several — a namespace governance system carrying
+        admission while a discovery endpoint serves the catalog — and this component covers
+        the pair either way. This includes tool registries, MCP server manifest
+        repositories, tool discovery endpoints, schema definition services, and namespace
+        governance systems.
       - >
         Registry scope intentionally covers BOTH selection metadata (which tool to invoke)
         AND invocation metadata (how to invoke it). Selection and invocation are tightly
@@ -680,27 +699,34 @@ components:
         invocation method) first enters the registry, expanding the set of
         {{componentTools}} an agent can invoke; it precedes and feeds the selection
         and invocation metadata this component already governs.
-      - "The registry also functions as the asset-inventory population that governance
-        processes and shadow-deployment detection act over — the same inventory
+      - "The registry is also the authored inventory that governance processes act over:
+        the enumerated set of tools, services, and serving endpoints an agentic system is
+        permitted to reach, each carrying a trust-state marker that lets stale or
+        unauthorized entries be flagged before a call is routed to them. It is an
+        allowlist the organization authors rather than a record of what is observed
+        running — this is the locus at which entries are admitted, reviewed and retired, the same inventory
         discipline {{ref:nist-800-53-cm-8}} and {{ref:cis-control-2}} require of software
-        assets generally, applied to the tool zone: the enumerated set of tools,
-        services, and serving endpoints an agentic system is permitted to reach, each
-        carrying a trust-state marker that lets stale or unauthorized entries be flagged
-        before a call is routed to them. This enumerated-endpoint role is protocol-agnostic
-        — MCP server manifests, A2A peer directories, and classical service-discovery
-        endpoints are deployment variations of the same function — and it is what
-        {{componentToolNetworkPolicyEnforcementPoint}} consults as a control-plane peer,
+        assets generally, applied to the tool zone. Detecting an endpoint that responds
+        without being registered ({{riskZombieShadowMCPServers}}) is a comparison against
+        this component rather than an operation within it: the registry supplies the
+        authorized set, and the detection happens where the call is made — at invocation,
+        through a runtime binding to the registered principal, and through the lifecycle
+        discipline that retires an entry when an endpoint is decommissioned. This
+        enumerated-endpoint role is protocol-agnostic — MCP server manifests, A2A peer
+        directories, and classical service-discovery endpoints are deployment variations
+        of the same function — and it is what
+        {{componentAgentNetworkPolicyEnforcementPoint}} consults as a control-plane peer,
         alongside {{componentIdentityProvider}} and {{componentAuthorizationPolicyDecisionPoint}},
-        to admit a connection only to an endpoint the registry actually enumerates. This
-        moves registry consultation to the network admission decision rather than the
-        reasoning-time tool-selection step, which draws on the registry's data
-        indirectly through whatever the served model already knows about available
+        to admit an outbound connection only to an endpoint the registry actually
+        enumerates. This moves registry consultation to the network admission decision
+        rather than the reasoning-time tool-selection step, which draws on the registry's
+        data indirectly through whatever the served model already knows about available
         tools."
     category: componentsInfrastructure
     subcategory: componentsRegistries
     edges:
       to:
-        - componentToolNetworkPolicyEnforcementPoint
+        - componentAgentNetworkPolicyEnforcementPoint
       from:
         - componentTools
     externalReferences:
@@ -1348,7 +1374,13 @@ components:
         second, redundant graph edge alongside the transport that already models the wire.
         It consults {{componentIdentityProvider}} and {{componentAuthorizationPolicyDecisionPoint}}
         as control-plane peers for the identity and policy context its own egress decisions
-        rest on, the same relationship the resource-side PEP already has with them. Where the
+        rest on, the same relationship the resource-side PEP already has with them, and
+        {{componentToolRegistry}} as a third such peer, for the tool-call class of
+        traffic only: an allowed-destination list is an egress question, so it is this side
+        of the connection that admits an outbound *tool* call only to an endpoint the
+        registry enumerates. Its other two traffic classes are not gated on that registry —
+        model-serving destinations resolve through {{componentModelRegistry}} at
+        {{componentModelServing}}, and the application handoff is a peer relationship. Where the
         call crosses into another identity domain it receives the delegated credential from
         {{componentFederationProxy}} and presents it on the outbound connection, which is why
         a compromised instance can leak the credentials it terminates: it is the only
@@ -1370,6 +1402,7 @@ components:
         - componentIdentityProvider
         - componentAuthorizationPolicyDecisionPoint
         - componentFederationProxy
+        - componentToolRegistry
     externalReferences:
       - type: spec
         id: nist-sp-800-207
@@ -1455,10 +1488,13 @@ components:
         connection between them is carried by {{componentAgentToolTransport}}. Realized as
         a sidecar or gateway in front of {{componentToolServer}}, it applies allowed-source,
         TLS/mTLS, rate-limit, and audit controls ({{ref:mitre-attack-m1037}}) at the
-        resource boundary, admitting a connection only to an endpoint
-        {{componentToolRegistry}} actually enumerates, alongside the identity and policy
-        context {{componentIdentityProvider}} and {{componentAuthorizationPolicyDecisionPoint}}
-        supply as control-plane peers.
+        resource boundary, admitting connections on the identity and policy context
+        {{componentIdentityProvider}} and {{componentAuthorizationPolicyDecisionPoint}}
+        supply as control-plane peers. The allowed-destination question is the caller's
+        rather than the provider's, so the enumerated-endpoint consult against
+        {{componentToolRegistry}} sits at {{componentAgentNetworkPolicyEnforcementPoint}}
+        and not here: a remote provider does not consult the caller's catalog to decide
+        whether to admit the caller.
       - >
         As a network-layer control it is distinct from the tool server itself, which performs
         the served action, and from content-layer handling: it governs which connections
@@ -1476,7 +1512,6 @@ components:
         - componentAuthorizationPolicyDecisionPoint
         - componentIdentityProvider
         - componentFederationProxy
-        - componentToolRegistry
     externalReferences:
       - type: spec
         id: nist-sp-800-207
