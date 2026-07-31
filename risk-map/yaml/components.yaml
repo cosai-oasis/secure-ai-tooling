@@ -309,6 +309,7 @@ components:
     edges:
       to:
         - componentTheModel
+        - componentModelStorage
         - componentModelRegistry
       from:
         - componentModelEvaluation
@@ -343,6 +344,7 @@ components:
         - componentModelServing
       from:
         - componentModelRegistry
+        - componentModelTrainingTuning
   - id: componentModelServing
     title: Model Serving Infrastructure & Policy Enforcement Point
     description:
@@ -445,6 +447,7 @@ components:
       to:
         - componentModelServing
         - componentModelStorage
+        - componentAuditRecordRepository
       from:
         - componentModelTrainingTuning
   - id: componentTheModel
@@ -493,7 +496,7 @@ components:
         - componentApplicationInputHandling
         - componentRuntimeHosting
   - id: componentApplicationOutputHandling
-    title: Output Handling
+    title: Application Output Handling
     description:
       - >
         Similar to input handling, output handling components filter, sanitize, and
@@ -502,7 +505,7 @@ components:
         for more development.
       - >
         This is also the application's own outbound gate: any influence the application
-        directs outward — including handing off to an agent it hosts — passes through
+        directs outward — including handing off to an agent it invokes — passes through
         this component rather than reaching another tier's core directly, mirroring
         the discipline this corpus already applies to reaching cores through their
         own input gate. The agent handoff crosses {{componentApplicationNetworkPolicyEnforcementPoint}}
@@ -520,7 +523,7 @@ components:
       from:
         - componentApplication
   - id: componentApplicationInputHandling
-    title: Input Handling
+    title: Application Input Handling
     description:
       - >
         Input handling components filter, sanitize, and protect against potentially
@@ -573,7 +576,7 @@ components:
         - componentAgentInputHandling
         - componentRuntimeHosting
   - id: componentOrchestrationOutputHandling
-    title: Output Handling
+    title: Orchestration Output Handling
     description:
       - >
         Orchestration output is responsible for validating, sanitizing, and safely  formatting
@@ -593,7 +596,7 @@ components:
         - componentRAGContent
         - componentOrchestrationInputHandling
   - id: componentOrchestrationInputHandling
-    title: Input Handling
+    title: Orchestration Input Handling
     description:
       - >
         Orchestration input handling  is responsible for validating, sanitizing, and  normalizing
@@ -625,9 +628,9 @@ components:
         control-plane consult at {{componentAgentNetworkPolicyEnforcementPoint}}, which
         admits a connection only to an endpoint the registry enumerates. This
         component's scope is strictly the runtime tool services and their invocation
-        surface. As that runtime tool-services component, it is one member of the
-        broader Tools components category, not the category itself — which also groups
-        the tool server, transport, and tool-authorization components.
+        surface. It owns the served functionality itself; the tool server that
+        exposes it, the handling stages that screen its traffic, and the authorization
+        point that gates its invocations are separate components in the same category.
       - Because these tools and services are sourced from many independent
         providers, the agent's security depends on a distributed set of trust
         relationships rather than a single vendor. Each provider is a separate point
@@ -718,15 +721,15 @@ components:
         {{componentAgentNetworkPolicyEnforcementPoint}} consults as a control-plane peer,
         alongside {{componentIdentityProvider}} and {{componentAuthorizationPolicyDecisionPoint}},
         to admit an outbound connection only to an endpoint the registry actually
-        enumerates. This moves registry consultation to the network admission decision
-        rather than the reasoning-time tool-selection step, which draws on the registry's
-        data indirectly through whatever the served model already knows about available
-        tools."
+        enumerates. Registry consultation therefore sits at the network admission decision;
+        reasoning-time tool selection draws on the registry's data only indirectly,
+        through whatever the served model already knows about available tools."
     category: componentsInfrastructure
     subcategory: componentsRegistries
     edges:
       to:
         - componentAgentNetworkPolicyEnforcementPoint
+        - componentAuditRecordRepository
       from:
         - componentTools
     externalReferences:
@@ -806,7 +809,7 @@ components:
         - componentAgentInputHandling
       from: []
   - id: componentAgentInputHandling
-    title: Input Handling
+    title: Agent Input Handling
     description:
       - >
         An agent’s interaction with the world begins at the User or Application, which  serves
@@ -850,7 +853,7 @@ components:
         title: MCP Security Best Practices / Threat Model
         url: https://modelcontextprotocol.io/specification
   - id: componentAgentOutputHandling
-    title: Output Handling
+    title: Agent Output Handling
     description:
       - >
         The final step in an agent’s workflow is response rendering, the process or  formatting
@@ -896,9 +899,12 @@ components:
         it has itself authenticated. Re-asserting a principal's authority into a *different*
         trust domain is {{componentFederationProxy}}'s role, not this plane's.
       - >
-        In classical access-control terms ({{ref:nist-sp-800-162-abac}}) this plane is
-        the Policy Information Point: the authoritative source of the subject identity
-        and attributes — roles, claims, scopes — that an authorization decision consults.
+        In classical access-control terms ({{ref:nist-sp-800-162-abac}}) this plane fills
+        the Policy Information Point role for subject attributes: it is the authoritative
+        source of the subject identity and attributes — roles, claims, scopes — that an
+        authorization decision consults. That role is broader than what this plane covers.
+        A policy information point supplies every input an evaluation needs, including
+        object attributes and environment conditions, and no component here supplies those.
         It does not itself decide whether a requested action is permitted ({{componentAuthorizationPolicyDecisionPoint}}
         evaluates policy against the identity this plane asserts) nor enforce that verdict
         ({{componentAuthorizationPolicyEnforcementPoint}}). Standard realizations include
@@ -912,8 +918,7 @@ components:
       - >
         The plane is cross-cutting rather than specific to any one protocol. Protocol
         bindings and deployment forms such as a hosted IdP versus a self-run authorization
-        server are attributes of how identity is wired in, not the identity of the component
-        itself; it remains the identity trust root on which dependent components — notably
+        server vary by deployment. The component is the identity trust root on which dependent components — notably
         {{componentAuthorizationPolicyDecisionPoint}} — base every authorization decision.
         As that trust root it reaches every network enforcement point in the corpus as a
         control-plane peer, not only the tool zone's: the identity context it asserts backs
@@ -931,6 +936,7 @@ components:
         - componentAgentNetworkPolicyEnforcementPoint
         - componentApplicationNetworkPolicyEnforcementPoint
         - componentModelServing
+        - componentAuditRecordRepository
       from: []
     externalReferences:
       - type: spec
@@ -984,6 +990,7 @@ components:
         - componentAgentNetworkPolicyEnforcementPoint
         - componentApplicationNetworkPolicyEnforcementPoint
         - componentModelServing
+        - componentAuditRecordRepository
       from:
         - componentIdentityProvider
     subcategory: componentsIdentity
@@ -995,13 +1002,13 @@ components:
         that a remote tooling or service provider supplies at runtime, which the tool
         zone's content-layer handling fills in and injects into the model context.
       - >
-        This component owns the provider-supplied template text and its injection point
-        at the tool boundary. Upstream, the template originates outside the trusted
-        system and is fetched from a third party; downstream, it enters through
-        {{componentToolInputHandling}} — the same content-layer gate that screens every
-        other tool-invocation request — rather than reaching {{componentToolServer}}
-        directly, so a poisoned or impersonating template is caught at that gate instead
-        of injecting straight into what the server serves.
+        This component owns the provider-supplied template text. It originates at
+        {{componentToolServer}} and travels the path the server's other output takes: out
+        through {{componentToolOutputHandling}}, which screens it as it leaves the tool
+        boundary, and on toward the agent, where {{componentAgentInputHandling}} screens it
+        again before it reaches the model context. Both gates matter because the party at
+        risk is the consumer rather than the provider — a poisoned or impersonating
+        template harms whoever executes it, not whoever served it.
       - >
         The key distinction from locally authored system instructions is origin and trust:
         because the text is *instruction-shaped* rather than reference data, yet enters
@@ -1011,8 +1018,9 @@ components:
     subcategory: componentsToolInvocationPath
     edges:
       to:
-        - componentToolInputHandling
-      from: []
+        - componentToolOutputHandling
+      from:
+        - componentToolServer
   - id: componentAgentConsentSurface
     title: Agent Consent Elicitation Surface
     description:
@@ -1029,17 +1037,18 @@ components:
         can be populated by agent- or server-returned data, the surface is also an untrusted
         input channel: confirmation content must be sanitized before display and each
         returned approval must be integrity-bound to the exact action it described, so
-        a compromised upstream cannot spoof, replay, or re-target the consent. It is distinct
-        from the {{componentApplicationConsentSurface}}: that surface is the application's
-        deliberate user-facing approval step, whereas this one is driven by the agent's
-        autonomous reasoning loop.
+        a compromised upstream cannot spoof, replay, or re-target the consent.
       - >
-        The defining attribute of this surface is request volume under autonomy. A naively
-        designed agent elicits confirmation on a high proportion of its tool calls, so
-        this is the locus where elicitation traffic concentrates and where habituation
-        pressure on the human approver accumulates. Effective designs reserve elicitation
-        for genuinely consequential or irreversible actions and bind each approval to
-        one specific action rather than a standing class.
+        What separates this surface from {{componentApplicationConsentSurface}} is where
+        the decision is taken. An application approval step interrupts a user already
+        engaged with the application, holding the context the decision needs; an
+        elicitation is raised mid-loop, on the agent's initiative, to a user who may not
+        be present and did not ask the question. Request volume follows from that locus
+        rather than defining it: a naively designed agent elicits confirmation on a high
+        proportion of its tool calls, so habituation pressure on the human approver
+        accumulates here. Effective designs reserve elicitation for genuinely consequential
+        or irreversible actions and bind each approval to one specific action rather than
+        a standing class.
     category: componentsApplication
     subcategory: componentsAgent
     edges:
@@ -1059,17 +1068,21 @@ components:
         The **isolation runtime boundary** is the execution locus that runs untrusted
         or partially-trusted code under enforced confinement. It is the runtime trust
         boundary around code whose behavior cannot be fully vouched for in advance: agent
-        tool invocations, remotely-served tool backends, and model- or agent-generated
-        code that is executed rather than merely returned.
+        tool invocations and remotely-served tool backends, which are hosted workloads in
+        their own right, and model- or agent-generated code that is executed rather than
+        merely returned, which is confined within the context of whichever workload runs
+        it rather than on a substrate of its own. A model executing code for its own use
+        outside an agentic frame is modeled here as an agentic implementation; the field
+        has no settled pattern for that case, and this is a known simplification.
       - >
         The role is realized through a spectrum of mechanisms with different boundary
         strengths, from process and OS-level confinement (seccomp, AppArmor/SELinux, namespaces)
         through application containers to hardware- and hypervisor-backed isolation ({{ref:gvisor}},
         {{ref:kata-containers}}, microVMs, TEE/confidential-computing enclaves), consistent
         with container-hardening guidance such as {{ref:nist-sp-800-190}}. The mechanism
-        is an attribute of a given deployment, not the identity of the component; sizing
-        the boundary to the trust level of the enclosed code is a *least-privilege* and
-        *defense-in-depth* decision.
+        varies by deployment. This component owns the boundary itself, sized to
+        the trust level of the enclosed code as a *least-privilege* and *defense-in-depth*
+        decision.
       - >
         This is a distinct architectural locus from the workloads it contains. Serving
         infrastructure makes a model available, and tools and the reasoning core do work;
@@ -1172,6 +1185,7 @@ components:
       to:
         - componentToolOutputHandling
         - componentTools
+        - componentExternalPromptTemplate
         - componentAuditRecordRepository
       from:
         - componentTools
@@ -1205,11 +1219,10 @@ components:
         This channel owns the transport between {{componentAgentNetworkPolicyEnforcementPoint}}
         and {{componentToolNetworkPolicyEnforcementPoint}}: the underlying stream or
         socket and the session that carries messages in flight across the network
-        boundary the two PEPs sit at opposite ends of. It is the wire the PEP pairing
-        enforces over, not a separate path around it — the client-PEP / channel /
-        resource-PEP shape this specific trust-boundary crossing uses, distinct from the
-        bare PEP-to-PEP peering used elsewhere in the corpus where no separate channel
-        component exists. Mutual authentication of the calling and serving ends is
+        boundary the two PEPs sit at opposite ends of. It owns the wire the PEP pairing
+        enforces over: the client-PEP / channel / resource-PEP shape this trust-boundary
+        crossing uses, where other PEP pairings peer directly with no channel between
+        them. Mutual authentication of the calling and serving ends is
         exercised here, though issuing and deciding that authentication is the job of
         dedicated components elsewhere in the graph ({{componentIdentityProvider}},
         {{componentAgentNetworkPolicyEnforcementPoint}}). It is distinct from the tool
@@ -1282,10 +1295,9 @@ components:
         and originates credentials within its own trust domain, and from
         {{componentAuthorizationPolicyEnforcementPoint}}, which adjudicates allow-or-deny:
         the proxy carries and binds authorization context across domains rather than
-        originating it or deciding. That is what places it in the identity plane without
-        making it an identity authority — it speaks with borrowed authority, and a
-        component that originates its own credentials cannot be confused about whose
-        authority it holds. Its lineage is the classical credential-delegation role — WS-Trust
+        originating it or deciding. It sits in the identity plane without being an
+        identity authority: it speaks with borrowed authority, and a component that
+        originates its own credentials cannot be confused about whose authority it holds. Its lineage is the classical credential-delegation role — WS-Trust
         security token services, OAuth token-exchange brokers, Kerberos constrained delegation
         — each re-presenting a principal's authority across a trust boundary.
       - >
@@ -1304,6 +1316,7 @@ components:
       to:
         - componentAgentNetworkPolicyEnforcementPoint
         - componentToolNetworkPolicyEnforcementPoint
+        - componentAuditRecordRepository
       from:
         - componentIdentityProvider
     externalReferences:
@@ -1342,8 +1355,8 @@ components:
         either one reaching past its counterpart into the other tier's output/input gates.
         These classes of traffic share this one enforcement point because they cross the
         same operator's egress boundary under the same reviewed policy; splitting them
-        across separate agent-side PEPs would create two narrower gates an attacker could
-        arbitrage between. Orchestration is not a further class of traffic here: it has
+        across separate agent-side PEPs would leave two narrower gates covering one
+        boundary. Orchestration is not a further class of traffic here: it has
         no PEP of its own and no edge to this one, reaching {{componentModelServing}}
         directly as the served model's own machinery rather than as agent-operator-controlled
         egress. It is a Policy Enforcement Point in the {{ref:nist-sp-800-207}} sense —
@@ -1369,9 +1382,9 @@ components:
         and output handling — connection enforcement wraps prompt and context enforcement.
         It is the client-side half of a pair: the resource-side {{componentToolNetworkPolicyEnforcementPoint}}
         enforces the remote tool provider's ingress policy at the other end of the same
-        connection, carried between them by {{componentAgentToolTransport}} rather than a
-        direct link — the pairing is the logical relationship the two PEPs have, not a
-        second, redundant graph edge alongside the transport that already models the wire.
+        connection, carried between them by {{componentAgentToolTransport}}, which owns
+        the wire; the pairing between the two enforcement points is a logical relationship
+        rather than a path of its own.
         It consults {{componentIdentityProvider}} and {{componentAuthorizationPolicyDecisionPoint}}
         as control-plane peers for the identity and policy context its own egress decisions
         rest on, the same relationship the resource-side PEP already has with them, and
@@ -1383,8 +1396,9 @@ components:
         {{componentModelServing}}, and the application handoff is a peer relationship. Where the
         call crosses into another identity domain it receives the delegated credential from
         {{componentFederationProxy}} and presents it on the outbound connection, which is why
-        a compromised instance can leak the credentials it terminates: it is the only
-        first-party component that both holds borrowed authority and puts it on a wire.
+        a compromised instance can leak the credentials it terminates: it puts borrowed
+        authority on a wire, which {{componentFederationProxy}} mints and binds but does
+        not itself transmit.
     category: componentsApplication
     subcategory: componentsAgent
     edges:
@@ -1446,8 +1460,8 @@ components:
         it forwards to is what presents downstream credentials and performs the actual
         delegation to {{componentTools}}. Sitting ahead of that credential swap is what
         keeps the authorized identity the caller's own rather than the standing downstream
-        credential the server presents. Realizations vary — a sidecar policy engine or
-        API-gateway authorization — deployment attributes, not the identity of the component.
+        credential the server presents. Realizations vary by deployment — a sidecar policy engine, or
+        API-gateway authorization.
       - >
         Its scope is the authorization of the action, not the network path. It governs
         *whether* a given identity may perform a specific operation on a specific resource
@@ -1559,7 +1573,7 @@ components:
         The application network policy enforcement point is the client-side data-plane
         control through which the application's outbound traffic transits — its
         model-serving traffic to the model-serving endpoint it consumes, and its handoff
-        traffic to an agent it hosts, carried to {{componentAgentNetworkPolicyEnforcementPoint}}
+        traffic to an agent it invokes, carried to {{componentAgentNetworkPolicyEnforcementPoint}}
         as a peer rather than reaching the agent's input gate directly. Both classes of
         traffic cross the same operator's egress boundary under the same reviewed policy,
         so neither bypasses this gate. It is a Policy Enforcement Point in the
@@ -1634,9 +1648,11 @@ components:
         model serving makes the system's own trusted model available for inference, while
         tool hosting runs code the system did not write and cannot vouch for.
       - >
-        Tool hosting is the hosted workload, not the boundary it runs inside; the confinement
-        itself is owned by {{componentIsolationRuntime}}, within which this substrate
-        executes. It is what {{componentToolServer}} — the process fronting external tool
+        The confinement mechanism is owned by {{componentIsolationRuntime}}, within which
+        this substrate executes; what remains this component's own is the substrate it
+        presents to the hosted code — it must not expose first-party credentials, service-account
+        identity, or internal network reachability to a third-party workload, whatever
+        confinement surrounds it. It is what {{componentToolServer}} — the process fronting external tool
         capabilities — runs on, the same relationship {{componentRuntimeHosting}} has to
         {{componentModelServing}}.
     category: componentsInfrastructure
@@ -1663,12 +1679,10 @@ components:
         substrate.
       - >
         Application execution and agent execution share this one substrate and one set
-        of hosting controls, so they are modeled as a single component rather than two.
-        The autonomy/workload difference that would otherwise separate an application
-        workload from a higher-autonomy agent workload is a deferred component attribute,
-        not a second node; in the interim this component carries the agent / higher-autonomy
-        control set as the conservative default. This keeps the distinction an attribute
-        question rather than component sprawl.
+        of hosting controls. Where the two differ in required control strength — an
+        application workload against a higher-autonomy agent workload — this component
+        carries the agent's stronger set, so the substrate is sized to the most demanding
+        workload it hosts.
       - >
         It is distinct from {{componentToolHosting}}, which runs untrusted external tool
         code rather than a first-party workload; runtime hosting runs the system's own
@@ -1707,9 +1721,9 @@ components:
       - >
         The threats it answers are tool-request-shaped — argument injection and malformed
         or coerced invocations arriving at the tool boundary — which are distinct from
-        the orchestration-context filtering performed deeper in the agent. Keeping it
-        separate from the tool server preserves the validation-locus / action-locus distinction
-        the in-flow handling pattern relies on.
+        the orchestration-context filtering performed deeper in the agent. It owns validation of the
+        request's content; {{componentToolServer}} owns performing the action the validated
+        request names.
     category: componentsExternalTools
     subcategory: componentsToolInvocationPath
     edges:
@@ -1718,7 +1732,6 @@ components:
         - componentAuditRecordRepository
       from:
         - componentToolNetworkPolicyEnforcementPoint
-        - componentExternalPromptTemplate
   - id: componentToolOutputHandling
     title: Tool Output Handling
     description:
@@ -1729,11 +1742,15 @@ components:
         and the fourth instance of the in-flow output-handling pattern the corpus models
         at the application, orchestration, and agent boundaries.
       - >
-        Its defining threat is tool-response poisoning and output injection: a compromised,
-        malicious, or confused tool can embed instruction-shaped or otherwise harmful
-        content in its response to steer the agent that consumes it. This surface is where
-        response content is schema-checked, sanitized, and trust-labeled at the {{componentToolServer}}
-        egress before it is handed to the connection-layer boundary at {{componentToolNetworkPolicyEnforcementPoint}}.
+        Its defining threat is misbehavior downstream of the server it fronts: a tool
+        ({{componentTools}}) returning malformed, oversized, or instruction-shaped content
+        that the server would otherwise pass on unexamined. This surface is where response
+        content is schema-checked, sanitized, and trust-labeled at the {{componentToolServer}}
+        egress before it is handed to the connection-layer boundary at
+        {{componentToolNetworkPolicyEnforcementPoint}}. Being a provider-side gate, it does
+        not mitigate a compromised or malicious tool server — such a server would not
+        sanitize its own output. Response screening on the agent's behalf belongs to
+        {{componentAgentInputHandling}}.
       - >
         These tool-response threats are distinct from orchestration-context filtering
         deeper in the agent: they originate at the tool boundary and target whatever consumes
@@ -1748,12 +1765,16 @@ components:
         - componentAuditRecordRepository
       from:
         - componentToolServer
+        - componentExternalPromptTemplate
   - id: componentAuditRecordRepository
     title: Audit Record Repository
     description:
       - >
         The durable, tamper-evident storage substrate that other components write their
-        logs and audit records to. Log storage here is treated as **write-once, append-only**
+        logs and audit records to. Its writers are not only the data path: the identity
+        provider, the policy decision point, the federation proxy and the registries emit
+        the authentication, authorization, delegation and admission records that make a
+        decision reconstructable after the fact. Log storage here is treated as **write-once, append-only**
         infrastructure — comparable to WORM (write once, read many) storage and hash-chained
         or Merkle-linked audit trails — so that a written record cannot be silently altered
         or deleted after the fact, and any tampering is detectable.
@@ -1772,8 +1793,9 @@ components:
         that depends on record integrity for its evidentiary value. In classical terms this
         is the audit record repository of NIST SP 800-53, whose AU-9 enhancements record the
         separation this component rests on: the store held apart from the system being
-        audited, access restricted to a subset of privileged users, deletion requiring dual
-        authorization, and read-only access for those who only need to read.
+        audited, management of the audit logging functionality restricted to a subset of
+        privileged users, dual authorization required for movement or deletion of audit
+        information, and read-only access for those who only need to read.
     category: componentsInfrastructure
     subcategory: componentsDeployment
     edges:
@@ -1796,3 +1818,8 @@ components:
         - componentApplication
         - componentToolServer
         - componentAuthorizationPolicyEnforcementPoint
+        - componentIdentityProvider
+        - componentAuthorizationPolicyDecisionPoint
+        - componentFederationProxy
+        - componentToolRegistry
+        - componentModelRegistry

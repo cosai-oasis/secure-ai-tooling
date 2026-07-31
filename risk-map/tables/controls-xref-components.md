@@ -2,25 +2,25 @@
 |:-------------------------------------------|:--------------------------------------------------|:-------------------------------------|:--------------------------------------------------------|
 | controlAdversarialTrainingAndTesting       | Adversarial Training and Testing                  | componentTheModel                    | The Model                                               |
 | controlAgentCredentialIsolation            | Agent Credential Isolation                        | componentMemory                      | Model Memory                                            |
-| controlAgentCredentialIsolation            | Agent Credential Isolation                        | componentOrchestrationInputHandling  | Input Handling                                          |
-| controlAgentCredentialIsolation            | Agent Credential Isolation                        | componentOrchestrationOutputHandling | Output Handling                                         |
+| controlAgentCredentialIsolation            | Agent Credential Isolation                        | componentOrchestrationInputHandling  | Orchestration Input Handling                            |
+| controlAgentCredentialIsolation            | Agent Credential Isolation                        | componentOrchestrationOutputHandling | Orchestration Output Handling                           |
 | controlAgentCredentialIsolation            | Agent Credential Isolation                        | componentReasoningCore               | Agent Reasoning Core                                    |
 | controlAgentCredentialIsolation            | Agent Credential Isolation                        | componentTools                       | External Tools and Services                             |
-| controlAgentExecutionBounds                | Agent Execution Bounds                            | componentOrchestrationInputHandling  | Input Handling                                          |
-| controlAgentExecutionBounds                | Agent Execution Bounds                            | componentOrchestrationOutputHandling | Output Handling                                         |
+| controlAgentExecutionBounds                | Agent Execution Bounds                            | componentOrchestrationInputHandling  | Orchestration Input Handling                            |
+| controlAgentExecutionBounds                | Agent Execution Bounds                            | componentOrchestrationOutputHandling | Orchestration Output Handling                           |
 | controlAgentExecutionBounds                | Agent Execution Bounds                            | componentReasoningCore               | Agent Reasoning Core                                    |
 | controlAgentIntegrityManagement            | Agent Integrity Management                        | componentModelServing                | Model Serving Infrastructure & Policy Enforcement Point |
-| controlAgentIntegrityManagement            | Agent Integrity Management                        | componentOrchestrationInputHandling  | Input Handling                                          |
+| controlAgentIntegrityManagement            | Agent Integrity Management                        | componentOrchestrationInputHandling  | Orchestration Input Handling                            |
 | controlAgentIntegrityManagement            | Agent Integrity Management                        | componentReasoningCore               | Agent Reasoning Core                                    |
 | controlAgentIntegrityManagement            | Agent Integrity Management                        | componentTools                       | External Tools and Services                             |
-| controlAgentInventoryManagement            | Agent Inventory Management                        | componentOrchestrationInputHandling  | Input Handling                                          |
-| controlAgentInventoryManagement            | Agent Inventory Management                        | componentOrchestrationOutputHandling | Output Handling                                         |
+| controlAgentInventoryManagement            | Agent Inventory Management                        | componentOrchestrationInputHandling  | Orchestration Input Handling                            |
+| controlAgentInventoryManagement            | Agent Inventory Management                        | componentOrchestrationOutputHandling | Orchestration Output Handling                           |
 | controlAgentInventoryManagement            | Agent Inventory Management                        | componentReasoningCore               | Agent Reasoning Core                                    |
 | controlAgentInventoryManagement            | Agent Inventory Management                        | componentTools                       | External Tools and Services                             |
-| controlAgentObservability                  | Agent Observability                               | componentAgentInputHandling          | Input Handling                                          |
-| controlAgentObservability                  | Agent Observability                               | componentAgentOutputHandling         | Output Handling                                         |
-| controlAgentObservability                  | Agent Observability                               | componentOrchestrationInputHandling  | Input Handling                                          |
-| controlAgentObservability                  | Agent Observability                               | componentOrchestrationOutputHandling | Output Handling                                         |
+| controlAgentObservability                  | Agent Observability                               | componentAgentInputHandling          | Agent Input Handling                                    |
+| controlAgentObservability                  | Agent Observability                               | componentAgentOutputHandling         | Agent Output Handling                                   |
+| controlAgentObservability                  | Agent Observability                               | componentOrchestrationInputHandling  | Orchestration Input Handling                            |
+| controlAgentObservability                  | Agent Observability                               | componentOrchestrationOutputHandling | Orchestration Output Handling                           |
 | controlAgentObservability                  | Agent Observability                               | componentReasoningCore               | Agent Reasoning Core                                    |
 | controlAgentPluginPermissions              | Agent Permissions                                 | componentMemory                      | Model Memory                                            |
 | controlAgentPluginPermissions              | Agent Permissions                                 | componentRAGContent                  | Retrieval Augmented Generation & Content                |
@@ -30,17 +30,17 @@
 | controlApplicationAccessManagement         | Application Access and Resource Management        | componentApplication                 | Application                                             |
 | controlComponentIdentityProvenance         | Component Identity Provenance                     | componentApplication                 | Application                                             |
 | controlComponentIdentityProvenance         | Component Identity Provenance                     | componentModelServing                | Model Serving Infrastructure & Policy Enforcement Point |
-| controlComponentIdentityProvenance         | Component Identity Provenance                     | componentOrchestrationInputHandling  | Input Handling                                          |
-| controlComponentIdentityProvenance         | Component Identity Provenance                     | componentOrchestrationOutputHandling | Output Handling                                         |
+| controlComponentIdentityProvenance         | Component Identity Provenance                     | componentOrchestrationInputHandling  | Orchestration Input Handling                            |
+| controlComponentIdentityProvenance         | Component Identity Provenance                     | componentOrchestrationOutputHandling | Orchestration Output Handling                           |
 | controlComponentIdentityProvenance         | Component Identity Provenance                     | componentTools                       | External Tools and Services                             |
 | controlIncidentResponseManagement          | Incident Response Management                      | all                                  | All Components                                          |
-| controlInputValidationAndSanitization      | Input Validation and Sanitization                 | componentAgentInputHandling          | Input Handling                                          |
-| controlInputValidationAndSanitization      | Input Validation and Sanitization                 | componentApplicationInputHandling    | Input Handling                                          |
-| controlInputValidationAndSanitization      | Input Validation and Sanitization                 | componentOrchestrationInputHandling  | Input Handling                                          |
+| controlInputValidationAndSanitization      | Input Validation and Sanitization                 | componentAgentInputHandling          | Agent Input Handling                                    |
+| controlInputValidationAndSanitization      | Input Validation and Sanitization                 | componentApplicationInputHandling    | Application Input Handling                              |
+| controlInputValidationAndSanitization      | Input Validation and Sanitization                 | componentOrchestrationInputHandling  | Orchestration Input Handling                            |
 | controlInterComponentTransportSecurity     | Inter-Component Transport Security                | componentApplication                 | Application                                             |
 | controlInterComponentTransportSecurity     | Inter-Component Transport Security                | componentModelServing                | Model Serving Infrastructure & Policy Enforcement Point |
-| controlInterComponentTransportSecurity     | Inter-Component Transport Security                | componentOrchestrationInputHandling  | Input Handling                                          |
-| controlInterComponentTransportSecurity     | Inter-Component Transport Security                | componentOrchestrationOutputHandling | Output Handling                                         |
+| controlInterComponentTransportSecurity     | Inter-Component Transport Security                | componentOrchestrationInputHandling  | Orchestration Input Handling                            |
+| controlInterComponentTransportSecurity     | Inter-Component Transport Security                | componentOrchestrationOutputHandling | Orchestration Output Handling                           |
 | controlInterComponentTransportSecurity     | Inter-Component Transport Security                | componentTools                       | External Tools and Services                             |
 | controlIsolatedConfidentialComputing       | Isolated and Confidential Computing               | componentMemory                      | Model Memory                                            |
 | controlIsolatedConfidentialComputing       | Isolated and Confidential Computing               | componentModelServing                | Model Serving Infrastructure & Policy Enforcement Point |
@@ -68,14 +68,14 @@
 | controlModelRegistryIntegrity              | Model Registry and Discovery Integrity            | componentModelRegistry               | Model Registry and Marketplace                          |
 | controlOrchestratorAndRouteIntegrity       | Orchestrator and Route Integrity                  | componentApplication                 | Application                                             |
 | controlOrchestratorAndRouteIntegrity       | Orchestrator and Route Integrity                  | componentModelServing                | Model Serving Infrastructure & Policy Enforcement Point |
-| controlOutputValidationAndSanitization     | Output Validation and Sanitization                | componentAgentOutputHandling         | Output Handling                                         |
-| controlOutputValidationAndSanitization     | Output Validation and Sanitization                | componentApplicationOutputHandling   | Output Handling                                         |
-| controlOutputValidationAndSanitization     | Output Validation and Sanitization                | componentOrchestrationOutputHandling | Output Handling                                         |
+| controlOutputValidationAndSanitization     | Output Validation and Sanitization                | componentAgentOutputHandling         | Agent Output Handling                                   |
+| controlOutputValidationAndSanitization     | Output Validation and Sanitization                | componentApplicationOutputHandling   | Application Output Handling                             |
+| controlOutputValidationAndSanitization     | Output Validation and Sanitization                | componentOrchestrationOutputHandling | Orchestration Output Handling                           |
 | controlRedTeaming                          | Red Teaming                                       | all                                  | All Components                                          |
 | controlRetrievalAndVectorSystemIntegrity   | Retrieval and Vector System Integrity Management  | componentDataFilteringAndProcessing  | Data Filtering and Processing                           |
 | controlRetrievalAndVectorSystemIntegrity   | Retrieval and Vector System Integrity Management  | componentDataSources                 | Data Sources                                            |
 | controlRetrievalAndVectorSystemIntegrity   | Retrieval and Vector System Integrity Management  | componentDataStorage                 | Data Storage Infrastructure                             |
-| controlRuntimePrivacyEnhancingTechnologies | Privacy Enhancing Technologies for Inference      | componentApplicationOutputHandling   | Output Handling                                         |
+| controlRuntimePrivacyEnhancingTechnologies | Privacy Enhancing Technologies for Inference      | componentApplicationOutputHandling   | Application Output Handling                             |
 | controlRuntimePrivacyEnhancingTechnologies | Privacy Enhancing Technologies for Inference      | componentModelServing                | Model Serving Infrastructure & Policy Enforcement Point |
 | controlSecureByDefaultMLTooling            | Secure-by-Default ML Tooling                      | componentModelEvaluation             | Model Evaluation                                        |
 | controlSecureByDefaultMLTooling            | Secure-by-Default ML Tooling                      | componentModelServing                | Model Serving Infrastructure & Policy Enforcement Point |
