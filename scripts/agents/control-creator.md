@@ -100,6 +100,7 @@ Read these as needed rather than reinventing their rules:
 - `risk-map/docs/contributing/submission-readiness-guide.md` — the pre-submission checklist.
 - `risk-map/docs/yaml-authoring-subset.md` — the prose grammar and `externalReferences` flow.
 - ADRs: 020 (controls schema), 016 (references/sentinels), 017 (prose subset), 027 (framework versioning). ADR-031 is your own charter.
+- **Resolving an ADR citation.** When a rule is cited as `ADR-0NN DN` (e.g. `ADR-031 D1`), read the decision itself — `docs/adr/0NN-*.md`, the `### DN.` heading — rather than relying on a paraphrase or the ADR's title. Cross-cutting rules are uniformly `D`-numbered; there is no separate `P` tier.
 - The **classical-lexicon** skill — terminology grounding.
 - The **altitude-check** skill — the packaged altitude tests and the novelty/absorb check.
 - The **mapping-selection** skill — component/risk/framework-mapping selection with the NIST function cheat-sheet.
