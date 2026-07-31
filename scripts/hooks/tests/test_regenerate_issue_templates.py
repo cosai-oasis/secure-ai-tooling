@@ -427,8 +427,10 @@ class TestPerSourceRegenerationDeterminism:
 # selector (D8/D9/D10).
 #
 # D8 — tuple-selector placeholder: {{COMPONENT_CATEGORY_SUBCATEGORY}} renders
-#      the seven valid (category, subcategory) pairs derived from the
-#      categories[].subcategory[] nesting in components.yaml, formatted as
+#      the valid (category, subcategory) pairs derived from the
+#      categories[].subcategory[] nesting in components.yaml (eleven pairs as
+#      of ADR-030 D1's componentsExternalTools category and D2's componentsIdentity
+#      subcategory), formatted as
 #      "<category-id>: <subcategory-id>" with ": " as delimiter.
 #      {{COMPONENT_SUBCATEGORIES}} is retired.
 #
@@ -451,13 +453,16 @@ class TestPerSourceRegenerationDeterminism:
 # Tuple format: "<category-id>: <subcategory-id>" with ": " delimiter.
 _EXPECTED_TUPLES: list[str] = [
     "componentsInfrastructure: componentsData",
-    "componentsInfrastructure: componentsModelDeployment",
+    "componentsInfrastructure: componentsDeployment",
     "componentsInfrastructure: componentsRegistries",
+    "componentsInfrastructure: componentsIdentity",
     "componentsModel: componentsModelTraining",
     "componentsModel: componentsModelCore",
     "componentsModel: componentsOrchestration",
     "componentsApplication: componentsAgent",
     "componentsApplication: componentsApplicationCore",
+    "componentsExternalTools: componentsToolNetworkControls",
+    "componentsExternalTools: componentsToolInvocationPath",
 ]
 
 # An example of an invalid pair — this category/subcategory crossing is not in
@@ -468,8 +473,9 @@ _INVALID_PAIR_EXAMPLE = "componentsApplication: componentsData"
 class TestTupleSelectorRendering:
     """
     Asserts that {{COMPONENT_CATEGORY_SUBCATEGORY}} expands to exactly the
-    seven valid taxonomy tuples formatted as "<category-id>: <subcategory-id>",
-    in taxonomy declaration order (ADR-026 D8).
+    eleven valid taxonomy tuples formatted as "<category-id>: <subcategory-id>",
+    in taxonomy declaration order (ADR-026 D8; count includes ADR-030 D1's
+    componentsExternalTools category and ADR-030 D2's componentsIdentity subcategory).
     """
 
     def test_component_category_subcategory_placeholder_is_registered(self, repo_root: Path) -> None:
@@ -517,10 +523,10 @@ class TestTupleSelectorRendering:
             "Implementation has not removed the old placeholder yet."
         )
 
-    def test_expand_placeholder_yields_exactly_seven_tuples(self, repo_root: Path) -> None:
+    def test_expand_placeholder_yields_exactly_eleven_tuples(self, repo_root: Path) -> None:
         """
         Test that expanding {{COMPONENT_CATEGORY_SUBCATEGORY}} produces exactly
-        seven dropdown option lines that parse as strings.
+        eleven dropdown option lines that parse as strings.
 
         Given: A template containing {{COMPONENT_CATEGORY_SUBCATEGORY}} and
                a renderer backed by the real schemas and components.yaml
@@ -528,13 +534,12 @@ class TestTupleSelectorRendering:
         Then: YAML-parsing the option lines yields one string per expected tuple,
               each matching a tuple from _EXPECTED_TUPLES.
 
-        ADR-026 D8: seven valid pairings, rendered as YAML-quoted strings so
+        ADR-026 D8: eleven valid pairings (eight legacy + two added by ADR-030
+        D1's componentsExternalTools category + one added by ADR-030 D2's
+        componentsIdentity subcategory), rendered as YAML-quoted strings so
         that GitHub's check-jsonschema accepts the dropdown options block.
         Options containing ': ' must be quoted; unquoted they parse as dicts
         and fail vendor.github-issue-forms validation.
-
-        This test will FAIL against the current unquoted production renderer
-        (options parse as dicts, not strings) for the right reason.
         """
         import sys
 
@@ -919,7 +924,7 @@ class TestRetiredSubcategoriesPlaceholder:
             "componentsData",
             "componentsAgent",
             "componentsOrchestration",
-            "componentsModelDeployment",
+            "componentsDeployment",
             "componentsModelCore",
             "componentsApplicationCore",
         ]

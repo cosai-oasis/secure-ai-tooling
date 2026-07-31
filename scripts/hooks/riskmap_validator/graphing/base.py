@@ -21,6 +21,7 @@ Dependencies:
     - yaml: YAML configuration file parsing
 """
 
+import warnings
 from os.path import commonprefix
 from pathlib import Path
 
@@ -28,7 +29,12 @@ import yaml
 
 from riskmap_validator.models import ComponentNode, ControlNode, RiskNode
 
-from .graph_utils import MermaidConfigLoader, UnionFind, _get_schema_categories
+from .graph_utils import (
+    MermaidConfigLoader,
+    SchemaCategoriesUnavailableError,
+    UnionFind,
+    _get_schema_categories,
+)
 
 
 class BaseGraph:
@@ -64,7 +70,16 @@ class BaseGraph:
         # Emit a warning for each schema category that lacks a styling entry.
         # Fires once per (message, category, module) by default; test suites using
         # warnings.simplefilter("always") will see all occurrences.
-        self.config_loader.emit_missing_category_warnings(_get_schema_categories())
+        #
+        # Here the schema is advisory decoration, not an assertion: rendering a
+        # graph must not depend on the schema being reachable from the current
+        # working directory. Downgrade the failure to a warning rather than
+        # letting it abort generation. The category style guard in
+        # validate_riskmap.py is the caller that treats it as an assertion.
+        try:
+            self.config_loader.emit_missing_category_warnings(_get_schema_categories())
+        except SchemaCategoriesUnavailableError as e:
+            warnings.warn(f"Skipping category styling warnings: {e}", stacklevel=2)
         self._category_names_cache = None
         self.controls: dict[str, ControlNode] = {}
         self.risks: dict[str, RiskNode] = {}

@@ -5,38 +5,67 @@
   "description": "Schema for validating YAML-based components definition",
   "type": "object",
   "properties": {
-    "title": { "type": "string" },
-    "description": { "$ref": "riskmap.schema.json#/definitions/utils/prose-strict" },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "$ref": "riskmap.schema.json#/definitions/utils/prose-strict"
+    },
     "categories": {
       "type": "array",
-      "items": { "$ref": "#/definitions/category" }
+      "items": {
+        "$ref": "#/definitions/category"
+      }
     },
     "subcategory": {
       "type": "array",
-      "items": { "$ref": "#/definitions/subcategory" }
+      "items": {
+        "$ref": "#/definitions/subcategory"
+      }
     },
     "components": {
       "type": "array",
-      "items": { "$ref": "#/definitions/component" }
+      "items": {
+        "$ref": "#/definitions/component"
+      }
     }
   },
-  "required": ["title", "description", "categories", "components"],
+  "required": [
+    "title",
+    "description",
+    "categories",
+    "components"
+  ],
   "definitions": {
     "category": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
-          "enum": ["componentsInfrastructure", "componentsModel", "componentsApplication"]
+          "enum": [
+            "componentsInfrastructure",
+            "componentsModel",
+            "componentsApplication",
+            "componentsExternalTools"
+          ]
         },
-        "title": { "type": "string" },
+        "title": {
+          "type": "string"
+        },
         "subcategory": {
           "type": "array",
-          "items": { "$ref": "#/definitions/subcategory" }
+          "items": {
+            "$ref": "#/definitions/subcategory"
+          }
         },
-        "description": { "$ref": "riskmap.schema.json#/definitions/utils/prose-strict" }
+        "description": {
+          "$ref": "riskmap.schema.json#/definitions/utils/prose-strict"
+        }
       },
-      "required": ["id", "title"],
+      "required": [
+        "id",
+        "title"
+      ],
       "additionalProperties": false
     },
     "subcategory": {
@@ -49,16 +78,26 @@
             "componentsData",
             "componentsAgent",
             "componentsOrchestration",
-            "componentsModelDeployment",
+            "componentsDeployment",
             "componentsModelCore",
             "componentsApplicationCore",
-            "componentsRegistries"
+            "componentsRegistries",
+            "componentsToolNetworkControls",
+            "componentsToolInvocationPath",
+            "componentsIdentity"
           ]
         },
-        "title": { "type": "string" },
-        "description": { "$ref": "riskmap.schema.json#/definitions/utils/prose-strict" }
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "$ref": "riskmap.schema.json#/definitions/utils/prose-strict"
+        }
       },
-      "required": ["id", "title"],
+      "required": [
+        "id",
+        "title"
+      ],
       "additionalProperties": false
     },
     "component": {
@@ -95,18 +134,41 @@
             "componentAgentInputHandling",
             "componentAgentOutputHandling",
             "componentModelRegistry",
-            "componentToolRegistry"
+            "componentToolRegistry",
+            "componentIdentityProvider",
+            "componentAuthorizationPolicyDecisionPoint",
+            "componentAgentConsentSurface",
+            "componentIsolationRuntime",
+            "componentToolServer",
+            "componentAgentToolTransport",
+            "componentFederationProxy",
+            "componentAgentNetworkPolicyEnforcementPoint",
+            "componentAuthorizationPolicyEnforcementPoint",
+            "componentToolNetworkPolicyEnforcementPoint",
+            "componentApplicationConsentSurface",
+            "componentToolHosting",
+            "componentRuntimeHosting",
+            "componentToolInputHandling",
+            "componentToolOutputHandling",
+            "componentAuditRecordRepository",
+            "componentApplicationNetworkPolicyEnforcementPoint"
           ]
         },
-        "title": { "type": "string" },
-        "description": { "$ref": "riskmap.schema.json#/definitions/utils/prose-strict" },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "$ref": "riskmap.schema.json#/definitions/utils/prose-strict"
+        },
         "category": {
           "$ref": "#/definitions/category/properties/id"
         },
         "subcategory": {
           "$ref": "#/definitions/subcategory/properties/id"
         },
-        "edges": { "$ref": "#/definitions/edges" },
+        "edges": {
+          "$ref": "#/definitions/edges"
+        },
         "mappings": {
           "type": "object",
           "description": "Per ADR-018 D6 + ADR-027 D3a/D7 (#343): all six framework keys strictly wired to framework-mapping-patterns-pinned; additionalProperties:false closes the legacy catch-all.",
@@ -116,27 +178,39 @@
           "properties": {
             "mitre-atlas": {
               "type": "array",
-              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/mitre-atlas" }
+              "items": {
+                "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/mitre-atlas"
+              }
             },
             "nist-ai-rmf": {
               "type": "array",
-              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/nist-ai-rmf" }
+              "items": {
+                "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/nist-ai-rmf"
+              }
             },
             "stride": {
               "type": "array",
-              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/stride" }
+              "items": {
+                "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/stride"
+              }
             },
             "owasp-top10-llm": {
               "type": "array",
-              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/owasp-top10-llm" }
+              "items": {
+                "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/owasp-top10-llm"
+              }
             },
             "iso-22989": {
               "type": "array",
-              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/iso-22989" }
+              "items": {
+                "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/iso-22989"
+              }
             },
             "eu-ai-act": {
               "type": "array",
-              "items": { "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/eu-ai-act" }
+              "items": {
+                "$ref": "frameworks.schema.json#/definitions/framework-mapping-patterns-pinned/properties/eu-ai-act"
+              }
             }
           },
           "additionalProperties": false
@@ -145,20 +219,92 @@
           "$ref": "external-references.schema.json#/definitions/externalReferences"
         }
       },
-      "required": ["id", "title", "category", "edges"],
+      "required": [
+        "id",
+        "title",
+        "category",
+        "edges"
+      ],
       "additionalProperties": false,
       "allOf": [
         {
-          "if": { "properties": { "category": { "const": "componentsInfrastructure" } } },
-          "then": { "properties": { "subcategory": { "enum": ["componentsData", "componentsModelDeployment", "componentsRegistries"] } } }
+          "if": {
+            "properties": {
+              "category": {
+                "const": "componentsInfrastructure"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "subcategory": {
+                "enum": [
+                  "componentsData",
+                  "componentsDeployment",
+                  "componentsRegistries",
+                  "componentsIdentity"
+                ]
+              }
+            }
+          }
         },
         {
-          "if": { "properties": { "category": { "const": "componentsModel" } } },
-          "then": { "properties": { "subcategory": { "enum": ["componentsModelTraining", "componentsModelCore", "componentsOrchestration"] } } }
+          "if": {
+            "properties": {
+              "category": {
+                "const": "componentsModel"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "subcategory": {
+                "enum": [
+                  "componentsModelTraining",
+                  "componentsModelCore",
+                  "componentsOrchestration"
+                ]
+              }
+            }
+          }
         },
         {
-          "if": { "properties": { "category": { "const": "componentsApplication" } } },
-          "then": { "properties": { "subcategory": { "enum": ["componentsAgent", "componentsApplicationCore"] } } }
+          "if": {
+            "properties": {
+              "category": {
+                "const": "componentsApplication"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "subcategory": {
+                "enum": [
+                  "componentsAgent",
+                  "componentsApplicationCore"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "category": {
+                "const": "componentsExternalTools"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "subcategory": {
+                "enum": [
+                  "componentsToolNetworkControls",
+                  "componentsToolInvocationPath"
+                ]
+              }
+            }
+          }
         }
       ]
     },
@@ -167,14 +313,29 @@
       "properties": {
         "to": {
           "type": "array",
-          "items": { "$ref": "#/definitions/component/properties/id" }
+          "items": {
+            "$ref": "#/definitions/component/properties/id"
+          }
         },
         "from": {
           "type": "array",
-          "items": { "$ref": "#/definitions/component/properties/id" }
+          "items": {
+            "$ref": "#/definitions/component/properties/id"
+          }
         }
       },
-      "anyOf": [{ "required": ["to"] }, { "required": ["from"] }],
+      "anyOf": [
+        {
+          "required": [
+            "to"
+          ]
+        },
+        {
+          "required": [
+            "from"
+          ]
+        }
+      ],
       "additionalProperties": false
     }
   }

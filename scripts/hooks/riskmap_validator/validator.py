@@ -7,9 +7,10 @@ LifecycleOrderCheckResult dataclass returned by the lifecycle check,
 check_lifecycle_stage_order_uniqueness function that validates order
 uniqueness across lifecycle stage entries, check_controls_components_mirror
 that validates control→component references against the component ID set
-(ADR-020 D7), and check_category_subcategory_nesting that validates each
+(ADR-020 D7), check_category_subcategory_nesting that validates each
 component's (category, subcategory) pair against the categories block
-declaration (ADR-018 D6).
+declaration (ADR-018 D6), and check_category_style_coverage that validates
+every schema category has a mermaid-styles.yaml entry (ADR-030 D1).
 
 Dependencies:
     - PyYAML: For YAML file parsing
@@ -386,3 +387,54 @@ def check_category_subcategory_nesting(
                 )
 
     return warnings
+
+
+# ---------------------------------------------------------------------------
+# Category style guard (ADR-030 D1, Consequences)
+# ---------------------------------------------------------------------------
+
+
+def check_category_style_coverage(
+    schema_categories: set[str],
+    styled_categories: set[str],
+) -> list[str]:
+    """
+    Check that every schema component category has a mermaid-styles entry.
+
+    Per ADR-030 Consequences: "mermaid-styles.yaml needs a componentsExternalTools
+    style or the new category renders unstyled; a real-corpus guard should
+    fail CI on a styleless category." An unstyled category renders without
+    its fill/stroke definitions, which is a visible break in every generated
+    diagram.
+
+    Args:
+        schema_categories: Set of category ids declared in the components
+                            schema's category.id enum.
+        styled_categories: Set of category ids with a mermaid-styles.yaml
+                            entry, typically from
+                            MermaidConfigLoader.get_component_category_styles().keys().
+                            Callers must source this from real configuration:
+                            the loader silently substitutes emergency defaults
+                            when the styles file is missing or unreadable, and
+                            those defaults would satisfy this check without any
+                            styling actually being configured.
+
+    Returns:
+        List of human-readable warning strings, one per unstyled category;
+        empty when every schema category is styled. An empty
+        schema_categories set yields a warning rather than an empty list: the
+        comprehension below would otherwise iterate zero times and report a
+        clean result for a check that examined nothing.
+    """
+    # No corpus has zero component categories, so an empty set means the
+    # caller could not read the schema. Report it instead of passing
+    # vacuously — this is a second line of defence behind
+    # _get_schema_categories(), which raises on an unreadable schema.
+    if not schema_categories:
+        return ["No component categories were supplied to the category style check"]
+
+    return [
+        f"Category '{category}' has no mermaid-styles.yaml styling entry"
+        for category in sorted(schema_categories)
+        if category not in styled_categories
+    ]

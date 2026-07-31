@@ -123,6 +123,13 @@ def nesting_fn():
 # Synthesized-corpus harness for subprocess tests
 # ---------------------------------------------------------------------------
 
+# Both corpora below declare only the categories the scenario needs.
+# write_riskmap_corpus derives each corpus's schema category enum from its own
+# categories: block, so the category style check (ADR-030 D1) only asks about
+# those. Style is not separately supplied here: these corpora omit
+# mermaid-styles.yaml entirely, so MermaidConfigLoader falls back to its
+# emergency defaults, which style every real category.
+
 # Components.yaml with valid nesting + clean components (no mismatches, all
 # subcategories declared). One category ("componentsInfrastructure") has a
 # nested subcategory; components reference it consistently.
@@ -151,19 +158,18 @@ _CLEAN_COMPONENTS: dict[str, Any] = {
                 {"id": "componentsData", "title": "Data"},
             ],
         },
-        {
-            "id": "componentsModel",
-            "title": "Model",
-            "subcategory": [
-                {"id": "componentsModelTraining", "title": "Model Training"},
-            ],
-        },
     ],
 }
 
 # Components.yaml with a mismatched-nesting component: componentBad claims
 # category=componentsModel, subcategory=componentsData (which is declared
-# under componentsInfrastructure, not componentsModel).
+# under componentsInfrastructure, not componentsModel). Both categories are
+# declared here so componentBad is a genuine mis-nesting rather than a
+# reference to an undeclared category. componentModelGood is correctly-nested
+# filler — distinct from _CLEAN_COMPONENTS (deliberately NOT shared; see
+# _DIRTY_NESTING_CONTROLS below) — so this fixture's own paired controls can
+# reference a componentsModel component without involving componentBad, the
+# one component under test here.
 _DIRTY_NESTING_COMPONENTS: dict[str, Any] = {
     "components": [
         {
@@ -179,6 +185,13 @@ _DIRTY_NESTING_COMPONENTS: dict[str, Any] = {
             "category": "componentsModel",
             "subcategory": "componentsData",  # MISMATCH — under Infrastructure
             "edges": {"to": [], "from": ["componentAlpha"]},
+        },
+        {
+            "id": "componentModelGood",
+            "title": "Model Good",
+            "category": "componentsModel",
+            "subcategory": "componentsModelTraining",
+            "edges": {"to": [], "from": []},
         },
     ],
     "categories": [
@@ -199,8 +212,8 @@ _DIRTY_NESTING_COMPONENTS: dict[str, Any] = {
     ],
 }
 
-# Clean controls — no dangling refs so the mirror check stays silent and
-# only the nesting check produces output.
+# Clean controls paired with _CLEAN_COMPONENTS only — no dangling refs so the
+# mirror check stays silent and only the nesting check produces output.
 _CLEAN_CONTROLS: dict[str, Any] = {
     "controls": [
         {
@@ -209,7 +222,27 @@ _CLEAN_CONTROLS: dict[str, Any] = {
             "category": "controlsGovernance",
             "components": ["componentAlpha"],
             "risks": [],
-            "personas": [],
+            "personas": ["personaModelProvider"],
+        }
+    ]
+}
+
+# Clean controls paired with _DIRTY_NESTING_COMPONENTS only. Deliberately NOT
+# shared with _CLEAN_CONTROLS, to avoid cross-fixture contamination:
+# referencing componentGamma here — a
+# component that only exists in _CLEAN_COMPONENTS — would fail the mirror
+# check and contaminate the dirty-nesting tests below with an unrelated
+# warning. References componentModelGood rather than componentBad so it does
+# not depend on the one component this fixture deliberately breaks.
+_DIRTY_NESTING_CONTROLS: dict[str, Any] = {
+    "controls": [
+        {
+            "id": "controlClean",
+            "title": "Clean",
+            "category": "controlsGovernance",
+            "components": ["componentAlpha", "componentModelGood"],
+            "risks": [],
+            "personas": ["personaModelProvider"],
         }
     ]
 }
@@ -442,11 +475,12 @@ class TestNestingBlockToggleCLI:
 
     def test_dirty_nesting_with_block_exits_1(self, tmp_path, write_riskmap_corpus, run_validate_riskmap):
         """
-        Given: synthesised corpus with mismatched nesting (componentBad) + clean controls
+        Given: synthesised corpus with mismatched nesting (componentBad) + its own
+               paired clean controls (_DIRTY_NESTING_CONTROLS)
         When: validate_riskmap.py --force --allow-isolated --block runs
-        Then: exit 1 (nesting warning fires the toggle; mirror stays silent)
+        Then: exit 1 (nesting warning fires the toggle; mirror and style stay silent)
         """
-        write_riskmap_corpus(tmp_path, _DIRTY_NESTING_COMPONENTS, _CLEAN_CONTROLS)
+        write_riskmap_corpus(tmp_path, _DIRTY_NESTING_COMPONENTS, _DIRTY_NESTING_CONTROLS)
         result = run_validate_riskmap(tmp_path, "--block")
         assert result.returncode == 1, (
             f"Expected exit 1 with --block on dirty-nesting corpus; got {result.returncode}\n"
@@ -457,11 +491,12 @@ class TestNestingBlockToggleCLI:
         self, tmp_path, write_riskmap_corpus, run_validate_riskmap
     ):
         """
-        Given: synthesised dirty-nesting corpus, no --block
+        Given: synthesised dirty-nesting corpus + its own paired clean controls
+               (_DIRTY_NESTING_CONTROLS), no --block
         When: validate_riskmap.py --force --allow-isolated runs
         Then: exit 0 (warn-only preserved) AND output names the offending component
         """
-        write_riskmap_corpus(tmp_path, _DIRTY_NESTING_COMPONENTS, _CLEAN_CONTROLS)
+        write_riskmap_corpus(tmp_path, _DIRTY_NESTING_COMPONENTS, _DIRTY_NESTING_CONTROLS)
         result = run_validate_riskmap(tmp_path)
         assert result.returncode == 0, (
             f"Expected exit 0 without --block on dirty-nesting corpus; got {result.returncode}\n"

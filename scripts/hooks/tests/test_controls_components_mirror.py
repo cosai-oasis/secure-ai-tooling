@@ -170,6 +170,13 @@ def _make_control(
 # check (after 2.3.9 wires, every component has a valid (category, subcategory)
 # pair so the nesting check stays silent and the mirror behavior remains
 # isolated).
+#
+# One category is enough: write_riskmap_corpus derives this corpus's schema
+# category enum from the categories: block below, so the category style check
+# (ADR-030 D1) only ever asks about componentsInfrastructure here. Style is not
+# separately supplied: these corpora omit mermaid-styles.yaml, so
+# MermaidConfigLoader falls back to its emergency defaults, which style every
+# real category.
 _MINIMAL_COMPONENTS: dict[str, Any] = {
     "components": [
         {
@@ -226,7 +233,11 @@ _DIRTY_CONTROLS: dict[str, Any] = {
     ]
 }
 
-# controls.yaml using only "all" escape hatch — must not trigger mirror warning.
+# controls.yaml exercising the "all" escape hatch — must not trigger a mirror
+# warning. This corpus deliberately contains nothing but the escape hatch:
+# every component reference in it is "all", which is the whole point of the
+# fixture. A second, specific-component control would make the corpus pass
+# for a reason other than the escape hatch being honoured.
 _ESCAPE_ALL_CONTROLS: dict[str, Any] = {
     "controls": [
         {
@@ -236,7 +247,7 @@ _ESCAPE_ALL_CONTROLS: dict[str, Any] = {
             "components": ["all"],
             "risks": [],
             "personas": [],
-        }
+        },
     ]
 }
 

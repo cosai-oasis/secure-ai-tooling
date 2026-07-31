@@ -149,7 +149,7 @@
         "componentCategories": {
           "type": "object",
           "description": "Styling for component categories shared between graph types",
-          "required": ["componentsInfrastructure", "componentsApplication", "componentsModel"],
+          "required": ["componentsInfrastructure", "componentsApplication", "componentsModel", "componentsExternalTools"],
           "additionalProperties": false,
           "properties": {
             "componentsInfrastructure": {
@@ -162,6 +162,9 @@
               "$ref": "#/definitions/componentCategory"
             },
             "componentsModel": {
+              "$ref": "#/definitions/componentCategory"
+            },
+            "componentsExternalTools": {
               "$ref": "#/definitions/componentCategory"
             }
           }

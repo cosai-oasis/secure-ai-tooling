@@ -53,6 +53,11 @@ sharedElements:
       stroke: '#333333' # Dark gray border
       strokeWidth: '2px' # Medium border width
       subgroupFill: '#f0e6e6' # Darker red for model subgroups
+    componentsExternalTools:
+      fill: '#f3e6ff' # Light purple for tools components
+      stroke: '#333333' # Dark gray border
+      strokeWidth: '2px' # Medium border width
+      subgroupFill: '#e6d4f0' # Darker purple for tools subgroups
 
 # Graph-type-specific configurations
 graphTypes:
