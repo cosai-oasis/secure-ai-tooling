@@ -86,7 +86,7 @@ Personas are referenced **by** other entities: risks list personas **impacted** 
 - `risk-map/docs/contributing/framework-mappings-style-guide.md` — ISO 22989 / EU AI Act pinned forms.
 - `risk-map/docs/contributing/submission-readiness-guide.md` — the impacted-vs-implementer persona model.
 - ADRs: 021 (personas schema), 027 (framework versioning), 016/017 (references, prose). ADR-031 is your charter.
-- **Resolving an ADR citation.** When a rule is cited as `ADR-0NN DN` (e.g. `ADR-031 D1`), read the decision itself — `docs/adr/0NN-*.md`, the `### DN.` heading — rather than relying on a paraphrase or the ADR's title. Cross-cutting rules are uniformly `D`-numbered; there is no separate `P` tier.
+- **Resolving an ADR citation.** When a rule is cited as `ADR-0NN DN` (e.g. `ADR-031 D1`), read the decision itself — `docs/adr/0NN-*.md`, the heading matching the exact identifier cited — rather than relying on a paraphrase or the ADR's title. Most ADRs number cross-cutting rules `D1`, `D2`, ...; some earlier ADRs (e.g. ADR-014) use `P1`-`P6` instead — match whichever the citation names.
 - The **classical-lexicon** and **audit-identification-questions** skills.
 
 ## Output contract
