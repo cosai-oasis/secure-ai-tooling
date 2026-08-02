@@ -41,6 +41,32 @@
         "Declines to edit the entry and redirects the change to risk-creator (and content-reviewer)",
         "Does not modify risks.yaml"
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "What is componentReasoningCore?",
+      "note": "Component entity-type coverage. Exercises the component-specific relationship shape (edges to/from, category/subcategory), which no prior case in this file exercised.",
+      "expected_output": "Explains the component's role plainly from components.yaml, its category/subcategory (componentsApplication / componentsAgent), its bidirectional edges (to: componentAgentOutputHandling, componentOrchestrationInputHandling; from: componentAgentInputHandling, componentOrchestrationOutputHandling), and the controls/risks that attach to it, with ids linked.",
+      "expectations": [
+        "Explains what componentReasoningCore is and why it matters, grounded in its components.yaml definition",
+        "States its category and subcategory (componentsApplication / componentsAgent)",
+        "Lists its edges by direction (to and from), naming the connected component ids correctly",
+        "Lists the controls and/or risks that attach to it, with ids",
+        "Read-only; does not edit the entry"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Who is the Model Provider persona?",
+      "note": "Persona entity-type coverage. Exercises the persona-specific relationship shape (responsibilities, identificationQuestions, ISO 22989/EU AI Act mapping), which no prior case in this file exercised.",
+      "expected_output": "Explains personaModelProvider's role plainly from personas.yaml, its responsibilities, its ISO 22989 mapping (AI Producer@2022), and the risks that impact it plus the controls it implements, with ids linked.",
+      "expectations": [
+        "Explains what the Model Provider persona is and why it matters, grounded in its personas.yaml definition",
+        "States its ISO 22989 mapping (AI Producer@2022) and notes if an EU AI Act mapping exists or does not",
+        "Lists risks that impact this persona and/or controls it implements, with ids",
+        "Does not fabricate an identificationQuestions count or content not present in the corpus",
+        "Read-only; does not edit the entry"
+      ]
     }
   ]
 }
