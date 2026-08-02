@@ -73,7 +73,7 @@ design intent per mode:
 | Input the consumer starts with | Canonical question phrasing | Skill |
 |---|---|---|
 | An **activity or role** ("I develop agents", "I use an AI coding assistant", "I host third-party models") | *"what risks am I exposed to if I &lt;do X with AI&gt;?"* | `explore-risks-by-activity` |
-| A **classical security concept** (PEP, least privilege, reference monitor, defense in depth, zero trust, attestation, provenance) | *"what CoSAI controls are like &lt;a classical concept&gt;?"* | `explore-controls-by-classical` |
+| A **classical security concept** (PEP, least privilege, reference monitor, defense in depth, zero trust, attestation, provenance) | *"what CoSAI controls are like &lt;a classical security concept&gt;?"* | `explore-controls-by-classical` |
 | A **named product / technology, or a component id** (AWS Nitro, Pinecone, LangChain, or `componentReasoningCore`) | *"what risks and controls attach to &lt;a product or component&gt; in an agentic/AI system?"* | `explore-exposure` |
 | **Identity-first** — the consumer wants to be classified | *"which persona am I?"* (walk the persona `identificationQuestions`) | `explore-persona-self-id` |
 | An **external-framework entry** (EU AI Act Article 14, MITRE ATLAS AML.T0051, NIST AI RMF GOVERN-6.2, STRIDE Tampering, ISO 22989 AI Producer) | *"show what the Risk Map maps to &lt;that framework entry&gt;?"* | `explore-framework-coverage` |
