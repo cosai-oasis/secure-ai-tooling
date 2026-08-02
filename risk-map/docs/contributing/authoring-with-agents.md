@@ -115,15 +115,15 @@ references.
 - [`altitude-check`](../../../scripts/skills/altitude-check/) — tests whether a
   draft sits at the right level of abstraction (absorb-or-decompose;
   merge-vs-distinct).
+- [`audit-identification-questions`](../../../scripts/skills/audit-identification-questions/)
+  — persona-vertical only; `persona-creator` invokes it while drafting
+  `identificationQuestions`, not as a separate post-hoc step.
 
 **Pre-submission checks** (audit disciplines, useful before you submit — see
 [`submission-readiness-guide.md`](submission-readiness-guide.md)):
 
 - [`audit-framework-mappings`](../../../scripts/skills/audit-framework-mappings/)
   — checks that framework mappings are well-formed and correctly scoped.
-- [`audit-identification-questions`](../../../scripts/skills/audit-identification-questions/)
-  — checks a persona's identification questions for distinguishing power
-  (applied by `persona-creator`).
 
 ---
 
