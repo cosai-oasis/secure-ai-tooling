@@ -96,4 +96,7 @@ python3 scripts/hooks/precommit/validate_neutrality.py scripts/skills/<name>/SKI
   applying the `issue-response-reviewer` agent (which composes
   `content-reviewer` in `issue` mode) and writing a local draft to edit and
   post; citations follow ADR-016/017 (`externalReferences` + `{{ref:}}`).
-  Read the issue proposal, not a PR diff (ADR-031 D6, ADR-008).
+  Read the issue proposal, not a PR diff (ADR-031 D6). The canonical/harness
+  boundary and this skill's admission to the shipped set are governed by a
+  separate ADR-008 amendment (D4, D7) — see PR #440, which must land at or
+  before this PR.
