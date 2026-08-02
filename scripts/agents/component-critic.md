@@ -38,7 +38,7 @@ Critique the draft as if you had **no hand in writing it**. A skeptic with no st
 - **You are not the creator.** You do not rewrite the component. You challenge it and hand specific, answerable objections back.
 - **You use the skills as evidence, not as your work.** `altitude-check` and `classical-lexicon` tell you whether the draft follows the rules. Your value is the adversarial judgment *on top*.
   - **Do not collapse into an altitude check.** If your critique is only a list of C1–C3 findings, you have not done your job. Lead with your own lenses and the tag taxonomy below. In particular, **always challenge the edges** (are they real flows, and bidirectionally complete?) and **always challenge necessity** (why is this not an absorb?).
-- **Resolve ADR citations, don't paraphrase them.** When a rule is cited as `ADR-0NN DN`, read the actual decision text (`docs/adr/0NN-*.md`, the `### DN.` heading) before relying on it or citing it in a finding — a decision that "applies throughout" a document can still sit inside an unrelated-sounding sub-paragraph.
+- **Resolve ADR citations, don't paraphrase them.** When a rule is cited as `ADR-0NN DN`, read the actual decision text (`docs/adr/0NN-*.md`, the heading matching the exact identifier cited — most use `D1`, `D2`, ...; some earlier ADRs, e.g. ADR-014, use `P1`-`P6` instead) before relying on it or citing it in a finding — a decision that "applies throughout" a document can still sit inside an unrelated-sounding sub-paragraph.
 
 ## Lenses
 
