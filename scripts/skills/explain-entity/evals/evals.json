@@ -1,0 +1,72 @@
+{
+  "skill_name": "explain-entity",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Explain riskDataPoisoning in plain terms.",
+      "expected_output": "Plain what/why, classical roots (data/supply-chain integrity), and relationships — the controls that address it, the personas impacted, the components where it manifests — with ids linked.",
+      "expectations": [
+        "Explains what riskDataPoisoning is and why it matters, in plain language grounded in its risks.yaml definition",
+        "Gives its classical roots (e.g. data integrity / supply-chain poisoning)",
+        "Lists its relationships: addressing controls, impacted personas (and/or lifecycle) with ids",
+        "Read-only; does not edit the entry"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "What is controlAgentPluginPermissions?",
+      "expected_output": "Explains the control's objective, its classical roots (least privilege, confused deputy, reference monitor), the risks it addresses, the components it applies to, and the implementer personas.",
+      "expectations": [
+        "Explains the control's objective plainly from controls.yaml",
+        "Gives classical roots (least privilege / confused deputy / reference monitor)",
+        "Lists the risks it addresses and the personas who implement it, with ids"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Explain the confused deputy thing in this framework.",
+      "expected_output": "Resolves the name to the confused-deputy risk (and related control), explains the classical confused-deputy concept and its agentic form, links ids.",
+      "expectations": [
+        "Resolves 'confused deputy' to the corresponding risk id (e.g. riskAgenticDelegationConfusedDeputy) and/or the addressing control",
+        "Explains the classical confused-deputy concept and how it manifests in agentic delegation",
+        "Links the relevant entity ids and stays read-only"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Explain riskPromptInjection, and while you're at it tighten its long description.",
+      "expected_output": "Explains the risk (read-only); declines the edit and redirects to risk-creator.",
+      "expectations": [
+        "Explains riskPromptInjection plainly with its relationships",
+        "Declines to edit the entry and redirects the change to risk-creator (and content-reviewer)",
+        "Does not modify risks.yaml"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "What is componentReasoningCore?",
+      "note": "Component entity-type coverage. Exercises the component-specific relationship shape (edges to/from, category/subcategory), which no prior case in this file exercised.",
+      "expected_output": "Explains the component's role plainly from components.yaml, its category/subcategory (componentsApplication / componentsAgent), its bidirectional edges (to: componentAgentOutputHandling, componentOrchestrationInputHandling; from: componentAgentInputHandling, componentOrchestrationOutputHandling), and the controls/risks that attach to it, with ids linked.",
+      "expectations": [
+        "Explains what componentReasoningCore is and why it matters, grounded in its components.yaml definition",
+        "States its category and subcategory (componentsApplication / componentsAgent)",
+        "Lists its edges by direction (to and from), naming the connected component ids correctly",
+        "Lists the controls and/or risks that attach to it, with ids",
+        "Read-only; does not edit the entry"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Who is the Model Provider persona?",
+      "note": "Persona entity-type coverage. Exercises the persona-specific relationship shape (responsibilities, identificationQuestions, ISO 22989/EU AI Act mapping), which no prior case in this file exercised.",
+      "expected_output": "Explains personaModelProvider's role plainly from personas.yaml, its responsibilities, its ISO 22989 mapping (AI Producer@2022), and the risks that impact it plus the controls it implements, with ids linked.",
+      "expectations": [
+        "Explains what the Model Provider persona is and why it matters, grounded in its personas.yaml definition",
+        "States its ISO 22989 mapping (AI Producer@2022) and notes if an EU AI Act mapping exists or does not",
+        "Lists risks that impact this persona and/or controls it implements, with ids",
+        "Does not fabricate an identificationQuestions count or content not present in the corpus",
+        "Read-only; does not edit the entry"
+      ]
+    }
+  ]
+}
