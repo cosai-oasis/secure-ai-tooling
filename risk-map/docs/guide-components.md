@@ -2,6 +2,8 @@
 
 Once you've determined the need for a new component, the following steps are required to integrate it into the framework. For this example, we'll add a new component called `componentNewComponent` to the "Application" category.
 
+> **Tip:** You can draft this manually with the steps below, or start from an assisted draft — invoke the [`component-creator`](../../scripts/agents/component-creator.md) agent, stress-test the draft with [`component-critic`](../../scripts/agents/component-critic.md), then run [`content-reviewer`](../../scripts/agents/content-reviewer.md). See [Authoring with Agents](contributing/authoring-with-agents.md).
+
 ## 1. Add the new component ID to the schema
 
 First, derive the new component ID from the component title (`component` + camelCase descriptor — e.g., "Feature Store" → `componentFeatureStore`) and declare it in the schema. This makes the system aware of the new component and allows for validation. (The issue-template flow derives this ID automatically; when authoring YAML/schema directly via PR, apply the same convention by hand.)
