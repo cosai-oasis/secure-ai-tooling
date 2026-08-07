@@ -14,7 +14,9 @@ Usage:
 
 Options:
     --force             Force validation regardless of git status
-    --file PATH         Custom YAML file path
+    --file PATH         Validate this components corpus instead of the default;
+                        not valid with --force, --mode lifecycle,
+                        --to-controls-graph or --to-risk-graph
     --allow-isolated    Allow components with no edges
     --block             Promote warn-only check warnings to errors and exit 1
     --quiet, -q         Minimal output
@@ -34,6 +36,7 @@ from riskmap_validator.graphing import ComponentGraph, ControlGraph, RiskGraph
 from riskmap_validator.utils import get_staged_yaml_files, parse_controls_yaml, parse_risks_yaml
 from riskmap_validator.validator import (
     ComponentEdgeValidator,
+    CorpusParseError,
     check_category_subcategory_nesting,
     check_controls_components_mirror,
     check_lifecycle_stage_order_uniqueness,
@@ -77,7 +80,15 @@ Exit Codes:
     parser.add_argument(
         "--file",
         type=Path,
-        help=f"Path to YAML file to validate (default: {DEFAULT_COMPONENTS_FILE})",
+        help=(
+            f"Path to the components YAML file to validate (default: {DEFAULT_COMPONENTS_FILE}). "
+            "Names the corpus directly and ignores git staging, so it cannot be combined with "
+            "--force, is not accepted with --mode lifecycle, and is rejected with "
+            "--to-controls-graph and --to-risk-graph, which read the repo's own controls.yaml "
+            "and risks.yaml. --to-graph stays available, being drawn from this corpus. The "
+            "repo-scoped checks (lifecycle order, controls mirror) are skipped when it names a "
+            "corpus other than the default."
+        ),
     )
 
     parser.add_argument(
@@ -136,7 +147,32 @@ Exit Codes:
         ),
     )
 
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    # --force and --file answer the same question — which corpus to validate —
+    # and lifecycle mode reads a fixed path that --file cannot name. Reject
+    # (exit 2, argparse's usage-error code) rather than accepting and discarding.
+    if args.file is not None:
+        if args.force:
+            parser.error("--file cannot be combined with --force: both select which corpus to validate")
+        if args.mode == "lifecycle":
+            parser.error("--file is not valid with --mode lifecycle: that mode reads lifecycle-stage.yaml only")
+        # Both graph call sites below pass no path, so they read the repo's own
+        # controls.yaml — and, for --to-risk-graph, risks.yaml. Joined to the
+        # components --file names, every control→component edge drops and the run
+        # exits 0 on a fully rendered diagram of a system with no controls.
+        for flag, value in (
+            ("--to-controls-graph", args.to_controls_graph),
+            ("--to-risk-graph", args.to_risk_graph),
+        ):
+            if value is not None:
+                parser.error(
+                    f"--file cannot be combined with {flag}: that graph joins the repo's own "
+                    f"controls and risks to the components, so it cannot be built from the corpus "
+                    f"--file names. Use --to-graph, which is drawn from that corpus."
+                )
+
+    return args
 
 
 def _run_lifecycle_mode(args: argparse.Namespace) -> int:
@@ -200,18 +236,32 @@ def main() -> None:
         validator = ComponentEdgeValidator(allow_isolated=args.allow_isolated, verbose=not args.quiet)
 
         if not args.quiet:
-            if args.force:
+            if args.file is not None:
+                print(f"🔍 Checking components in {args.file}...")
+            elif args.force:
                 print("🔍 Force checking components...")
             else:
                 print("🔍 Checking for staged YAML files...")
 
-        # Get files to validate
-        if args.force:
-            target_file = DEFAULT_COMPONENTS_FILE
+        # Get files to validate. --file names the corpus directly: routing it
+        # through get_staged_yaml_files would buy nothing (an existing target is
+        # returned without consulting the staged list, utils.py:254-258) and,
+        # outside a git repository, would exit 0 having validated nothing.
+        if args.file is not None:
+            if not args.file.exists():
+                print(f"❌ --file path does not exist: {args.file}")
+                sys.exit(2)
+            if not args.file.is_file():
+                print(f"❌ --file path is not a file: {args.file}")
+                sys.exit(2)
+            yaml_files = [args.file]
         else:
-            target_file = None
+            if args.force:
+                target_file = DEFAULT_COMPONENTS_FILE
+            else:
+                target_file = None
 
-        yaml_files = get_staged_yaml_files(target_file, args.force)
+            yaml_files = get_staged_yaml_files(target_file, args.force)
 
         if not yaml_files:
             if not args.quiet:
@@ -223,10 +273,24 @@ def main() -> None:
             file_word = "file" if file_count == 1 else "files"
             print(f"   Found {file_count} YAML {file_word} to validate")
 
-        # Validation of components.yaml is required if we are checking any other file
+        # Validation of components.yaml is required if we are checking any other
+        # file — whichever of components/controls/risks was staged. --file swaps
+        # which corpus that is.
+        components_file = args.file if args.file is not None else DEFAULT_COMPONENTS_FILE
+
         all_valid = True
         if yaml_files:
-            if not validator.validate_file(DEFAULT_COMPONENTS_FILE):
+            # A corpus that will not parse is bad input, not an internal bug:
+            # report the file and the reason. The guard covers the parse only —
+            # a failure during the checks is a defect in this tool and must keep
+            # reaching the crash banner, or good corpora get blamed on the user.
+            try:
+                components = validator.parse_corpus(components_file)
+            except CorpusParseError as e:
+                print(f"❌ Could not validate {components_file}: {e}")
+                sys.exit(2)
+
+            if not validator.validate_loaded(components, components_file):
                 all_valid = False
             if not args.quiet and len(yaml_files) > 1:
                 print()  # Add spacing between files
@@ -240,6 +304,14 @@ def main() -> None:
         if not args.quiet:
             print("✅ All YAML files passed component edge validation")
 
+        # Lifecycle order and the controls↔components mirror read repo files
+        # other than the corpus under test, so a custom --file corpus makes them
+        # report manufactured findings; they skip, and say so — a silent skip is
+        # indistinguishable from a pass. Nesting stays: its categories block
+        # comes from the same file. Compared resolved, so --file naming the
+        # default corpus is not a weaker run than --force over the same bytes.
+        skip_repo_scoped = args.file is not None and args.file.resolve() != DEFAULT_COMPONENTS_FILE.resolve()
+
         # Lifecycle stage order uniqueness check (ADR-022 D4).
         # Block-mode-immediate: no --block flag required. If the file is absent,
         # skip gracefully — lifecycle-stage.yaml may not be present in all test cwds.
@@ -247,7 +319,10 @@ def main() -> None:
         # only run when a real component validation pass populated the validator,
         # avoiding spurious open() calls in unit tests that mock builtins.open.
         lifecycle_path = Path("risk-map/yaml/lifecycle-stage.yaml")
-        if validator.components:
+        if skip_repo_scoped:
+            if not args.quiet:
+                print("   Lifecycle stage order uniqueness check skipped (--file names a custom corpus)")
+        elif validator.components:
             if lifecycle_path.exists():
                 try:
                     with open(lifecycle_path, encoding="utf-8") as _fh:
@@ -279,13 +354,15 @@ def main() -> None:
         # loaded) stays the same as before to avoid vacuous runs and file I/O in
         # test contexts where components are unavailable.
         controls_path = Path("risk-map/yaml/controls.yaml")
-        components_path = Path("risk-map/yaml/components.yaml")
 
         # Track whether any warn-only check produced output that --block should
         # promote to a hard failure.
         warn_block_triggered = False
 
-        if controls_path.exists() and validator.components:
+        if skip_repo_scoped:
+            if not args.quiet:
+                print("   Controls↔components mirror check skipped (--file names a custom corpus)")
+        elif controls_path.exists() and validator.components:
             # Broad except wraps both the parse and the check. Lets malformed
             # controls.yaml or unexpected mock state in tests degrade to a skip
             # rather than crashing the script. SystemExit is excluded so the
@@ -311,10 +388,12 @@ def main() -> None:
 
         # Category/subcategory nesting check (ADR-018 D6 / task 2.3.9).
         # Runs regardless of whether the mirror check found issues so both sets
-        # of warnings are visible before the exit decision below.
-        if components_path.exists() and validator.components:
+        # of warnings are visible before the exit decision below. Both halves of
+        # the comparison come from components_file, so this check applies to a
+        # --file corpus as it does to the default one.
+        if components_file.exists() and validator.components:
             try:
-                with open(components_path, encoding="utf-8") as _fh:
+                with open(components_file, encoding="utf-8") as _fh:
                     _components_data = yaml.safe_load(_fh)
                 category_to_subcategories: dict[str, set[str]] = {}
                 for _cat in _components_data.get("categories", []):

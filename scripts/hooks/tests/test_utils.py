@@ -13,6 +13,8 @@ Test Coverage:
    - FileNotFoundError when file doesn't exist
    - YAML parsing errors (malformed YAML)
    - KeyError when required fields missing
+   - Error messages name the file the parser was given, and describe it as a
+     components corpus rather than a controls one or the default filename
    - Skipping components with missing/invalid ID
    - Skipping components with missing/invalid title
    - Skipping components with missing/invalid category
@@ -137,8 +139,14 @@ class TestParseComponentsYAML:
             mock_path_class.return_value = mock_path
 
             # Should raise FileNotFoundError trying to use default path
-            with pytest.raises(FileNotFoundError, match="Controls file not found"):
+            with pytest.raises(FileNotFoundError) as exc_info:
                 parse_components_yaml(file_path=None)
+
+            # The components parser must not describe its input as a controls file.
+            # The path is a MagicMock here, so the noun is all there is to check.
+            assert "Controls file not found" not in str(exc_info.value), (
+                f"parse_components_yaml reported a controls file; got {str(exc_info.value)!r}"
+            )
 
             # Verify default path was constructed
             mock_path_class.assert_called_once_with("risk-map/yaml/components.yaml")
@@ -153,10 +161,16 @@ class TestParseComponentsYAML:
         When: parse_components_yaml() is called
         Then: FileNotFoundError is raised with descriptive message
         """
-        nonexistent_path = Path("/nonexistent/components.yaml")
+        nonexistent_path = Path("/nonexistent/some-corpus.yaml")
 
-        with pytest.raises(FileNotFoundError, match="Controls file not found"):
+        with pytest.raises(FileNotFoundError) as exc_info:
             parse_components_yaml(nonexistent_path)
+
+        message = str(exc_info.value)
+        assert str(nonexistent_path) in message, f"The message must name the file it was given; got {message!r}"
+        assert "Controls file not found" not in message, (
+            f"parse_components_yaml reported a controls file; got {message!r}"
+        )
 
     # YAML Parsing Error Tests
 
@@ -174,6 +188,75 @@ class TestParseComponentsYAML:
         with pytest.raises(yaml.YAMLError, match="Error parsing components YAML"):
             parse_components_yaml(temp_yaml_file)
 
+    # Error messages must describe the file they were given
+
+    def test_parse_components_missing_file_message_names_the_given_path(self, tmp_path):
+        """
+        Test that a missing components corpus is reported as a components corpus.
+
+        Given: A path to a components corpus that does not exist, under a
+               name other than components.yaml
+        When: parse_components_yaml() is called
+        Then: The message names that path, calls it neither a controls file
+              nor components.yaml
+
+        The noun is the point. This message reads "Controls file not found",
+        copied from parse_controls_yaml, and until recently it was buried in
+        the caller's unexpected-error banner where nobody read it. It is now
+        promoted into the authoritative diagnosis a user gets on the shipped
+        --block path, wrapped in the caller's own "Could not validate" line,
+        so the components parser announcing a missing controls file is a
+        contradiction shipped at the point of highest attention.
+
+        The negative assertions are what make this a fence: naming the path
+        alone would already pass today, since the current message
+        interpolates it after the wrong noun.
+        """
+        missing = tmp_path / "my-corpus.yaml"
+
+        with pytest.raises(FileNotFoundError) as exc_info:
+            parse_components_yaml(missing)
+
+        message = str(exc_info.value)
+        assert str(missing) in message, f"The message must name the file it was given; got {message!r}"
+        assert "Controls file not found" not in message, (
+            f"The components parser must not report a missing controls file; got {message!r}"
+        )
+        assert "components.yaml" not in message, (
+            f"The message must describe the file it was given, not the default one; got {message!r}"
+        )
+
+    def test_parse_components_shape_failure_message_names_the_given_path(self, tmp_path):
+        """
+        Test that a shape failure names the file that had the wrong shape.
+
+        Given: A readable YAML file, under a name other than components.yaml,
+               with no top-level 'components' key
+        When: parse_components_yaml() is called
+        Then: The message names that path and the missing field, and does not
+              name components.yaml
+
+        The message hardcodes "components.yaml" whatever it was handed, so a
+        contributor validating a candidate corpus is told the wrong file is
+        broken. This test fences the filename only. The companion property —
+        that the missing field name survives — is fenced by
+        test_parse_components_raises_error_when_components_key_missing, which
+        uses a temp file whose name cannot contain "components"; asserting it
+        here would be vacuous, because pytest derives tmp_path's basename from
+        this test's own name and that basename contains "components".
+        """
+        corpus = tmp_path / "my-corpus.yaml"
+        corpus.write_text("some_other_key: []", encoding="utf-8")
+
+        with pytest.raises(KeyError) as exc_info:
+            parse_components_yaml(corpus)
+
+        message = str(exc_info.value)
+        assert str(corpus) in message, f"The message must name the file it was given; got {message!r}"
+        assert "components.yaml" not in message, (
+            f"The message must not name the default corpus when another file was read; got {message!r}"
+        )
+
     # Missing Required Fields Tests
 
     def test_parse_components_raises_error_when_components_key_missing(self, temp_yaml_file):
@@ -187,8 +270,14 @@ class TestParseComponentsYAML:
         # Write YAML without 'components' key
         temp_yaml_file.write_text("invalid_key: []")
 
-        with pytest.raises(KeyError, match="Missing required field in components.yaml"):
+        with pytest.raises(KeyError) as exc_info:
             parse_components_yaml(temp_yaml_file)
+
+        message = str(exc_info.value)
+        assert str(temp_yaml_file) in message, (
+            f"The message must name the file it was given, not a fixed filename; got {message!r}"
+        )
+        assert "components" in message, f"The missing field must still be named; got {message!r}"
 
     # Component ID Validation Tests
 

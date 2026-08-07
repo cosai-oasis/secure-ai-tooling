@@ -20,12 +20,26 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from .models import ComponentNode, ControlNode
 from .utils import parse_components_yaml
 
 
 class EdgeValidationError(Exception):
     """Custom exception for edge validation failures."""
+
+    pass
+
+
+class CorpusParseError(Exception):
+    """
+    Raised when a file cannot be parsed into a components corpus.
+
+    Single type for every unusable-input shape so callers can report a bad
+    input file without having to enumerate the exception types
+    parse_components_yaml happens to surface.
+    """
 
     pass
 
@@ -166,12 +180,56 @@ class ComponentEdgeValidator:
 
         return errors
 
+    def parse_corpus(self, file_path: Path) -> dict[str, ComponentNode]:
+        """
+        Parse a components corpus, reporting any parse failure as one type.
+
+        Returns the corpus rather than storing it; pass the result to
+        validate_loaded.
+
+        Args:
+            file_path: Path to the components YAML file
+
+        Returns:
+            Dictionary mapping component IDs to ComponentNode objects
+
+        Raises:
+            CorpusParseError: If the file cannot be parsed into components,
+                whatever the underlying cause
+        """
+        try:
+            return parse_components_yaml(file_path)
+        except (KeyError, TypeError, AttributeError, ValueError, yaml.YAMLError, OSError) as e:
+            # One type for every unusable-input shape, so a caller reporting
+            # "this file is bad" need not enumerate them (UnicodeDecodeError is
+            # a ValueError, FileNotFoundError an OSError). The tuple is narrow
+            # on purpose: NameError, ImportError and EdgeValidationError are
+            # defects, not bad input, and must reach the caller's crash banner.
+            raise CorpusParseError(f"{type(e).__name__}: {e}") from e
+
     def validate_file(self, file_path: Path) -> bool:
         """
-        Validate component edge consistency in YAML file.
+        Parse a YAML file and validate its component edge consistency.
 
         Args:
             file_path: Path to YAML file
+
+        Returns:
+            True if validation passes, False otherwise
+
+        Raises:
+            Whatever parse_components_yaml raises for a file it cannot turn
+            into components; parse_corpus collapses those to CorpusParseError.
+        """
+        return self.validate_loaded(parse_components_yaml(file_path), file_path)
+
+    def validate_loaded(self, components: dict[str, ComponentNode], file_path: Path) -> bool:
+        """
+        Validate component edge consistency in an already-parsed corpus.
+
+        Args:
+            components: Parsed corpus, as returned by parse_corpus
+            file_path: Path the corpus was parsed from, for logging
 
         Returns:
             True if validation passes, False otherwise
@@ -179,7 +237,7 @@ class ComponentEdgeValidator:
         self.log(f"Validating component edges in: {file_path}")
 
         try:
-            self.components = parse_components_yaml(file_path)
+            self.components = components
 
             if not self.components:
                 self.log("No components found - skipping validation", "info")

@@ -22,7 +22,7 @@ def parse_components_yaml(file_path: Path = None) -> dict[str, ComponentNode]:
         file_path = Path("risk-map/yaml/components.yaml")
 
     if not file_path.exists():
-        raise FileNotFoundError(f"Controls file not found: {file_path}")
+        raise FileNotFoundError(f"Components file not found: {file_path}")
 
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -85,7 +85,7 @@ def parse_components_yaml(file_path: Path = None) -> dict[str, ComponentNode]:
     except yaml.YAMLError as e:
         raise yaml.YAMLError(f"Error parsing components YAML: {e}")
     except KeyError as e:
-        raise KeyError(f"Missing required field in components.yaml: {e}")
+        raise KeyError(f"Missing required field in {file_path}: {e}")
 
 
 def parse_controls_yaml(file_path: Path = None) -> dict[str, ControlNode]:
