@@ -13,6 +13,10 @@ In addition to local pre-commit validation, the repository includes GitHub Actio
   references in `.github/workflows/*.yml`
 - **Component Edge Validation**: Verifies component relationship consistency
 - **Control-Risk Reference Validation**: Checks control-risk cross-reference integrity
+- **Identification Questions Validation**: Enforces the `identificationQuestions`
+  structural rules on `personas.yaml`
+- **YAML Prose Subset Validation**: Enforces the ADR-017 D4 prose authoring subset
+- **YAML Prose Reference Validation**: Enforces ADR-016 D6 sentinel and ID resolution
 - **Graph Validation**: Generates and compares graphs against committed versions
   - Component graph (`./risk-map/diagrams/risk-map-graph.md`)
   - Control graph (`./risk-map/diagrams/controls-graph.md`)

@@ -51,6 +51,7 @@ If a decision is about *how the Risk Map content model is shaped*, it belongs in
 | [033](033-vendor-neutral-agent-skill-shipping.md) | Vendor-neutral shipping and lifecycle for CoSAI agents and skills — canonical-only neutral cloneable artifacts, the neutrality contract (machine-checkable denylist + framework-authority allowlist), consumer adaptation, required neutrality check, develop/eval/expand lifecycle | Accepted | 2026-07-08 |
 | [034](034-corpus-change-landing-sequence.md) | Dependency-ordered landing sequence for risk-map corpus changes | Accepted | 2026-07-09 |
 | [035](035-pinned-sources-manifest.md) | Pinned-sources manifest (`risk-map/yaml/sources.yaml`) for reproducible citation provenance — corpus-wide registry, disjoint-by-role sibling to `frameworks.yaml`, keep-and-flag fallback; implements ADR-031 D4 | Draft | 2026-07-22 |
+| [037](037-ci-validation-authority-and-block-parity.md) | CI as the enforcing gate for risk-map validation — `--block` parity between CI and pre-commit, strictness monotonicity, and the graph-generation prohibition | Draft | 2026-07-27 |
 
 ## Conventions
 

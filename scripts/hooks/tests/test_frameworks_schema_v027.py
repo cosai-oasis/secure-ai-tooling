@@ -1282,8 +1282,13 @@ class TestExistingEntriesStillValidate:
     D-sections: D7 ("additive, NON-breaking"), additive scope ("additive, optional").
     """
 
+    # Static rather than an instance method: pytest 10 removes class-scoped
+    # fixtures defined as instance methods, because the fixture runs once per
+    # class while each test gets a fresh instance. This one returns a value and
+    # sets no instance state, so dropping `self` is the whole fix.
     @pytest.fixture(scope="class")
-    def framework_entries(self, frameworks_yaml_data: dict) -> list:
+    @staticmethod
+    def framework_entries(frameworks_yaml_data: dict) -> list:
         """Individual framework entries from frameworks.yaml."""
         entries = frameworks_yaml_data.get("frameworks", [])
         if not entries:

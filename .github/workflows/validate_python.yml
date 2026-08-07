@@ -6,12 +6,24 @@ on:
       - '.pre-commit-config.yaml'
       - 'requirements*.txt'
       - 'pyproject.toml'
+      - '.github/workflows/**'
+      # ADR-037 D1: test_ci_block_parity.py derives its governed-hook set from
+      # this ADR's instance table, so a PR editing only the table changes what
+      # the suite asserts without touching any workflow, script, or
+      # .pre-commit-config.yaml entry otherwise listed here.
+      - 'docs/adr/037-ci-validation-authority-and-block-parity.md'
   pull_request:
     paths:
       - '**.py'
       - '.pre-commit-config.yaml'
       - 'requirements*.txt'
       - 'pyproject.toml'
+      - '.github/workflows/**'
+      # ADR-037 D1: test_ci_block_parity.py derives its governed-hook set from
+      # this ADR's instance table, so a PR editing only the table changes what
+      # the suite asserts without touching any workflow, script, or
+      # .pre-commit-config.yaml entry otherwise listed here.
+      - 'docs/adr/037-ci-validation-authority-and-block-parity.md'
 
 permissions:
   contents: read

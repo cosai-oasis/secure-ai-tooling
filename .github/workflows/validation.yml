@@ -6,11 +6,69 @@ on:
     paths:
       - 'risk-map/yaml/**'
       - 'risk-map/schemas/**'
+      - '.github/workflows/validation.yml'
+      - '.pre-commit-config.yaml'
+      - 'scripts/hooks/validate_riskmap.py'
+      - 'scripts/hooks/validate_control_risk_references.py'
+      - 'scripts/hooks/validate_framework_references.py'
+      - 'scripts/hooks/riskmap_validator/**'
+      - 'scripts/hooks/precommit/validate_identification_questions.py'
+      - 'scripts/hooks/precommit/validate_yaml_prose_subset.py'
+      - 'scripts/hooks/precommit/validate_prose_references.py'
+      - 'scripts/hooks/precommit/validate_mapping_purity.py'
+      - 'scripts/hooks/precommit/validate_mapping_drift.py'
+      - 'scripts/hooks/precommit/validate_versionid_purity.py'
+      - 'scripts/hooks/precommit/validate_all_schemas.py'
+      - 'scripts/hooks/precommit/validate_persona_site_build.py'
+      - 'scripts/hooks/precommit/validate_neutrality.py'
+      - 'scripts/tools/hook_file_list.py'
+      # ADR-037 D1: content the governed hooks above scan, and modules their
+      # validators import locally — not the validators themselves, which are
+      # already listed above. See test_gate_workflow_triggers_on_the_corpus_
+      # its_governed_hooks_scan in scripts/hooks/tests/test_ci_block_parity.py.
+      - 'scripts/agents/*.md'
+      - 'scripts/skills/**'
+      - 'scripts/build_persona_site_data.py'
+      - 'scripts/hooks/_sentinel_expansion.py'
+      - 'scripts/hooks/precommit/_linter_types.py'
+      - 'scripts/hooks/precommit/_neutrality_data.py'
+      - 'scripts/hooks/precommit/_prose_fields.py'
+      - 'scripts/hooks/precommit/_prose_tokens.py'
+      - 'scripts/hooks/precommit/framework_mapping.py'
   push:
     branches: [main, develop]
     paths:
       - 'risk-map/yaml/**'
       - 'risk-map/schemas/**'
+      - '.github/workflows/validation.yml'
+      - '.pre-commit-config.yaml'
+      - 'scripts/hooks/validate_riskmap.py'
+      - 'scripts/hooks/validate_control_risk_references.py'
+      - 'scripts/hooks/validate_framework_references.py'
+      - 'scripts/hooks/riskmap_validator/**'
+      - 'scripts/hooks/precommit/validate_identification_questions.py'
+      - 'scripts/hooks/precommit/validate_yaml_prose_subset.py'
+      - 'scripts/hooks/precommit/validate_prose_references.py'
+      - 'scripts/hooks/precommit/validate_mapping_purity.py'
+      - 'scripts/hooks/precommit/validate_mapping_drift.py'
+      - 'scripts/hooks/precommit/validate_versionid_purity.py'
+      - 'scripts/hooks/precommit/validate_all_schemas.py'
+      - 'scripts/hooks/precommit/validate_persona_site_build.py'
+      - 'scripts/hooks/precommit/validate_neutrality.py'
+      - 'scripts/tools/hook_file_list.py'
+      # ADR-037 D1: content the governed hooks above scan, and modules their
+      # validators import locally — not the validators themselves, which are
+      # already listed above. See test_gate_workflow_triggers_on_the_corpus_
+      # its_governed_hooks_scan in scripts/hooks/tests/test_ci_block_parity.py.
+      - 'scripts/agents/*.md'
+      - 'scripts/skills/**'
+      - 'scripts/build_persona_site_data.py'
+      - 'scripts/hooks/_sentinel_expansion.py'
+      - 'scripts/hooks/precommit/_linter_types.py'
+      - 'scripts/hooks/precommit/_neutrality_data.py'
+      - 'scripts/hooks/precommit/_prose_fields.py'
+      - 'scripts/hooks/precommit/_prose_tokens.py'
+      - 'scripts/hooks/precommit/framework_mapping.py'
 
 permissions:
   contents: read
@@ -90,43 +148,44 @@ jobs:
       run: |
         echo "🔍 Running YAML schema validation..."
 
-        BASE_URI="file://$(pwd)/risk-map/schemas/"
-        YAML_BASE_DIR="risk-map/yaml"
-        SCHEMA_BASE_DIR="risk-map/schemas"
-        SOURCE_FILES=("controls" "components" "personas" "risks" "mermaid-styles" "frameworks" "lifecycle-stage" "impact-type" "actor-access")
-
-        validation_failed=false
-        validation_count=0
-
-        for target in "${SOURCE_FILES[@]}"; do
-          schema_file="${SCHEMA_BASE_DIR}/${target}.schema.json"
-          yaml_file="${YAML_BASE_DIR}/${target}.yaml"
-
-          if [[ -f "$yaml_file" && -f "$schema_file" ]]; then
-            echo "📄 Validating ${yaml_file} against ${schema_file}..."
-            validation_count=$((validation_count + 1))
-
-            if check-jsonschema --base-uri "$BASE_URI" --schemafile "$schema_file" "$yaml_file"; then
-              echo "✅ ${yaml_file} is valid"
-            else
-              echo "❌ ${yaml_file} validation failed"
-              validation_failed=true
-            fi
-          else
-            echo "⚠️  Skipping ${target}: missing files"
-          fi
-        done
-
+        # ADR-037 D8: the (schema, yaml) pairs are derived from
+        # validate_all_schemas.py's own pairing logic rather than transcribed
+        # into a shell array, which drifts the moment a schema is added
+        # without a matching array edit. The count is read the same way, so
+        # it cannot desync from what the validator actually checked.
+        validation_count=$(python3 -c "import sys; sys.path.insert(0, 'scripts/hooks/precommit'); import validate_all_schemas as v; print(len(v._find_pairs()))")
         echo "count=$validation_count" >> $GITHUB_OUTPUT
 
-        if [ "$validation_failed" = true ]; then
+        if python3 scripts/hooks/precommit/validate_all_schemas.py; then
+          echo "✅ All YAML schema validations passed"
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "❌ YAML schema validation failed"
           echo "::error::YAML schema validation failed"
           echo "status=failed" >> $GITHUB_OUTPUT
           exit 1
         fi
 
-        echo "✅ All YAML schema validations passed"
-        echo "status=success" >> $GITHUB_OUTPUT
+    - name: Run Schema Metaschema Validation
+      id: validate-metaschema
+      run: |
+        echo "🔍 Running schema metaschema validation..."
+
+        # ADR-037 D1 (third-party hooks): mirrors the check-metaschema
+        # pre-commit hook, which blocks a commit whenever any tracked
+        # risk-map/schemas/*.schema.json file is not itself a structurally
+        # valid JSON Schema document. File list derived from the hook's own
+        # `files:` pattern (hook_file_list.py), not transcribed, same as the
+        # D7/D8 jobs below.
+        FILES=$(python3 scripts/tools/hook_file_list.py check-metaschema)
+
+        if check-jsonschema --check-metaschema ${FILES}; then
+          echo "✅ Schema metaschema validation completed successfully"
+        else
+          echo "❌ Schema metaschema validation failed"
+          echo "::error::Schema metaschema validation failed"
+          exit 1
+        fi
 
   format-validation:
     runs-on: ubuntu-latest
@@ -192,7 +251,12 @@ jobs:
       run: |
         echo "🔗 Running component edge validation..."
 
-        if python3 validate_riskmap.py --force; then
+        # ADR-037 D2: --block promotes the warn-only tier (controls<->components
+        # mirror drift, category/subcategory nesting) to errors, matching the
+        # validate-component-edges pre-commit hook. ADR-037 D3 keeps the flag
+        # off the graph-validation job, whose emission blocks run after the
+        # warn-only exit.
+        if python3 validate_riskmap.py --force --block; then
           echo "✅ Component edge validation completed successfully"
           echo "status=success" >> $GITHUB_OUTPUT
         else
@@ -266,12 +330,364 @@ jobs:
       run: |
         echo "🔗 Running framework reference validation..."
 
-        if python3 validate_framework_references.py --force; then
+        # ADR-037 D4: --block promotes deprecated-persona warnings to errors,
+        # matching the validate-framework-references pre-commit hook.
+        if python3 validate_framework_references.py --force --block; then
           echo "✅ Framework reference validation completed successfully"
           echo "status=success" >> $GITHUB_OUTPUT
         else
           echo "❌ Framework reference validation failed"
           echo "::error::Framework reference validation failed"
+          echo "status=failed" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+  # ---------------------------------------------------------------------------
+  # ADR-037 D7: the three validators pre-commit runs with --block and CI ran
+  # nowhere. One job each, so a failure names a single validator.
+  #
+  # Two constraints shape every step below.
+  #   D7a — the file list is derived from each hook's own `files:` regex over
+  #         the tracked corpus, never transcribed here. A transcribed list
+  #         drifts in the permissive direction. hook_file_list.py exits
+  #         non-zero on an empty match, because these validators exit 0 when
+  #         handed no files.
+  #   D7b — the validators run at their real paths under
+  #         scripts/hooks/precommit/. They derive their sys.path entry and
+  #         their default --schema-dir from Path(__file__); copying them to the
+  #         repository root (as the older jobs above do for their validators)
+  #         breaks both, and the schema miss is swallowed silently — the job
+  #         would exit 0 having inspected nothing.
+  # ---------------------------------------------------------------------------
+  identification-questions-validation:
+    runs-on: ubuntu-latest
+    name: Identification Questions Validation
+    needs: setup
+    outputs:
+      identification_status: ${{ steps.validate-identification.outputs.status }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: '3.14'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: Run Identification Questions Validation
+      id: validate-identification
+      run: |
+        echo "🧭 Running identification-questions validation..."
+
+        FILES=$(python3 scripts/tools/hook_file_list.py validate-identification-questions)
+
+        if python3 scripts/hooks/precommit/validate_identification_questions.py --block ${FILES}; then
+          echo "✅ Identification-questions validation completed successfully"
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Identification-questions validation failed"
+          echo "::error::Identification-questions validation failed"
+          echo "status=failed" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+  prose-subset-validation:
+    runs-on: ubuntu-latest
+    name: YAML Prose Subset Validation
+    needs: setup
+    outputs:
+      prose_subset_status: ${{ steps.validate-prose-subset.outputs.status }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: '3.14'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: Run YAML Prose Subset Validation
+      id: validate-prose-subset
+      run: |
+        echo "📝 Running YAML prose authoring subset validation..."
+
+        FILES=$(python3 scripts/tools/hook_file_list.py validate-yaml-prose-subset)
+
+        if python3 scripts/hooks/precommit/validate_yaml_prose_subset.py --block ${FILES}; then
+          echo "✅ YAML prose subset validation completed successfully"
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "❌ YAML prose subset validation failed"
+          echo "::error::YAML prose subset validation failed (ADR-017 D4)"
+          echo "status=failed" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+  prose-references-validation:
+    runs-on: ubuntu-latest
+    name: YAML Prose Reference Validation
+    needs: setup
+    outputs:
+      prose_references_status: ${{ steps.validate-prose-references.outputs.status }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: '3.14'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: Run YAML Prose Reference Validation
+      id: validate-prose-references
+      run: |
+        echo "🔖 Running YAML prose reference validation..."
+
+        FILES=$(python3 scripts/tools/hook_file_list.py validate-prose-references)
+
+        if python3 scripts/hooks/precommit/validate_prose_references.py --block ${FILES}; then
+          echo "✅ YAML prose reference validation completed successfully"
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "❌ YAML prose reference validation failed"
+          echo "::error::YAML prose reference validation failed (ADR-016 D6)"
+          echo "status=failed" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+  # ---------------------------------------------------------------------------
+  # ADR-037 D8: six validators, invoked by no workflow, that block a commit
+  # unconditionally rather than through --block's warn-only tier. D1's coverage
+  # clause quantifies over blocking hooks, not flag-bearing ones, so these are
+  # instances of the same rule D2/D4/D7 close, not exceptions to it.
+  #
+  # D7a/D7b/D7c apply unchanged:
+  #   - validate-neutrality is the one D8 member that takes a file list; its
+  #     invocation derives it the same way the D7 jobs above do.
+  #   - the other five (including validate-neutrality-policy, which shares
+  #     validate_neutrality.py with validate-neutrality but self-scans) are
+  #     invoked at their real scripts/hooks/precommit/ path, with no filenames.
+  #   - each was measured clean against this corpus before being wired in.
+  #
+  # validate-all-yaml-on-master-schema-change has no job of its own here:
+  # schema-validation above already runs validate_all_schemas.py in place,
+  # which is this hook's validator, so a second invocation would be an
+  # unattributable duplicate rather than added coverage.
+  # ---------------------------------------------------------------------------
+  mapping-purity-validation:
+    runs-on: ubuntu-latest
+    name: Framework Mapping Purity Validation
+    needs: setup
+    outputs:
+      mapping_purity_status: ${{ steps.validate-mapping-purity.outputs.status }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: '3.14'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: Run Framework Mapping Purity Validation
+      id: validate-mapping-purity
+      run: |
+        echo "🔍 Running framework mapping purity validation..."
+
+        if python3 scripts/hooks/precommit/validate_mapping_purity.py; then
+          echo "✅ Framework mapping purity validation completed successfully"
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Framework mapping purity validation failed"
+          echo "::error::Framework mapping purity validation failed (ADR-027 D4c)"
+          echo "status=failed" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+  mapping-drift-validation:
+    runs-on: ubuntu-latest
+    name: Framework Mapping Drift Validation
+    needs: setup
+    outputs:
+      mapping_drift_status: ${{ steps.validate-mapping-drift.outputs.status }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: '3.14'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: Run Framework Mapping Drift Validation
+      id: validate-mapping-drift
+      run: |
+        echo "🔍 Running framework mapping drift validation..."
+
+        if python3 scripts/hooks/precommit/validate_mapping_drift.py; then
+          echo "✅ Framework mapping drift validation completed successfully"
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Framework mapping drift validation failed"
+          echo "::error::Framework mapping drift validation failed (ADR-027 D5/D5a)"
+          echo "status=failed" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+  versionid-purity-validation:
+    runs-on: ubuntu-latest
+    name: Frameworks VersionId Purity Validation
+    needs: setup
+    outputs:
+      versionid_purity_status: ${{ steps.validate-versionid-purity.outputs.status }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: '3.14'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: Run Frameworks VersionId Purity Validation
+      id: validate-versionid-purity
+      run: |
+        echo "🔍 Running frameworks.yaml versionId purity validation..."
+
+        if python3 scripts/hooks/precommit/validate_versionid_purity.py; then
+          echo "✅ Frameworks versionId purity validation completed successfully"
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Frameworks versionId purity validation failed"
+          echo "::error::Frameworks versionId purity validation failed (ADR-027 D2b/D2c)"
+          echo "status=failed" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+  persona-site-build-validation:
+    runs-on: ubuntu-latest
+    name: Persona Site Build Validation
+    needs: setup
+    outputs:
+      persona_site_build_status: ${{ steps.validate-persona-site-build.outputs.status }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: '3.14'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: Run Persona Site Build Validation
+      id: validate-persona-site-build
+      run: |
+        echo "🔍 Running persona-site build validation..."
+
+        if python3 scripts/hooks/precommit/validate_persona_site_build.py; then
+          echo "✅ Persona-site build validation completed successfully"
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Persona-site build validation failed"
+          echo "::error::Persona-site build validation failed"
+          echo "status=failed" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+  neutrality-validation:
+    runs-on: ubuntu-latest
+    name: Agent/Skill Neutrality Validation
+    needs: setup
+    outputs:
+      neutrality_status: ${{ steps.validate-neutrality.outputs.status }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: '3.14'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: Run Agent/Skill Neutrality Validation
+      id: validate-neutrality
+      run: |
+        echo "🔍 Running agent/skill vendor-neutrality validation..."
+
+        FILES=$(python3 scripts/tools/hook_file_list.py validate-neutrality)
+
+        if python3 scripts/hooks/precommit/validate_neutrality.py ${FILES}; then
+          echo "✅ Agent/skill vendor-neutrality validation completed successfully"
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Agent/skill vendor-neutrality validation failed"
+          echo "::error::Agent/skill vendor-neutrality validation failed (ADR-033)"
+          echo "status=failed" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+  neutrality-policy-validation:
+    runs-on: ubuntu-latest
+    name: Agent/Skill Neutrality Policy Re-scan
+    needs: setup
+    outputs:
+      neutrality_policy_status: ${{ steps.validate-neutrality-policy.outputs.status }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: '3.14'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: Run Agent/Skill Neutrality Policy Re-scan
+      id: validate-neutrality-policy
+      run: |
+        echo "🔍 Re-scanning agent/skill corpus against the neutrality policy..."
+
+        if python3 scripts/hooks/precommit/validate_neutrality.py; then
+          echo "✅ Agent/skill neutrality policy re-scan completed successfully"
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Agent/skill neutrality policy re-scan failed"
+          echo "::error::Agent/skill neutrality policy re-scan failed (ADR-033)"
           echo "status=failed" >> $GITHUB_OUTPUT
           exit 1
         fi
@@ -368,7 +784,7 @@ jobs:
   validation-summary:
     runs-on: ubuntu-latest
     name: Validation Summary
-    needs: [schema-validation, format-validation, component-edge-validation, control-risk-validation, framework-validation, graph-validation]
+    needs: [schema-validation, format-validation, component-edge-validation, control-risk-validation, framework-validation, identification-questions-validation, prose-subset-validation, prose-references-validation, mapping-purity-validation, mapping-drift-validation, versionid-purity-validation, persona-site-build-validation, neutrality-validation, neutrality-policy-validation, graph-validation]
     if: always()
     steps:
     - name: Generate Summary
@@ -382,6 +798,15 @@ jobs:
         edge_result="${{ needs.component-edge-validation.result }}"
         control_result="${{ needs.control-risk-validation.result }}"
         framework_result="${{ needs.framework-validation.result }}"
+        identification_result="${{ needs.identification-questions-validation.result }}"
+        prose_subset_result="${{ needs.prose-subset-validation.result }}"
+        prose_references_result="${{ needs.prose-references-validation.result }}"
+        mapping_purity_result="${{ needs.mapping-purity-validation.result }}"
+        mapping_drift_result="${{ needs.mapping-drift-validation.result }}"
+        versionid_purity_result="${{ needs.versionid-purity-validation.result }}"
+        persona_site_build_result="${{ needs.persona-site-build-validation.result }}"
+        neutrality_result="${{ needs.neutrality-validation.result }}"
+        neutrality_policy_result="${{ needs.neutrality-policy-validation.result }}"
         graph_result="${{ needs.graph-validation.result }}"
 
         # Get output details
@@ -425,6 +850,69 @@ jobs:
           echo "- ✅ **Framework reference validation**: Passed" >> $GITHUB_STEP_SUMMARY
         else
           echo "- ❌ **Framework reference validation**: $framework_result" >> $GITHUB_STEP_SUMMARY
+          overall_success=false
+        fi
+
+        if [ "$identification_result" = "success" ]; then
+          echo "- ✅ **Identification-questions validation**: Passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- ❌ **Identification-questions validation**: $identification_result" >> $GITHUB_STEP_SUMMARY
+          overall_success=false
+        fi
+
+        if [ "$prose_subset_result" = "success" ]; then
+          echo "- ✅ **YAML prose subset validation**: Passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- ❌ **YAML prose subset validation**: $prose_subset_result" >> $GITHUB_STEP_SUMMARY
+          overall_success=false
+        fi
+
+        if [ "$prose_references_result" = "success" ]; then
+          echo "- ✅ **YAML prose reference validation**: Passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- ❌ **YAML prose reference validation**: $prose_references_result" >> $GITHUB_STEP_SUMMARY
+          overall_success=false
+        fi
+
+        if [ "$mapping_purity_result" = "success" ]; then
+          echo "- ✅ **Framework mapping purity validation**: Passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- ❌ **Framework mapping purity validation**: $mapping_purity_result" >> $GITHUB_STEP_SUMMARY
+          overall_success=false
+        fi
+
+        if [ "$mapping_drift_result" = "success" ]; then
+          echo "- ✅ **Framework mapping drift validation**: Passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- ❌ **Framework mapping drift validation**: $mapping_drift_result" >> $GITHUB_STEP_SUMMARY
+          overall_success=false
+        fi
+
+        if [ "$versionid_purity_result" = "success" ]; then
+          echo "- ✅ **Frameworks versionId purity validation**: Passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- ❌ **Frameworks versionId purity validation**: $versionid_purity_result" >> $GITHUB_STEP_SUMMARY
+          overall_success=false
+        fi
+
+        if [ "$persona_site_build_result" = "success" ]; then
+          echo "- ✅ **Persona-site build validation**: Passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- ❌ **Persona-site build validation**: $persona_site_build_result" >> $GITHUB_STEP_SUMMARY
+          overall_success=false
+        fi
+
+        if [ "$neutrality_result" = "success" ]; then
+          echo "- ✅ **Agent/skill neutrality validation**: Passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- ❌ **Agent/skill neutrality validation**: $neutrality_result" >> $GITHUB_STEP_SUMMARY
+          overall_success=false
+        fi
+
+        if [ "$neutrality_policy_result" = "success" ]; then
+          echo "- ✅ **Agent/skill neutrality policy re-scan**: Passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- ❌ **Agent/skill neutrality policy re-scan**: $neutrality_policy_result" >> $GITHUB_STEP_SUMMARY
           overall_success=false
         fi
 
