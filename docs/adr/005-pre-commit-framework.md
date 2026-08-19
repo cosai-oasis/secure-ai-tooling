@@ -92,7 +92,7 @@ Operational properties worth pinning:
 
 - Keep the `.pre-commit-config.yaml` inline comments current as hooks evolve — they encode non-obvious operational rationale (the `pass_filenames` notes, the `require_serial` notes) that is expensive to rediscover.
 - If a future hook refactor materially changes validation coverage, consider reintroducing a bounded parity check (new-vs-old, or framework-vs-golden-output) for the duration of that refactor, modeled on the #221 gate.
-- Revisit `pre-commit autoupdate` cadence. Pinned revisions in `.pre-commit-config.yaml` (`check-jsonschema` 0.37.1, `ruff-pre-commit` v0.15.10 at time of writing) are good hygiene but need periodic bumps; Dependabot does not currently track them.
+- Revisit `rev:` pin cadence. Pinned revisions in `.pre-commit-config.yaml` are good hygiene but need periodic bumps, and the repository had not configured the `pre-commit` ecosystem in `.github/dependabot.yml`. Resolved by the [2026-08-19 addendum](#addendum-2026-08-19-rev-pin-update-channel-and-alignment-sentinel-382), which configures Dependabot's native `pre-commit` ecosystem to open real `rev:`-bump PRs plus a PR-blocking alignment sentinel keyed off the `requirements.txt` pins for the two dual-versioned upstream hooks (`check-jsonschema`, `ruff-pre-commit`).
 - If the repository adds a non-Python orchestration surface in the future (for example, a site build under `risk-map/site/`), confirm that `pre-commit` remains the right orchestration layer for that surface or document the split explicitly.
 - Consider adding a CI job that validates every PR as a belt-and-braces over local hook execution. The choice of command is tactical: `pre-commit run --all-files` followed by `git diff --exit-code` catches both validator failures and any generator-driven drift; `./scripts/tools/validate-all.sh` is pure inspection and avoids generator invocation in CI. Contributors can skip hooks locally with `--no-verify`; a CI gate closes that escape hatch without forcing the parity harness back into the commit path.
 
@@ -172,3 +172,58 @@ The structural invariant needs no new machinery: the existing `_LOCAL_VALIDATOR_
 - `risk-map/schemas/frameworks.schema.json` via `DEFAULT_SCHEMA_PATH` / `load_pinned_patterns()` — the **schema oracle**. An edit to the strict pinned patterns or the ISO controlled-vocab enum there — the kind Work 2 itself made when activating the strict patterns, and future D10 version bumps — can likewise flip a pinned consumer value's verdict without ever touching a data file.
 
 Neither oracle is in the scanned-content set: editing one alone can flip verdicts. Both hooks originally triggered only on the four consumer YAMLs and ran `pass_filenames: true`, so an oracle-only commit either skipped them entirely or (had an oracle been in the trigger) handed the validator a non-content file as argv. Work 6 adds `frameworks.yaml` and then `frameworks.schema.json` to both triggers — via the path alternation `^risk-map/(yaml/(risks|controls|components|personas|frameworks)\.yaml|schemas/frameworks\.schema\.json)$`, mirroring the line-62 `check-jsonschema` "schema: frameworks.yaml" precedent — and flips both to `pass_filenames: false`, registering the union (four consumer YAMLs + `frameworks.yaml` + `frameworks.schema.json`) in the coverage table.
+
+## Addendum 2026-08-19: `rev:` pin update channel and alignment sentinel (#382)
+
+**Status:** Draft (maintainer to flip to Accepted)
+
+Authored 2026-08-19 alongside [#382](https://github.com/cosai-oasis/secure-ai-tooling/issues/382). Resolves the original Follow-up item on `rev:` pin cadence; it does not reset the ADR's status.
+
+### Context
+
+Two upstream hook repos in [`.pre-commit-config.yaml`](../../.pre-commit-config.yaml) are **dual-versioned**: their `rev:` pin names a version that also has an independent `==` pin in [`requirements.txt`](../../requirements.txt), because the same tool is both a framework-managed hook and a project Python dependency:
+
+- `check-jsonschema` — pinned as a `rev:` on the `python-jsonschema/check-jsonschema` repo (two hook blocks: `check-jsonschema`, `check-metaschema`) and as `check-jsonschema==<v>` in `requirements.txt`.
+- `ruff` — pinned as a `rev:` on `astral-sh/ruff-pre-commit` (hooks `ruff`, `ruff-format`) and as `ruff==<v>` in `requirements.txt` (the `ruff-pre-commit` tag is the `ruff` version with a leading `v`).
+
+[ADR-029](029-dual-python-package-management.md) owns the `requirements.txt` side of these tools: it makes `requirements.txt` the single dependency input consumed by both `pip` and `uv` and by CI. Dependabot tracks that file through the `pip` ecosystem, so the `==` pins advance on their own weekly cadence. The `rev:` pins did **not** advance with them — Dependabot gained native `pre-commit` support in 2026-03, but this repository had simply not configured that ecosystem in `.github/dependabot.yml`, so nothing tracked the `rev:` side. The two pins therefore drifted silently and recurrently: when #382 was filed the gap was `check-jsonschema` `rev: 0.37.1` against a `requirements.txt` pin of `0.37.4` (and `ruff-pre-commit` `v0.15.10` against `ruff==0.16.0`); that instance was realigned by hand, and the gap re-opened as soon as the next Dependabot `pip` bump advanced `requirements.txt` again — at the time this addendum's realignment lands, `check-jsonschema` sits at `rev: 0.37.4` against `0.38.0` and `ruff-pre-commit` at `v0.16.0` against `ruff==0.16.3`. That hand-realign-then-reopen recurrence is the evidence that the channel must be automated, not manual: nothing signalled the gap, and nothing blocked it from widening.
+
+The original ADR (line 78 of the Decision) names the upstream upgrade path for these hooks, and the hook-isolation boundary (line 79 Consequences) keeps these upstream tools in framework-managed isolated environments, separate from the project venv where the `requirements.txt` copy lives. That boundary is the reason the two pins can disagree at all — the isolated `check-jsonschema` a hook runs is a different install from the `check-jsonschema` a validator imports — and #382 asks for a channel that keeps the two in step without dissolving the boundary.
+
+### Decision
+
+We keep the two tools as isolated upstream `pre-commit` hooks (ADR-005's hook-isolation boundary, preserved), we configure **Dependabot's native `pre-commit` ecosystem** to keep the `rev:` pins moving on the same trusted mechanism as the repository's five existing ecosystems, and we keep the **PR-blocking alignment sentinel** as a backstop that makes the pip and pre-commit ecosystem PRs land together for these dual-versioned tools.
+
+#### D1. Keep the tools as isolated upstream hooks (Option A)
+
+`check-jsonschema` and `ruff` remain declared as upstream `repo:` entries with their own `rev:` pins, running in the framework's per-repo isolated environments per the original Decision. We do **not** collapse them to `language: system` local hooks that would resolve the tool from the project environment (and thus from `requirements.txt` directly, making the two pins one). That collapse — "Option B" in #382 — is rejected below.
+
+#### D2. Keep the PR-blocking alignment sentinel with a direction-aware tolerance policy
+
+A structural test guards alignment on every PR (authored in a downstream TDD phase; not written by this addendum). Its contract:
+
+- **Inputs.** It parses the `rev:` value on each dual-versioned upstream `repo:` block in `.pre-commit-config.yaml` (both `check-jsonschema` blocks must agree with each other; the `ruff-pre-commit` tag has its leading `v` stripped) and the corresponding `==` pin in `requirements.txt`. The comparison is `rev`-vs-`requirements.txt`, not a live network fetch — the test is hermetic and needs no upstream call.
+- **Tolerance policy — direction-aware.** The sentinel **FAILS when a `rev:` pin is *behind* its `requirements.txt` pin** and **tolerates a `rev:` pin that is *ahead of or equal to*.** It is not an exact-match check. The failure message must identify the offending hook repo and the two versions, and point the maintainer at the sibling Dependabot `pre-commit` ecosystem PR (or the grouped update) as the primary realign path, with `pre-commit autoupdate` as the manual fallback.
+- **Rationale.** *Policy:* a `rev:` pin behind its `requirements.txt` pin is the exact rot condition #382 exists to catch, so the sentinel reds it; a `rev:` pin ahead is tolerated. *Operational reason:* Dependabot opens the `pip` bump (`requirements.txt`) and the `pre-commit` `rev:` bump (`.pre-commit-config.yaml`) as separate ecosystem PRs that land at different times, so the sentinel must tolerate the transient window where the `pre-commit` PR leads a not-yet-merged `pip` bump. Verified ground truth: the `rev:` bump moves the pins **exactly** to the `requirements.txt` versions with no overshoot (`check-jsonschema` `0.37.4`→`0.38.0`, `ruff-pre-commit` `v0.16.0`→`v0.16.3`), and at the new revs all affected hooks pass with zero file changes.
+
+#### D3. Configure Dependabot's native `pre-commit` ecosystem
+
+We add a `package-ecosystem: "pre-commit"` block to [`.github/dependabot.yml`](../../.github/dependabot.yml) (added downstream, not by this addendum), mirroring the existing `pip` block: `directory: "/"`, weekly `schedule` on Sunday 09:00 `America/Los_Angeles`, the same `major` / `minor-and-patch` `groups`, the same `assignees`, `labels: ["dependencies", "pre-commit", "security"]`, and `commit-message.prefix: "deps(pre-commit)"`. Dependabot then parses `.pre-commit-config.yaml`, watches each hook repo (`python-jsonschema/check-jsonschema`, `astral-sh/ruff-pre-commit`) for new tags, and opens real PRs that bump the `rev:` field directly — with changelogs and SHA→tag resolution — the same trusted mechanism already governing the repository's five existing ecosystems (`pip`, `npm`, `github-actions`, `docker`, `devcontainers`).
+
+This replaces the custom notification-only workflow entirely. Instead of a scheduled job that opens an issue nagging a maintainer to run `pre-commit autoupdate` by hand, the native ecosystem opens the actual `rev:`-bump PR. No new workflow, no scheduled trigger, no `issues: write` grant, no stored token — the credential and supply-chain posture is exactly Dependabot's, already ratified across the five existing ecosystems and consistent with [ADR-024](024-github-actions-pinning-posture.md).
+
+### Alternatives Considered
+
+- **Option B — collapse `check-jsonschema` / `ruff` to `language: system` local hooks.** Rejected. It would resolve both tools from the project environment, making the `rev:` and `requirements.txt` pins a single pin and mooting the drift entirely — but at the cost of reversing ADR-005's hook-isolation boundary (line 79), which deliberately keeps upstream tools out of the project venv to eliminate version skew. It rewrites ~13 hook declarations, moots the sentinel, and moves the two highest-frequency hooks (`ruff`, `check-jsonschema`) onto the ADR-029 `language: system` env-resolution surface — the exact surface ADR-029 D4 had to add binding machinery to make safe under `uv`. The isolation boundary is a ratified property of this ADR; a drift-channel request is not sufficient cause to reverse it.
+- **Pre-native custom update mechanisms** — a **notification-only scheduled workflow** (open a tracking issue, no write token; the original draft's D3), the hosted **`pre-commit.ci`** autoupdate+autofix service, and a **stored-PAT / write-token auto-PR workflow**. These were the pre-native design space: each was a way to move the `rev:` pins when no Dependabot channel tracked pre-commit. Dependabot's native `pre-commit` ecosystem (D3) supersedes all of them — it opens the real `rev:`-bump PR on the already-ratified Dependabot mechanism, so it needs no custom workflow, no external app with standing write access, and no non-Dependabot write-scoped credential (the project has no agreed posture for one). Recorded here for provenance; not relitigated.
+- **Exact-match sentinel tolerance (fail on any `rev` ≠ `requirements.txt`).** Rejected — it would red the transient-ahead window when the `pre-commit` `rev:` PR lands before the sibling `pip` PR; see D2.
+
+### Grouped-PR coupling cost (blast radius)
+
+Because `dependabot.yml` groups `pip` minor-and-patch updates, a grouped `pip` PR that bumps these tools reds the sentinel until its sibling Dependabot `pre-commit` `rev:` PR merges — merge that sibling first (or fold the `rev:` bump in), then the group lands.
+
+### Enforcement and follow-up
+
+- The alignment sentinel (D2) extends [`scripts/hooks/tests/test_precommit_hook_install.py`](../../scripts/hooks/tests/test_precommit_hook_install.py) — the same structural suite the two prior addenda use — reusing its config/requirements load helpers and `TestRequirementsPinning` precedent. Written in a downstream TDD phase.
+- The `pre-commit` ecosystem block (D3) is added to `.github/dependabot.yml` downstream, mirroring the `pip` block per D3. There is **no** new workflow under `.github/workflows/` and no companion workflow test: the custom notification-only channel from the original draft is removed, superseded by the native ecosystem.
+- The verified 3-line `rev:` realignment (`.pre-commit-config.yaml` `check-jsonschema` `0.37.4`→`0.38.0` on both blocks, `ruff-pre-commit` `v0.16.0`→`v0.16.3`) turns the sentinel from red to green in the same PR and is applied downstream, not by this addendum.

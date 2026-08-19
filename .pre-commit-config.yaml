@@ -25,7 +25,7 @@ repos:
   # the schema file itself against --schemafile and fail.
   # ---------------------------------------------------------------------------
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.37.4
+    rev: 0.38.0
     hooks:
       - id: check-jsonschema
         name: 'schema: actor-access.yaml'
@@ -136,7 +136,7 @@ repos:
   # time. Runs whenever any schema file is staged.
   # ---------------------------------------------------------------------------
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.37.4
+    rev: 0.38.0
     hooks:
       - id: check-metaschema
         name: 'schema: meta-validate .schema.json files'
@@ -190,7 +190,7 @@ repos:
   # Ruff lint + format for Python.
   # ---------------------------------------------------------------------------
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.0
+    rev: v0.16.3
     hooks:
       - id: ruff
         name: 'ruff: lint'

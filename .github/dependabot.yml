@@ -24,6 +24,32 @@ updates:
           - "minor"
           - "patch"
 
+  # pre-commit - .pre-commit-config.yaml
+  # Bumps upstream hook `rev:` pins (check-jsonschema, ruff-pre-commit) so the
+  # dual-versioned tools stay aligned with their requirements.txt pins (#382).
+  - package-ecosystem: "pre-commit"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "09:00"
+      timezone: "America/Los_Angeles"
+    open-pull-requests-limit: 5
+    assignees:
+      - "davidlabianca"
+      - "shrey-bagga"
+    labels: ["dependencies", "pre-commit", "security"]
+    commit-message:
+      prefix: "deps(pre-commit)"
+    groups:
+      major:
+        update-types:
+          - "major"
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
   # Node.js (npm) - package.json
   - package-ecosystem: "npm"
     directory: "/"
