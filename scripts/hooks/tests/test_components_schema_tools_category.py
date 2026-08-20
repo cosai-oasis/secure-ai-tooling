@@ -194,7 +194,7 @@ class TestSubcategoryIdEnumGainsToolSubcategories:
             "componentsData",
             "componentsAgent",
             "componentsOrchestration",
-            "componentsModelDeployment",
+            "componentsDeployment",
             "componentsModelCore",
             "componentsApplicationCore",
             "componentsRegistries",
@@ -228,13 +228,18 @@ class TestSubcategoryIdEnumGainsToolSubcategories:
 class TestComponentIdEnumUnaffectedByD1:
     """
     D1 recategorizes componentTools (moves its category/subcategory); it does
-    not rename or remove it, and does not itself add new component.id values
-    (the tool components the decomposition introduces — componentToolServer,
-    componentToolInputHandling, etc. — are a SEPARATE, later content change
-    per the ADR's "Migration sequencing": net-new component ids clear the
-    absorb/reader-instructive justification test before landing in the closed
-    enum. D1's schema-impact statement only names category.id and
-    subcategory.id).
+    not rename or remove it. D1's schema-impact statement only names
+    category.id and subcategory.id.
+
+    This class originally also carried a scope-boundary guard
+    (test_component_enum_does_not_yet_gain_new_tool_component_ids) asserting
+    that the decomposition's net-new tool component ids were NOT YET present
+    -- a tripwire against D1's own PR smuggling them in early. That guard's
+    own docstring called it "not a prohibition forever": those ids were
+    always meant to land with "the MCP decomposition content (a later,
+    separate change)". That later change has now landed for real (feature/
+    mcp-components), so the guard's job is done and it is removed here
+    rather than left permanently red.
     """
 
     def test_componenttools_still_in_component_enum(self, component_id_enum: list):
@@ -248,40 +253,6 @@ class TestComponentIdEnumUnaffectedByD1:
             f"expected 'componentTools' still in component.id enum. Got: {component_id_enum}"
         )
 
-    def test_component_enum_does_not_yet_gain_new_tool_component_ids(self, component_id_enum: list):
-        """
-        Given: definitions/component/properties/id/enum
-        When: its members are inspected
-        Then: none of the decomposition's net-new tool component ids
-              (componentToolServer, componentToolInputHandling,
-              componentToolOutputHandling, componentToolNetworkPolicyEnforcementPoint,
-              componentAuthorizationPolicyEnforcementPoint, componentFederationProxy,
-              componentExternalPromptTemplate) are present yet
-
-        This is a scope-boundary guard, not a prohibition forever: D1's own
-        "Schema impact" paragraph names only category.id and subcategory.id.
-        Those component ids arrive with the MCP decomposition content (a
-        later, separate change per "Migration sequencing" step 2 — the
-        net-new component justification pass). If this test starts failing
-        because the SWE added them while implementing D1, that is scope
-        creep beyond D1 and should be flagged, not silently accepted.
-        """
-        not_yet_expected = {
-            "componentToolServer",
-            "componentToolInputHandling",
-            "componentToolOutputHandling",
-            "componentToolNetworkPolicyEnforcementPoint",
-            "componentAuthorizationPolicyEnforcementPoint",
-            "componentFederationProxy",
-            "componentExternalPromptTemplate",
-        }
-        present = not_yet_expected & set(component_id_enum)
-        assert not present, (
-            f"D1 scope is category/subcategory taxonomy only; these net-new tool "
-            f"component ids should not appear yet (they require the separate "
-            f"net-new-component justification pass first): {present}"
-        )
-
 
 # ============================================================================
 # Test Summary
@@ -289,15 +260,14 @@ class TestComponentIdEnumUnaffectedByD1:
 """
 Test Summary
 ============
-Total Tests: 10
+Total Tests: 9
 
 - TestSchemaMetaValidity (1): Draft-07 validity
 - TestCategoryIdEnumGainsComponentsTools (3): presence, existing-3-unchanged,
   exactly-4-members
 - TestSubcategoryIdEnumGainsToolSubcategories (3, one parametrized x2):
   presence x2, existing-8-unchanged, at-least-10-members
-- TestComponentIdEnumUnaffectedByD1 (2): componentTools still present,
-  net-new tool component ids NOT yet present (scope boundary)
+- TestComponentIdEnumUnaffectedByD1 (1): componentTools still present
 
 componentsExternalTools lands in components.schema.json's category.id and
 subcategory.id enums (ADR-030 D1). What each test pins:
@@ -309,5 +279,10 @@ subcategory.id enums (ADR-030 D1). What each test pins:
 
 Forward guards (unaffected by D1's scope, regression protection):
 - TestSchemaMetaValidity, existing-unchanged checks, TestComponentIdEnumUnaffectedByD1
-  (component.id enum is untouched by D1's scope)
+  (componentTools presence in the component.id enum is untouched by D1's scope)
+
+A scope-boundary guard once asserted that the net-new tool component ids were
+not yet present, and was removed when they landed. It documented its own
+intended obsolescence -- it pinned a boundary at a moment in time, not a
+prohibition.
 """

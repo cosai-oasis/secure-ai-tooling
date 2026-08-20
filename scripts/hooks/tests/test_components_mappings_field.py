@@ -494,7 +494,7 @@ class TestCurrentYamlStillValid:
 # branch.
 _D10_VALID_PAIRS: list[tuple[str, str]] = [
     ("componentsInfrastructure", "componentsData"),
-    ("componentsInfrastructure", "componentsModelDeployment"),
+    ("componentsInfrastructure", "componentsDeployment"),
     ("componentsInfrastructure", "componentsIdentity"),  # ADR-030 D2
     ("componentsModel", "componentsModelTraining"),
     ("componentsModel", "componentsModelCore"),
@@ -507,7 +507,7 @@ _D10_VALID_PAIRS: list[tuple[str, str]] = [
 
 # An example of an invalid pair (category from Application, subcategory from
 # Infrastructure — a cross-category crossing the taxonomy nesting forbids).
-# componentsModelDeployment is under componentsInfrastructure, NOT componentsModel.
+# componentsDeployment is under componentsInfrastructure, NOT componentsModel.
 _D10_INVALID_PAIR = ("componentsApplication", "componentsData")
 
 # ADR-030 D1: a pair that crosses INTO componentsExternalTools with a subcategory that
