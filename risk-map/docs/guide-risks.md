@@ -2,6 +2,8 @@
 
 Risks represent the potential security threats that can affect the components of an AI system. Adding a new risk requires defining it and then connecting it to the controls that mitigate it.
 
+> **Tip:** You can draft this manually with the steps below, or start from an assisted draft — invoke the [`risk-creator`](../../scripts/agents/risk-creator.md) agent, stress-test the draft with [`risk-critic`](../../scripts/agents/risk-critic.md), then run [`content-reviewer`](../../scripts/agents/content-reviewer.md). See [Authoring with Agents](contributing/authoring-with-agents.md).
+
 ## 1. Add the new risk ID to the schema
 
 First, derive the new risk ID from the risk title (`risk` + camelCase descriptor — e.g., "Data Poisoning" → `riskDataPoisoning`, "Prompt Injection" → `riskPromptInjection`) and add it to `risks.schema.json`. (The issue-template flow derives this ID automatically; when authoring YAML/schema directly via PR, apply the same convention by hand.)
