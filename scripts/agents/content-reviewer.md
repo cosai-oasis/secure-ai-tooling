@@ -2,6 +2,7 @@
 
 **Version:** 0.3.0-draft
 **Scope:** Content update review for the CoSAI Risk Map framework (`secure-ai-tooling` repository)
+**Decision of record:** ADR-007 (content-reviewer three-mode architecture).
 
 ---
 
