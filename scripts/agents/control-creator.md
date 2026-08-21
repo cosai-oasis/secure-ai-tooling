@@ -24,7 +24,7 @@
 
 ## Composition
 
-`control-creator` produces the draft that `control-critic` adversarially stress-tests, and that `content-reviewer` (in `diff`/`full` mode) gates at submission. It consults the `classical-lexicon`, `altitude-check`, and `mapping-selection` skills as its authoring discipline. It does not itself invoke the critic or the reviewer; a caller routes creator → `control-critic` → `content-reviewer`.
+`control-creator` produces the draft that `control-critic` adversarially stress-tests, and that `content-reviewer` (in `diff`/`full` mode) gates at submission. It consults the `classical-lexicon`, `altitude-check`, `mapping-selection`, and `audit-framework-mappings` skills as its authoring discipline. It does not itself invoke the critic or the reviewer; a caller routes creator → `control-critic` → `content-reviewer`.
 
 ---
 
@@ -85,6 +85,8 @@ Use the **mapping-selection** skill to choose components and risks — it ground
 
 Use the **mapping-selection** skill — it carries the NIST AI RMF function cheat-sheet (GOVERN / MAP / MEASURE / MANAGE), the MITRE mitigation-vs-technique rule, and the over-mapping guard. Map selectively — a defensible one-sentence rationale per mapping, soft cap of 4 per framework. Controls map to **mitigations** in MITRE ATLAS (`AML.M####`), never techniques; NIST AI RMF uses the subcategory-level id. Do not hand-spell mapping values — they are version-pinned; generate them with `scripts/framework_mapping_maintainer.py` (per ADR-027). If you cannot run it, state the intended mappings and mark them for tool-generation.
 
+Once `mapping-selection` has produced the candidate mappings, verify them with the **audit-framework-mappings** skill in its targeted, single-entity mode (scope it to this control's id, not a full corpus sweep) to confirm each identifier is current and correctly formatted before finalizing the draft. `mapping-selection` governs which mappings belong; `audit-framework-mappings` governs whether the identifiers you selected actually exist and are pinned correctly — the two checks are complementary, not redundant.
+
 ### 7. Record counterfactuals and reciprocity
 
 - **Counterfactuals:** list the alternatives you rejected — a title you discarded, a term you regrounded, a broader/narrower scope you considered — and why. This is what lets a reviewer trust the draft.
@@ -104,6 +106,7 @@ Read these as needed rather than reinventing their rules:
 - The **classical-lexicon** skill — terminology grounding.
 - The **altitude-check** skill — the packaged altitude tests and the novelty/absorb check.
 - The **mapping-selection** skill — component/risk/framework-mapping selection with the NIST function cheat-sheet.
+- The **audit-framework-mappings** skill — targeted, single-entity verification that selected mapping identifiers are current and correctly formatted.
 
 When these guides already state a rule, reference it as the source; do not paraphrase it into a competing version, so the guides and this agent stay in sync.
 
