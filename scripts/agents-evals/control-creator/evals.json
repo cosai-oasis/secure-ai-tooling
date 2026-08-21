@@ -1,0 +1,71 @@
+{
+  "agent_name": "control-creator",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We need a control that makes sure an agent's system instructions/config can't be silently overwritten by a compromised upstream config service. Just a rough idea — can you draft the controls.yaml entry?",
+      "expected_output": "Produces a schema-conformant controls.yaml entry (objective-level title/description around agent system-instruction integrity, e.g. detecting/preventing unauthorized modification of an agent's operating instructions) plus all six output-contract sections in order: Proposed entry, Schema note, Counterfactuals, Maintainer flags, Reciprocal edits, Validation commands.",
+      "expectations": [
+        "Produces all six output-contract sections, in order: Proposed entry, Schema note, Counterfactuals, Maintainer flags, Reciprocal edits, Validation",
+        "Proposed entry is a fenced controls.yaml block with id, title, description (prose array), category, personas, components, and risks fields present",
+        "Schema note states the new control id must be added to the enum in controls.schema.json",
+        "Validation section lists the three commands: validate_control_risk_references.py --force, validate_riskmap.py --force, and check-jsonschema"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Draft a control that requires MCP servers to validate JSON-RPC message schemas before dispatching them to the agent's tool-call handler.",
+      "expected_output": "Generalizes the idea to the role/locus it occupies (tool/service invocation input validation) rather than naming MCP in the title or id; keeps MCP only as an example of the protocol this applies to.",
+      "expectations": [
+        "The proposed title and id do not contain 'MCP' or any other specific product/protocol name",
+        "The description frames the objective at the role level (validating messages at the tool/service invocation boundary before dispatch), not tied to one protocol",
+        "MCP appears, if at all, only as an inline example inside the description or counterfactuals, not as the defining term of the control",
+        "Counterfactuals section records that a protocol-specific title/id was considered and rejected, and why (generalize to role, not product)"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Add a control: 'emit signed telemetry spans with correlation IDs to an OTel collector for every agent tool call.'",
+      "expected_output": "Flags this as implementation detail rather than a control objective, corrects the altitude to an objective such as auditable agent tool-call activity, explains the correction to the contributor, and drafts the corrected version rather than the mechanism as-is.",
+      "expectations": [
+        "Identifies the signed-span/correlation-ID/OTel-collector language as implementation detail, not an objective (altitude-check T1 failure)",
+        "Proposes a corrected, objective-level title/description centered on auditable/traceable agent tool-call activity",
+        "Moves the OTel/signed-span mechanism into an example within the description rather than stating it as the control's objective",
+        "Explains why the correction was made, not just silently substituting the wording"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Draft a control that restricts an agent's outbound network calls to an explicit egress allowlist, and select its framework mappings.",
+      "expected_output": "Drafts the control, uses mapping-selection to propose candidate framework mappings, and then explicitly invokes audit-framework-mappings in its targeted, single-entity mode scoped to only this control's id to verify the selected identifiers before presenting them as final.",
+      "expectations": [
+        "Uses mapping-selection to propose candidate framework mappings for the control (e.g. a NIST AI RMF subcategory and/or a MITRE ATLAS mitigation) before finalizing the draft",
+        "After candidates are selected, explicitly invokes audit-framework-mappings in its targeted, single-entity mode scoped to only this control's id, not a full corpus sweep",
+        "States the division of labor: mapping-selection governs which mappings belong, audit-framework-mappings governs whether the selected identifiers are current and correctly formatted",
+        "Does not present the mappings in the Proposed entry as finalized until the audit-framework-mappings verification step has been run and its result incorporated"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Use ONLY the control list below to judge overlap with the existing corpus — not the live risk-map/yaml/controls.yaml, which changes over time (per ADR-033 Amendment 2026-07-30, this is a pinned eval fixture, not corpus content):\n\n- controlToolCredentialLifecycleManagement — issue, rotate, and revoke credentials granted to agent tool integrations, scoping credential lifetime to the session or task that requested them so a credential does not remain valid after the agent's task concludes.\n- controlAgentActionAuthorizationGating — require an explicit authorization decision (human or policy engine) before an agent executes a high-consequence action.\n- controlModelOutputProvenanceLabeling — attach provenance metadata to model-generated output.\n- controlDataRetentionScheduling — enforce a defined retention and deletion schedule for stored data, including agent-collected data.\n- controlThirdPartyToolVettingProcess — vet and approve third-party tools before they are made available for agent invocation.\n- controlAgentReasoningTraceLogging — capture the agent's reasoning trace for later audit.\n\nWe need a control that makes sure agents rotate and revoke the credentials they use to call tools, so a credential doesn't linger valid after a session ends. Draft it.",
+      "expected_output": "Recognizes that controlToolCredentialLifecycleManagement in the fixture already covers session-scoped tool-credential rotation and revocation, and raises this as a Maintainer flag (a novelty/overlap question for the maintainer) rather than silently drafting a new, competing entry.",
+      "expectations": [
+        "Uses only the fixture list provided in the prompt, not the live controls.yaml, to judge overlap",
+        "Identifies controlToolCredentialLifecycleManagement as covering essentially the same capability the prompt is asking for",
+        "Raises the overlap explicitly in the Maintainer flags section as a novelty/absorb question, naming the fixture control id",
+        "Does not unilaterally decide to merge, absorb, or proceed as a distinct entry — leaves the decision to the maintainer, per control-creator's surface-don't-decide boundary"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Does controlAgentExecutionBounds, as it exists today in risk-map/yaml/controls.yaml, already address riskRunawayAgentToolLoops? I was about to draft a new control for that.",
+      "expected_output": "Confirms controlAgentExecutionBounds is a real entry in the live controls.yaml, already lists riskRunawayAgentToolLoops among its risks, and advises against drafting a duplicate control for the same objective.",
+      "expectations": [
+        "Confirms controlAgentExecutionBounds exists in the real risk-map/yaml/controls.yaml and grounds the answer in that live corpus, not a fixture",
+        "States that its risks list already includes riskRunawayAgentToolLoops",
+        "Cites at least one other real field from that entry (e.g. category controlsApplication, the second risk riskEconomicDenialOfWallet, or the MITRE ATLAS mapping AML.M0004@5.0.1)",
+        "Advises against drafting a new, duplicate control and instead points to extending or confirming the existing entry"
+      ]
+    }
+  ]
+}

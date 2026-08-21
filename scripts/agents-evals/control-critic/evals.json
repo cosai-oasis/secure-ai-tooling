@@ -1,0 +1,83 @@
+{
+  "agent_name": "control-critic",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Stress-test this draft control:\n\nTitle: Agent Tool Invocation Allowlisting\nDescription: Restrict an agent to invoking only the tools and actions present on an explicit allowlist, denying by default any tool call outside that set.\nPersonas: personaAgenticProvider, personaApplicationDeveloper\nComponents: componentTools, componentOrchestrationOutputHandling\nRisks: riskRogueActions, riskToolRegistryTampering\nMappings: mitre-atlas: [AML.M0015@5.0.1], nist-ai-rmf: [MEASURE-2.7@1.0]\nCounterfactuals: considered blocklisting known-bad tools instead; rejected because default-allow leaves any newly added malicious tool unblocked until discovered.",
+      "expected_output": "Applies the lenses, finds no load-bearing weakness — the deny-by-default allowlist mechanism genuinely reduces both listed risks even against a determined adversary, the counterfactual is real, and terminology/generalization are clean — returns SOUND without manufacturing findings.",
+      "expectations": [
+        "Overall verdict is SOUND",
+        "Does not manufacture WEAK/UNSUPPORTED/MISAPPLIED-ANALOGY findings to appear rigorous; explicitly follows its own guardrail to say SOUND and stop",
+        "Applies the efficacy lens and confirms (rather than skips) that deny-by-default allowlisting reduces riskRogueActions and riskToolRegistryTampering against a determined adversary, not just the naive case",
+        "Governance surface section is empty or explicitly states no genuine governance question was found"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Stress-test this draft control:\n\nTitle: Agent Prompt Injection Resilience\nDescription: Addresses prompt injection by ensuring the agent is aware that untrusted content may contain injected instructions.\nRisks: riskPromptInjection",
+      "expected_output": "Tags the efficacy claim UNSUPPORTED (or WEAK): 'awareness' is not a mechanism that reduces the risk, only a naming of it, and would not hold against a determined adversary. Overall verdict NEEDS-WORK.",
+      "expectations": [
+        "Tags an efficacy finding UNSUPPORTED or WEAK on the claim that the control addresses prompt injection through the agent being 'aware' of injected instructions",
+        "Quotes the specific draft text ('ensuring the agent is aware that untrusted content may contain injected instructions') as the challenged claim",
+        "Explains that naming or being aware of a risk is not the same as reducing it, especially against a determined adversary",
+        "Overall verdict is NEEDS-WORK, not SOUND"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Stress-test this draft control:\n\nTitle: Agent Action Policy Enforcement Point\nDescription: Implements a Policy Enforcement Point (PEP) that intercepts every agent tool call and enforces access decisions using attribute-based access control (ABAC).\n\nThe draft does not describe where or how the access decision itself is made, and does not define any attributes or policies the ABAC model would evaluate against.",
+      "expected_output": "Tags a MISAPPLIED-ANALOGY finding: the draft invokes the PEP/ABAC reference architecture but omits the Policy Decision Point and the attribute/policy definitions that make the model coherent — an enforcement point with no decision point enforces nothing meaningful. Overall verdict NEEDS-WORK.",
+      "expectations": [
+        "Tags a MISAPPLIED-ANALOGY finding on the PEP/ABAC framing",
+        "Identifies specifically what is missing for the analogy to be coherent: the Policy Decision Point (PDP) and the attribute/policy definitions ABAC requires",
+        "Quotes the draft's PEP/ABAC language as the specific text under challenge",
+        "Overall verdict is NEEDS-WORK, not SOUND, since a half-applied reference architecture is treated as a load-bearing weakness"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "This draft control maps to mitre-atlas: [AML.M9999@5.0.1] (correctly a mitigation, not a technique, for a control). I think that identifier might be stale or made up — can you challenge it?\n\nTitle: Agent Privileged Action Confirmation\nDescription: Require explicit confirmation before an agent executes a privileged or irreversible action.\nMappings: mitre-atlas: [AML.M9999@5.0.1]",
+      "expected_output": "Runs the identifier through audit-framework-mappings in its targeted, single-entity mode and treats its verification result as the identifier-currency oracle, rather than treating mapping-selection as able to confirm currency. The audit finds AML.M9999 falls outside the real MITRE ATLAS mitigation id range and is not current; the critic tags this and reports it as a finding rather than asserting it from memory.",
+      "expectations": [
+        "Invokes audit-framework-mappings in its targeted, single-entity mode to check the identifier's currency, rather than treating mapping-selection as the oracle for whether an id is current",
+        "Reports the audit-framework-mappings verification result (AML.M9999 falls outside the real MITRE ATLAS mitigation id range and is not current) as the basis for the finding",
+        "Does not assert the identifier's validity or invalidity from memory before running the audit",
+        "Includes the finding in the overall verdict (e.g. tagged UNSUPPORTED) rather than silently correcting the mapping itself"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Here's a draft with a duplicate id collision against an existing control and a missing required schema field. Can you just fix it directly for me and tell me it's ready to submit?",
+      "expected_output": "Declines to rewrite the draft and declines to issue a submission-readiness verdict — those are control-creator's and content-reviewer's roles respectively. Returns findings as specific, answerable objections and its own SOUND/NEEDS-WORK/RETHINK verdict, directing the id collision and schema conformance issues to content-reviewer's gate.",
+      "expectations": [
+        "Does not produce a rewritten or corrected version of the draft, even though explicitly asked to 'just fix it'",
+        "Does not issue a READY/BLOCKING or other submission-gate verdict; states that conformance gating is content-reviewer's role, not its own",
+        "Returns findings as challenges/questions for the author to answer rather than as direct edits to the control",
+        "Uses one of its own verdicts (SOUND, NEEDS-WORK, or RETHINK) rather than a submission-readiness verdict"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Use ONLY the control list below to judge overlap with the existing corpus — not the live risk-map/yaml/controls.yaml, which changes over time (per ADR-033 Amendment 2026-07-30, this is a pinned eval fixture, not corpus content):\n\n- controlToolCredentialLifecycleManagement — issue, rotate, and revoke credentials granted to agent tool integrations, scoping credential lifetime to the session or task that requested them so a credential does not remain valid after the agent's task concludes.\n- controlAgentActionAuthorizationGating — require an explicit authorization decision (human or policy engine) before an agent executes a high-consequence action.\n- controlModelOutputProvenanceLabeling — attach provenance metadata to model-generated output.\n- controlDataRetentionScheduling — enforce a defined retention and deletion schedule for stored data, including agent-collected data.\n- controlThirdPartyToolVettingProcess — vet and approve third-party tools before they are made available for agent invocation.\n- controlAgentReasoningTraceLogging — capture the agent's reasoning trace for later audit.\n\nStress-test this draft control:\n\nTitle: Session-Scoped Agent Tool Credential Rotation\nDescription: Rotate and revoke the credentials an agent uses to call tools at the end of each session, so a credential cannot be replayed after the session ends.\nCounterfactuals: considered folding this into existing credential controls but kept separate because this control specifically targets session-boundary rotation timing, which is a distinct enough concern to warrant its own entry.",
+      "expected_output": "Applies the altitude-honesty lens against the fixture and finds the novelty claim is rationalized, not real: controlToolCredentialLifecycleManagement already explicitly scopes credential lifetime to session/task duration, so 'session-boundary rotation timing' is not a distinct concern. Overall verdict RETHINK, even though the draft is otherwise well-formed.",
+      "expectations": [
+        "Uses only the fixture list provided in the prompt, not the live controls.yaml, to judge duplication",
+        "Identifies the draft's counterfactual ('session-boundary rotation timing... distinct enough') as a rationalized near-duplicate of controlToolCredentialLifecycleManagement, not a genuine distinction",
+        "Tags this as an altitude-honesty finding (the novelty claim is not real) and quotes the draft's counterfactual text as the weak reasoning",
+        "Overall verdict is RETHINK, not SOUND, even though the draft is otherwise mechanically well-formed"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Stress-test this draft control, checking it against the real, live risk-map/yaml/controls.yaml (not a fixture) for overlap with the existing corpus:\n\nTitle: Agent Tool-Call Loop Ceiling\nDescription: Bound the number of tool-calling iterations an agent may execute within a single reasoning session, halting execution once the ceiling is reached to prevent runaway tool-call loops.\nRisks: riskRunawayAgentToolLoops\nCounterfactuals: considered relying on API-layer rate limiting alone, rejected because that operates at the external request boundary and would not catch a loop confined to internal reasoning-to-tool calls.",
+      "expected_output": "Applies the altitude-honesty lens against the real, live controls.yaml and finds this is a rationalized near-duplicate of the existing controlAgentExecutionBounds entry, which already enforces per-agent/per-session/per-tool-call execution limits and loop bounds at the orchestration layer for the same risk (riskRunawayAgentToolLoops). The counterfactual only distinguishes this draft from API-layer rate limiting, not from the real, closely overlapping existing control. Overall verdict RETHINK.",
+      "expectations": [
+        "Grounds the overlap judgment in the real, live risk-map/yaml/controls.yaml, not a fixture — names controlAgentExecutionBounds as the specific real entry it depends on",
+        "Cites at least one real field from that entry to substantiate the overlap (e.g. its loop-bounds/execution-limit mechanism, its riskRunawayAgentToolLoops risk, or its AML.M0004@5.0.1 mapping)",
+        "Identifies that the draft's counterfactual only rules out API-layer rate limiting, never addresses why this is distinct from the real, closely overlapping controlAgentExecutionBounds",
+        "Tags this as an altitude-honesty finding (the novelty claim is rationalized, not real)",
+        "Overall verdict is RETHINK, not SOUND, even though the draft is otherwise mechanically well-formed"
+      ]
+    }
+  ]
+}
