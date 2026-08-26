@@ -108,7 +108,9 @@ graph LR
         componentApplication[Application]
         componentApplicationInputHandling[Input Handling]
         componentApplicationOutputHandling[Output Handling]
+        componentBehavioralObservability[Behavioral Observability]
         componentReasoningCore[Agent Reasoning Core]
+        componentSemanticObservability[Semantic Observability]
     end
 
     subgraph componentsExternalTools ["External Tools Components"]

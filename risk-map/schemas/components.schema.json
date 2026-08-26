@@ -55,7 +55,8 @@
             "componentsRegistries",
             "componentsToolNetworkControls",
             "componentsToolInvocationPath",
-            "componentsIdentity"
+            "componentsIdentity",
+            "componentsObservability"
           ]
         },
         "title": { "type": "string" },
@@ -98,7 +99,9 @@
             "componentAgentInputHandling",
             "componentAgentOutputHandling",
             "componentModelRegistry",
-            "componentToolRegistry"
+            "componentToolRegistry",
+            "componentSemanticObservability",
+            "componentBehavioralObservability"
           ]
         },
         "title": { "type": "string" },
@@ -161,7 +164,7 @@
         },
         {
           "if": { "properties": { "category": { "const": "componentsApplication" } } },
-          "then": { "properties": { "subcategory": { "enum": ["componentsAgent", "componentsApplicationCore"] } } }
+          "then": { "properties": { "subcategory": { "enum": ["componentsAgent", "componentsApplicationCore", "componentsObservability"] } } }
         },
         {
           "if": { "properties": { "category": { "const": "componentsExternalTools" } } },

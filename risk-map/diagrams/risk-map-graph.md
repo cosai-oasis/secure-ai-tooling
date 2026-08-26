@@ -59,6 +59,10 @@ graph TD
             componentAgentUserQuery[Agent User Query]
             componentReasoningCore[Agent Reasoning Core]
         end
+        subgraph componentsObservability ["Observability"]
+            componentBehavioralObservability[Behavioral Observability]
+            componentSemanticObservability[Semantic Observability]
+        end
     end
 
     subgraph componentsExternalTools ["External Tools Components"]
@@ -91,6 +95,7 @@ graph TD
     componentApplicationInputHandling --> componentApplication
     componentReasoningCore --> componentAgentOutputHandling
     componentReasoningCore --> componentOrchestrationInputHandling
+    componentReasoningCore --> componentSemanticObservability
     componentOrchestrationOutputHandling --> componentReasoningCore
     componentOrchestrationOutputHandling --> componentTheModel
     componentOrchestrationInputHandling --> componentTools
@@ -107,6 +112,8 @@ graph TD
     componentAgentInputHandling --> componentReasoningCore
     componentAgentOutputHandling --> componentApplication
     componentAgentOutputHandling --> componentTheModel
+    componentSemanticObservability --> componentBehavioralObservability
+    componentBehavioralObservability --> componentReasoningCore
 
 %% Node style definitions
     style componentsInfrastructure fill:#e6f3e6,stroke:#333333,stroke-width:2px
