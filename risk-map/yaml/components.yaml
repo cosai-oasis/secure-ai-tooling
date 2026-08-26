@@ -161,6 +161,15 @@ categories:
             The application that consumes the model and the input/output handling that
             filters traffic crossing the application boundary. Agent components add
             autonomous reasoning and tool-use capabilities on top of this surface.
+      - id: componentsObservability
+        title: Observability components
+        description:
+          - >
+            The instrumentation that captures, protects, and analyses the record of
+            what an agent decided and did. Observability is architecturally separate
+            from the components it observes: the reasoning core produces decisions,
+            while observability records those decisions and evaluates them against
+            expected behaviour.
   - id: componentsExternalTools
     title: External tools components
     description:
@@ -484,9 +493,11 @@ components:
       to:
         - componentAgentOutputHandling
         - componentOrchestrationInputHandling
+        - componentSemanticObservability
       from:
         - componentAgentInputHandling
         - componentOrchestrationOutputHandling
+        - componentBehavioralObservability
   - id: componentOrchestrationOutputHandling
     title: Output Handling
     description:
@@ -721,3 +732,68 @@ components:
         - componentTheModel
       from:
         - componentReasoningCore
+
+  - id: componentSemanticObservability
+    title: Semantic Observability
+    description:
+      - >
+        Semantic Observability is the instrumentation that captures what an agent did
+        and why: decision traces, reasoning logs, input and output records, delegation
+        chain events, and the provenance metadata that ties them together. It answers
+        the question "can we reconstruct what happened?" and supplies the forensic
+        record used for incident investigation, compliance auditing, and cross-agent
+        correlation.
+      - >
+        This component is the observer, not the observed. The reasoning core produces
+        decisions; Semantic Observability records them. The distinction matters because
+        the record has a different risk profile from the decision: traces aggregate
+        inputs, outputs, and intermediate reasoning into a single store that frequently
+        carries weaker access controls than the primary data stores those values came
+        from, which makes agent decision traces a novel data aggregation point.
+      - >
+        Agent behaviour is non-deterministic, so the trace is often the only evidence
+        that distinguishes model error from model compromise. That places unusual weight
+        on trace integrity and availability: an adversary who suppresses or deletes
+        traces defeats forensic reconstruction without altering any single entry, and
+        the reasoning it recorded is permanently unrecoverable — unlike classical
+        systems, where deleted logs can often be partially reconstructed from network
+        captures or database journals.
+    category: componentsApplication
+    subcategory: componentsObservability
+    edges:
+      to:
+        - componentBehavioralObservability
+      from:
+        - componentReasoningCore
+
+  - id: componentBehavioralObservability
+    title: Behavioral Observability
+    description:
+      - >
+        Behavioral Observability is the instrumentation that analyses whether what an
+        agent is doing is normal: drift detection against established baselines, anomaly
+        detection over tool-usage patterns, and the automated response mechanisms —
+        circuit breakers, kill switches, and escalation gates — that act when a deviation
+        is found. It answers the question "should we intervene?"
+      - >
+        It consumes the stream Semantic Observability produces. Neither component is
+        sufficient alone: without semantic data, behavioural analysis has nothing to
+        analyse, and without behavioural analysis, semantic data becomes useful only
+        after an incident has already run its course.
+      - >
+        The baseline this component compares against is itself a security artifact.
+        Agent behavioural dimensions — token consumption patterns, reasoning chain
+        depth, tool call sequences, goal drift — have no classical equivalent, so a
+        baseline that is incomplete admits undetected drift, and one that is not
+        representative of production produces enough false positives that operators
+        learn to ignore it. Because this component can halt or constrain an agent, it
+        also carries the risk profile of the intervention path: an adversary who
+        suppresses a circuit breaker removes the last automated barrier before a rogue
+        action reaches a real system.
+    category: componentsApplication
+    subcategory: componentsObservability
+    edges:
+      to:
+        - componentReasoningCore
+      from:
+        - componentSemanticObservability
