@@ -5,10 +5,11 @@
 title: Lifecycle Stages
 description:
   - >
-    Defines the phases of AI system development, deployment, and operation. This eight-stage
+    Defines the phases of AI system development, deployment, and operation. This nine-stage
     lifecycle covers the complete journey from initial planning through data preparation,
-    model training, development, evaluation, deployment, runtime operation, and ongoing
-    maintenance. Each stage presents unique security considerations and risk profiles
+    model training, development, evaluation, deployment, runtime operation, ongoing
+    maintenance, and eventual decommissioning. Each stage presents unique security
+    considerations and risk profiles
 lifecycleStages:
   - id: planning
     title: Planning
@@ -49,3 +50,11 @@ lifecycleStages:
     title: Maintenance
     description: Ongoing monitoring, updates, retraining, and system maintenance
     order: 8
+
+  - id: decommissioning
+    title: Decommissioning
+    description: >-
+      Terminal retirement of the AI system: revoking authenticators and tombstoning
+      identities, revoking delegated authority across descendants, and disposing of
+      models, data, memory, and decision traces against a verified disposition record
+    order: 9
