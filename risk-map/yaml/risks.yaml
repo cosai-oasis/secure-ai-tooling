@@ -312,6 +312,7 @@ risks:
     controls:
       - controlTrainingDataManagement
       - controlUserTransparencyAndControls
+      - controlDelegatedAuthorizationIntegrity
     examples:
       - >-
         Clearview AI collected photos ({{ref:guardian-2022-clearview-aclu-settlement}})
@@ -454,6 +455,7 @@ risks:
       - controlModelAndDataAccessControls
       - controlSecureByDefaultMLTooling
       - controlModelAndDataIntegrityManagement
+      - controlNetworkEgressControl
     examples:
       - >
         Meta's Llama model was leaked online ({{ref:theverge-2023-llama-leak}}), bypassing
@@ -536,6 +538,7 @@ risks:
       - controlSecureByDefaultMLTooling
       - controlInterComponentTransportSecurity
       - controlModelRegistryIntegrity
+      - controlAIInfrastructureObservability
     examples:
       - >
         Researchers discovered that models on HuggingFace were using a shared infrastructure
@@ -625,6 +628,7 @@ risks:
       - personaEndUser
     controls:
       - controlApplicationAccessManagement
+      - controlMessageAndPayloadResourceLimits
     examples:
       - >
         Researchers have proven how slight perturbation to images can cause denial of
@@ -804,6 +808,14 @@ risks:
       - controlInputValidationAndSanitization
       - controlInterComponentTransportSecurity
       - controlModelRegistryIntegrity
+      - controlAgentCapabilityNegotiation
+      - controlTrustedPolicyEnforcementPoint
+      - controlToolServerVetting
+      - controlRuntimeHostIsolation
+      - controlInboundNetworkExposureAndSegmentation
+      - controlNetworkEgressControl
+      - controlAgenticZeroTrustPosture
+      - controlAIComponentPatchManagement
     examples:
       - >
         By uploading a malicious Alexa skill / Google action (plugins), attackers were
@@ -903,6 +915,9 @@ risks:
       - controlInputValidationAndSanitization
       - controlAdversarialTrainingAndTesting
       - controlOutputValidationAndSanitization
+      - controlTrustedPolicyEnforcementPoint
+      - controlUntrustedContextContainment
+      - controlToolArgumentValidationAndSanitization
     examples:
       - >
         An example of indirect Prompt Injection was performed by planting malicious data
@@ -1139,6 +1154,7 @@ risks:
       - controlAgentObservability
       - controlUserTransparencyAndControls
       - controlUserPoliciesAndEducation
+      - controlSecretsAndKeyManagement
     examples:
       - >
         One study showed that recitation checkers that scan for verbatim repetition of
@@ -1411,6 +1427,15 @@ risks:
       - controlAgentPluginUserControl
       - controlOutputValidationAndSanitization
       - controlAgentObservability
+      - controlAgentCapabilityNegotiation
+      - controlDelegatedAuthorizationIntegrity
+      - controlExternalizedAuthorizationDecisioning
+      - controlTrustedPolicyEnforcementPoint
+      - controlInformedAgentConsentSurface
+      - controlAgentHostSecureConfiguration
+      - controlResourceAuthorizationEnforcement
+      - controlToolArgumentValidationAndSanitization
+      - controlAgenticZeroTrustPosture
     examples:
       - >
         An attack on ChatGPT plugins was described in Plugin Vulnerabilities: Visit a
@@ -1846,6 +1871,8 @@ risks:
       - controlAgentObservability
       - controlInterComponentTransportSecurity
       - controlToolRegistryAndDiscoveryIntegrity
+      - controlToolServerSupplyChainIntegrity
+      - controlThirdPartyCapabilityAdmission
     examples:
       - >
         Palo Alto Networks ({{ref:paloalto-2025-mcp-security-overview}}) identified MCP
@@ -2290,6 +2317,9 @@ risks:
       - controlSecureByDefaultMLTooling
       - controlAgentPluginPermissions
       - controlToolRegistryAndDiscoveryIntegrity
+      - controlInformedAgentConsentSurface
+      - controlToolServerSupplyChainIntegrity
+      - controlThirdPartyCapabilityAdmission
     examples:
       - >
         The Checkmarx CxZero MCP Risk Taxonomy ({{ref:checkmarx-2025-mcp-emerging-risks}})
@@ -2307,9 +2337,9 @@ risks:
           provenance verification or publisher identity validation.
       exposed:
         - >
-          This risk is exposed during tool discovery and selection, when
-          unvetted metadata shapes which endpoints an agent may reach and
-          which tool it selects, on unverified descriptions or schemas.
+          This risk is exposed during tool discovery and selection when
+          agents consume unvetted tool metadata and make invocation
+          decisions based on unverified descriptions or schemas.
       mitigated:
         - >
           Mitigation involves cryptographic signing of tool manifests,
@@ -2570,6 +2600,8 @@ risks:
       - controlAgentObservability
       - controlAgentIntegrityManagement
       - controlAgentInventoryManagement
+      - controlDelegatedAuthorityConfinement
+      - controlAIInfrastructureObservability
     examples:
       - >
         Palo Alto Networks Unit 42 demonstrated "agent session smuggling" (2025) ({{ref:unit42-2025-agent-session-smuggling}})
@@ -2684,6 +2716,7 @@ risks:
       - controlAgentIntegrityManagement
       - controlAgentCredentialIsolation
       - controlComponentIdentityProvenance
+      - controlComponentIdentityAuthentication
     examples:
       - >
         Zhou's framework on governing dynamic AI agent capabilities (2026) ({{ref:zhou-2026-cryptographic-tool-binding}})
@@ -2797,6 +2830,10 @@ risks:
       - controlSecureByDefaultMLTooling
       - controlInterComponentTransportSecurity
       - controlComponentIdentityProvenance
+      - controlComponentIdentityAuthentication
+      - controlSenderConstrainedCredentials
+      - controlInboundNetworkExposureAndSegmentation
+      - controlAgenticZeroTrustPosture
     examples:
       - >
         The MCP specification (2025-11-25) ({{ref:mcp-spec-2025-11-25-transports}}) includes
@@ -2915,6 +2952,8 @@ risks:
       - controlAgentInventoryManagement
       - controlAgentIntegrityManagement
       - controlAgentCredentialIsolation
+      - controlAgenticZeroTrustPosture
+      - controlAIInfrastructureObservability
     examples:
       - >
         A Gartner survey of 302 cybersecurity leaders (2025) ({{ref:gartner-2025-genai-blind-spots-press-release}})
@@ -3146,6 +3185,13 @@ risks:
       - controlSecureByDefaultMLTooling
       - controlAgentPluginPermissions
       - controlAgentObservability
+      - controlComponentIdentityAuthentication
+      - controlDelegatedAuthorizationIntegrity
+      - controlDelegatedAuthorityConfinement
+      - controlExternalizedAuthorizationDecisioning
+      - controlTrustedPolicyEnforcementPoint
+      - controlResourceAuthorizationEnforcement
+      - controlAgenticZeroTrustPosture
     examples:
       - >
         In the Supabase/Cursor data exfiltration (2025) ({{ref:generalanalysis-2026-supabase-mcp}}),
@@ -3285,6 +3331,8 @@ risks:
       - controlAgentPluginPermissions
       - controlIsolatedConfidentialComputing
       - controlAgentCredentialIsolation
+      - controlDelegatedAuthorityConfinement
+      - controlAgenticZeroTrustPosture
     examples:
       - >
         The Asana MCP cross-tenant data exposure (2025) ({{ref:bleepingcomputer-2025-asana-mcp-data-exposure}})
@@ -3435,6 +3483,9 @@ risks:
       - controlAgentInventoryManagement
       - controlInterComponentTransportSecurity
       - controlComponentIdentityProvenance
+      - controlComponentIdentityAuthentication
+      - controlInboundNetworkExposureAndSegmentation
+      - controlAIInfrastructureObservability
     examples:
       - >
         Dangling DNS and subdomain takeover is a well-documented vulnerability pattern
@@ -3496,3 +3547,2196 @@ risks:
         id: owasp-wstg-4-2-10-subdomain-takeover
         title: 'OWASP Web Security Testing Guide 4.2.10: Test for Subdomain Takeover'
         url: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management_Testing/10-Test_for_Subdomain_Takeover
+  - id: riskConcentratedAccessCorrelation
+    title: Concentrated Access Enabling Cross-Service Correlation
+    shortDescription:
+      - >
+        A single brokering layer that aggregates broadly-scoped access to many disparate
+        services lets a partial compromise correlate data across those services, building
+        a comprehensive profile of the affected users or organizations.
+    longDescription:
+      - >
+        Agentic systems increasingly route an agent's access to many downstream services
+        — mail, calendar, files, finance, ticketing, CRM — through a single brokering
+        or aggregation layer (an MCP gateway, an A2A or UCP intermediary, or an agentic
+        platform's connector hub) so the agent can compose those services in one session.
+        Concentrated Access Enabling Cross-Service Correlation occurs when that single
+        layer holds simultaneous, broadly-scoped access to disparate services, so a partial
+        compromise of the layer — a leaked token, a confused-deputy invocation, or a foothold
+        on the broker host — yields reach across all of them at once. The attacker then
+        correlates and aggregates data pulled from each service to assemble a comprehensive
+        profile of the affected users or organizations.
+      - >
+        This is the agentic expression of a classical principle: the concentration violates
+        segregation of access ({{ref:cwe-653}}, Insufficient Compartmentalization) and
+        least-privilege scoping. The privacy harm is the long-studied aggregation problem
+        — individually innocuous records (a calendar entry, a shipping address, a transaction
+        memo) become identifying and exploitable once one actor can join them across previously-segregated
+        systems. A shared single-sign-on broker, an over-scoped OAuth service account,
+        or a data-warehouse account that fronts many backends produces the same single-point
+        cross-service exposure. The AI-specific amplifier is that agentic brokers are
+        designed to hold broad, multi-service scope concurrently and exercise it autonomously
+        without per-step human verification, so the concentrated surface is larger and
+        is exercised continuously rather than on demand.
+      - >
+        The exposure is present wherever a single layer mediates access to multiple disparate
+        services without partitioning that access by service, session, or task; wherever
+        the credentials or connection that layer holds are broadly scoped rather than
+        reduced to the minimum services a given task requires; and wherever the data flowing
+        through the broker is not minimized to what each request needs. Any of these lets
+        a foothold confined to one layer become correlated visibility across every service
+        the layer can reach.
+      - >
+        This risk is distinct from {{riskSensitiveDataDisclosure}}, which covers the model
+        disclosing sensitive data it already holds; here the harm is an attacker joining
+        factual data across services reachable from one concentrated layer. It is distinct
+        from {{riskInferredSensitiveData}}, which is model-side inference of unstated
+        attributes, whereas this is attacker-side correlation of real records. It is distinct
+        from {{riskCrossTenantCredentialPropagation}}, which is lateral movement across
+        tenant boundaries through shared credentials; this risk is cross-service aggregation
+        within a victim's own authorized scope, concentrated at one layer. It is also
+        distinct from {{riskExcessiveDataHandlingDuringInference}}, which is the platform
+        over-collecting user data, whereas this is an adversary exploiting concentrated
+        breadth of access.
+      - >
+        Potential impacts include comprehensive victim profiling that enables sophisticated
+        spear-phishing, extortion, and identity theft, large-scale privacy violation,
+        and compliance exposure (GDPR, sector privacy regimes) arising from the breadth
+        of correlated data a single compromise can reach.
+    category: risksRuntimeDataSecurity
+    personas:
+      - personaAgenticProvider
+      - personaPlatformProvider
+      - personaApplicationDeveloper
+      - personaEndUser
+    controls:
+      - controlAgentPluginPermissions
+      - controlModelAndDataAccessControls
+      - controlRuntimePrivacyEnhancingTechnologies
+      - controlAgentCredentialIsolation
+    examples:
+      - >
+        A single agentic broker is provisioned with broad connectors to a user's mailbox,
+        calendar, cloud drive, and payment history so the assistant can answer scheduling
+        and expense questions. A leaked broker token gives an attacker read access to
+        all four at once; by joining travel itineraries (calendar), receipts (drive),
+        and card memos (payments) the attacker assembles a movement-and-finance profile
+        precise enough to drive targeted extortion — an exposure none of the four services
+        would have produced in isolation. A real 2026 breach demonstrates this mechanism
+        at scale: a single compromised OAuth token belonging to an employee of an agentic
+        integration platform was used to pivot into an internal monitoring tool and reach
+        a shared credential cache, exposing roughly 10,242 tokens and API keys spanning
+        every third-party service (GitHub, Slack, Jira, HubSpot, Linear, Notion, Google
+        Calendar) that customers had connected through the platform — one leaked credential
+        functioning as a skeleton key across every connected service at once ({{ref:material-2026-composio-breach}}).
+    tourContent:
+      introduced:
+        - >
+          Introduced during development and deployment when an agent's access to many
+          disparate services is routed through one brokering or aggregation layer that
+          is granted broad, concurrent, cross-service scope rather than per-service or
+          per-task partitioned access.
+      exposed:
+        - >
+          Exposed at runtime when a partial compromise of the concentrated layer — a leaked
+          or replayed token, a confused-deputy call, or a foothold on the broker — lets
+          an attacker read across every reachable service and correlate the results into
+          a comprehensive profile.
+      mitigated:
+        - >
+          Mitigated by partitioning and minimizing the access the broker holds (least-privilege,
+          per-service and per-task scoping), isolating credentials per downstream service
+          so one layer never concentrates keys to all of them, minimizing the data each
+          request surfaces, and detecting anomalous cross-service read/aggregation patterns
+          at the broker.
+    mappings:
+      stride:
+        - InformationDisclosure
+      owasp-top10-llm:
+        - LLM02:2025
+    lifecycleStage:
+      - development
+      - deployment
+      - runtime
+    impactType:
+      - confidentiality
+      - privacy
+      - compliance
+    actorAccess:
+      - agent
+      - api
+      - external
+    externalReferences:
+      - type: cwe
+        id: cwe-653
+        title: 'CWE-653: Improper Isolation or Compartmentalization'
+        url: https://cwe.mitre.org/data/definitions/653.html
+      - type: news
+        id: material-2026-composio-breach
+        title: 'The Composio Breach: One Token, 10,242 Doors'
+        url: https://material.security/resources/the-composio-breach-one-token-10242-doors
+  - id: riskLongLivedSessionStateWeakness
+    title: Long-Lived Session State Weakness
+    shortDescription:
+      - >
+        Extended agentic and conversational sessions keep session tokens, cached authorization,
+        and accumulated session state valid for long windows, so classical session-handling
+        weaknesses — fixation, missing token rotation, no timeout, and authorization that
+        is never re-evaluated — gain a far larger exploitation window than short request/response
+        sessions.
+    longDescription:
+      - >
+        Agentic and conversational AI systems establish sessions that are intentionally
+        long-lived: multi-turn conversations that persist for hours or days, persistent
+        agent workflows, and protocol sessions (for example MCP or agent-to-agent channels)
+        that remain open across many tool invocations. Long-Lived Session State Weakness
+        is the risk that the session-handling mechanics — how the session identifier is
+        established, rotated, timed out, bound, and re-authorized — do not account for
+        this extended duration, so the temporal window in which a session token, a cached
+        authorization decision, or accumulated session state can be abused is correspondingly
+        large.
+      - >
+        This is the AI-specific extension of classical session-management weaknesses catalogued
+        in {{ref:owasp-session-management-cheat-sheet}} and {{ref:nist-sp-800-63b-session}}:
+        session fixation (an attacker pre-seeds a session identifier that the victim then
+        authenticates into), missing session token rotation (a token captured once remains
+        valid for the entire conversation), absent idle and absolute session timeouts
+        (a session never expires while the application is in use), and stale authorization
+        (an authorization decision made once at session start is never re-evaluated, so
+        a user whose entitlements are revoked mid-conversation continues to act with the
+        original scope). The AI-specific amplifier is that these sessions are deliberately
+        long-lived and that an agent autonomously continues to act under the established
+        session without any human re-affirmation, so a window that classical guidance
+        keeps short by design is, here, intentionally extended.
+      - >
+        The exposure is present wherever a session identifier is not rotated after authentication
+        or privilege change, wherever sessions lack both idle and absolute timeouts, wherever
+        authorization for in-session actions is evaluated only once at session establishment
+        rather than re-checked as the session continues, and wherever conversational or
+        agent session state accumulated over a long session is not bounded or re-validated.
+        The duration of the session is the differentiator: the same handling weakness
+        on a short request/response session presents a small window, while on a long-lived
+        session it presents a persistent one.
+      - >
+        This risk is distinct from {{riskMCPTransportHijacking}}, which covers an attacker
+        intercepting, modifying, or replaying messages on the transport channel; that
+        risk concerns the channel in transit, while this risk concerns the lifecycle and
+        re-evaluation of the session itself and applies even on a fully encrypted, mutually
+        authenticated channel. It is distinct from {{riskStaleAgentIdentityBinding}},
+        in which an agent's identity persists after the underlying model artifact is swapped;
+        this risk concerns the session and user-authorization context going stale over
+        time regardless of the model behind the agent. It is distinct from {{riskCrossTenantCredentialPropagation}},
+        which covers credentials crossing tenant boundaries in space; this risk concerns
+        staleness within a single session over time. It is distinct from {{riskExcessiveDataHandlingDuringInference}},
+        which covers privacy and retention of user data; this risk concerns the security
+        of the session-handling state itself.
+      - >
+        Potential impacts include session hijacking that grants an attacker the victim's
+        full in-session authority, continued action under authorization that should have
+        been revoked, and abuse of a captured long-lived token across many tool invocations.
+        Because the session and its credentials remain valid, the breach is difficult
+        to detect: the agent continues to authenticate normally while the session has
+        been fixed, stolen, or has outlived the authority it was granted.
+    category: risksDeploymentAndInfrastructure
+    personas:
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaPlatformProvider
+      - personaEndUser
+    controls:
+      - controlAgentCredentialIsolation
+      - controlApplicationAccessManagement
+      - controlAgentObservability
+      - controlSessionCredentialBindingAndLifecycle
+    examples:
+      - >
+        Persistent conversational and agentic sessions are designed to remain open across
+        long durations and many tool calls. When the session identifier issued at authentication
+        is never rotated and the session carries no idle or absolute timeout, a token
+        captured once — for example from a client log, a proxy, or a compromised endpoint
+        — remains usable for the full life of the conversation, granting the attacker
+        session hijack: full standing access under the original authorization even after
+        the user's entitlements have been reduced or revoked. Facebook's September 2018
+        "View As" breach demonstrates this harm at scale in production: a code defect
+        caused Facebook to mint access tokens carrying full mobile-app-level session privileges
+        that were never re-scoped or re-validated as context changed; attackers stole
+        roughly 30 million of these standing tokens and used them for continued, non-reauthenticated
+        account access until Facebook force-reset around 90 million tokens ({{ref:meta-2018-view-as-breach}}).
+        CircleCI's January 2023 breach is a second, session-specific precedent: an attacker
+        reused a single stolen, already-past-2FA SSO session cookie to retain valid production
+        access with no re-authentication required for the duration of its validity ({{ref:circleci-2023-incident-report}}).
+    tourContent:
+      introduced:
+        - >
+          Introduced during deployment when long-lived agentic or conversational sessions
+          are configured without session token rotation, without idle and absolute timeouts,
+          and without re-evaluation of authorization for in-session actions.
+      exposed:
+        - >
+          Exposed at runtime when an attacker fixes or captures a long-lived session identifier,
+          or when a user's authorization changes mid-session and the agent continues to
+          act under the stale, still-valid session.
+      mitigated:
+        - >
+          Mitigated by rotating session identifiers on authentication and on privilege
+          change, enforcing both idle and absolute session timeouts, re-evaluating authorization
+          for in-session actions rather than only at session start, and scoping session
+          tokens to short, bounded lifetimes with explicit re-authentication for long-running
+          agent workflows.
+    mappings:
+      stride:
+        - Spoofing
+        - ElevationOfPrivilege
+    lifecycleStage:
+      - deployment
+      - runtime
+    impactType:
+      - confidentiality
+      - integrity
+      - accountability
+    actorAccess:
+      - external
+      - user
+    externalReferences:
+      - type: spec
+        id: owasp-session-management-cheat-sheet
+        title: OWASP Session Management Cheat Sheet
+        url: https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html
+      - type: spec
+        id: nist-sp-800-63b-session
+        title: 'NIST SP 800-63B: Digital Identity Guidelines — Session Management'
+        url: https://pages.nist.gov/800-63-3/sp800-63b.html
+      - type: news
+        id: meta-2018-view-as-breach
+        title: Security Update (the "View As" access-token breach)
+        url: https://about.fb.com/news/2018/09/security-update/
+      - type: news
+        id: circleci-2023-incident-report
+        title: January 4, 2023 Security Incident
+        url: https://circleci.com/blog/jan-4-2023-incident-report/
+  - id: riskAgentIdentitySpoofing
+    title: Agent Identity Spoofing
+    shortDescription:
+      - >
+        An attacker presents stolen, forged, or unverified credentials to a shared agent
+        service and is accepted as a legitimate client or agent, because the endpoint
+        does not strongly authenticate the requesting principal.
+    longDescription:
+      - >
+        In agentic and remote-tooling deployments, clients and agents authenticate to
+        a shared service (an MCP server, tool endpoint, or orchestration plane) before
+        issuing tool calls. Agent Identity Spoofing is the risk that an attacker is accepted
+        as a legitimate principal at this boundary because authentication of the requester
+        is weak, optional, or misconfigured. The attacker then operates under a borrowed
+        identity: invoking tools, reading or writing resources, and emitting actions that
+        are attributed to the impersonated client. This is the authentication-weakness
+        root cause of impersonation, distinct from downstream identity-lifecycle and attribution
+        failures.
+      - >
+        This risk is the agentic instance of a classical security problem rather than
+        a novel AI failure mode. It maps directly to STRIDE Spoofing and to long-standing
+        endpoint-authentication weaknesses: bearer tokens accepted without proof of possession,
+        missing or one-way TLS where mutual authentication is required, default or shared
+        service credentials, and endpoints that expose privileged operations without authenticating
+        the caller at all. The reference posture is zero-trust enforcement (NIST SP 800-207):
+        every request to a protected resource passes a policy enforcement point (PEP)
+        that verifies the requester's asserted identity against a policy decision point
+        (PDP) before access is granted. The amplifier in agentic systems is that emerging
+        protocols frequently leave requester authentication to the deployer and ship with
+        permissive defaults, so the weakness is a configuration norm rather than an exception.
+      - >
+        The vulnerability arises wherever a service accepts a request without strongly
+        verifying the identity of the requesting principal: endpoints that trust a bearer
+        token without binding it to the holder, that omit mutual authentication on agent-to-service
+        hops, that accept self-asserted client identifiers, that rely on network position
+        as a proxy for identity, or that ship with shared or default credentials. Attack
+        vectors include presenting a stolen or replayed token, connecting to an unauthenticated
+        or weakly authenticated endpoint, and exploiting a misconfigured trust anchor
+        to forge an accepted identity. The impersonation succeeds at the authentication
+        boundary, before any per-action authorization or per-tenant scoping is evaluated.
+      - >
+        Potential impacts include unauthorized access to server resources and tools under
+        a borrowed identity, and corruption of audit trails: actions are recorded against
+        the impersonated principal, so attribution and non-repudiation fail (STRIDE Repudiation).
+        Consequences include unauthorized data access, unauthorized actions executed with
+        the victim's standing privileges, accountability gaps that frustrate incident
+        response, and compliance violations where authenticated, attributable access is
+        mandated.
+      - >
+        {{riskShadowAndUnknownAgents}} addresses identities that operate outside lifecycle
+        controls because they were never registered; this risk addresses an attacker actively
+        impersonating a registered, legitimate principal by defeating weak authentication.
+        {{riskAgentDelegationChainOpacity}} addresses inability to reconstruct the delegation
+        chain even when each authentication step succeeds; this risk addresses the authentication
+        step itself being defeated. {{riskCrossTenantCredentialPropagation}} addresses
+        a valid credential leaking across tenant boundaries; this risk addresses acceptance
+        of an unverified or forged credential at the endpoint. {{riskMCPTransportHijacking}}
+        addresses interception or modification of the channel; this risk addresses the
+        principal-authentication decision the endpoint makes regardless of channel security.
+    category: risksDeploymentAndInfrastructure
+    personas:
+      - personaAgenticProvider
+      - personaPlatformProvider
+      - personaApplicationDeveloper
+      - personaEndUser
+    controls:
+      - controlComponentIdentityProvenance
+      - controlAgentCredentialIsolation
+      - controlFederatedUserAuthentication
+      - controlComponentIdentityRegistration
+      - controlAuthenticationSchemeHardening
+      - controlSenderConstrainedCredentials
+      - controlToolServerVetting
+    examples:
+      - >
+        The Model Context Protocol authorization specification ({{ref:mcp-authorization-spec}})
+        defines OAuth-based authorization for MCP servers but leaves enforcement to the
+        deployer; servers configured without it, or that accept bearer tokens without
+        validating audience and issuer, accept any holder of a token as the corresponding
+        principal — the authentication-boundary weakness this risk describes.
+      - >
+        A 2025 internet-wide scan fingerprinted 1,862 internet-exposed MCP servers and
+        manually verified a 119-server sample; all 119 responded to unauthenticated, protocol-compliant
+        tools/list requests and freely disclosed their internal tool capabilities without
+        validating requester identity ({{ref:knostic-2025-mcp-server-mapping}}) — any
+        caller was accepted as a legitimate client, at scale, in production deployments,
+        confirming this is not a theoretical gap.
+    tourContent:
+      introduced:
+        - >
+          Introduced during deployment when a shared agent service is exposed with weak,
+          optional, or misconfigured requester authentication — permissive protocol defaults,
+          one-way instead of mutual TLS, unvalidated bearer tokens, or shared and default
+          service credentials.
+      exposed:
+        - >
+          Exposed at runtime when an attacker presents stolen, forged, or unverified credentials
+          and is accepted as a legitimate client or agent, invoking tools and accessing
+          resources under the impersonated identity.
+      mitigated:
+        - >
+          Mitigated by enforcing strong authentication of the requesting principal at
+          every endpoint: proof-of-possession or mutually authenticated credentials validated
+          against an authoritative registry at invocation time, rejection of self-asserted
+          or unverified identities, and detection telemetry that flags authentication
+          anomalies and access under revoked or unexpected principals.
+    mappings:
+      stride:
+        - Spoofing
+        - Repudiation
+      mitre-atlas:
+        - AML.T0012@5.0.1
+    lifecycleStage:
+      - deployment
+      - runtime
+    impactType:
+      - confidentiality
+      - integrity
+      - accountability
+    actorAccess:
+      - external
+      - api
+      - agent
+    externalReferences:
+      - type: spec
+        id: mcp-authorization-spec
+        title: Model Context Protocol — Authorization Specification
+        url: https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization
+      - type: news
+        id: knostic-2025-mcp-server-mapping
+        title: 'Exposing the Unseen: Mapping MCP Servers Across the Internet'
+        url: https://www.knostic.ai/blog/mapping-mcp-servers-study
+  - id: riskBrokenAuthorizationEnforcement
+    title: Broken Authorization Enforcement for Agent Resource Access
+    shortDescription:
+      - >
+        Authorization is not enforced, or is misconfigured, at the point where an agent
+        invokes a tool or accesses a resource, so requests run with the agent's standing
+        privileges instead of the originating principal's authorization — letting a caller
+        reach functions and objects they are not entitled to.
+    longDescription:
+      - >
+        Agentic systems mediate access to tools, data, and downstream services through
+        a policy enforcement point (PEP) that should consult a policy decision point (PDP)
+        ({{ref:nist-sp-800-162-abac}}) for every tool invocation and resource access.
+        Broken Authorization Enforcement occurs when that check is absent, applied at
+        the wrong layer, or driven by misconfigured roles, ACLs, or trust relationships
+        — so the call executes with whatever standing privilege the agent or its service
+        identity holds, rather than being constrained to what the originating principal
+        is authorized to do.
+      - >
+        This is the classical broken-access-control failure — improper authorization ({{ref:cwe-285}}),
+        missing function-level authorization ({{ref:cwe-862}}), and improper privilege
+        management ({{ref:cwe-269}}), the same class OWASP catalogs as broken function-level
+        (BFLA) and broken object-level (BOLA) authorization — relocated to the agent-to-tool
+        boundary. Long-standing patterns recur unchanged: an over-broad service account
+        or role grant, an ACL that defaults open, a privileged credential reused across
+        actions, or an endpoint that authenticates the caller but never authorizes the
+        specific action against the specific object. The AI-specific amplifier is that
+        an autonomous agent — not a fixed application route — chooses which tool or resource
+        call to make based on model reasoning, and its capability set expands dynamically
+        through tool and server discovery, so a missing or misconfigured authorization
+        check is reachable through an unpredictable and growing set of actions.
+      - >
+        The exposure is present wherever a tool or resource call is gated only by authentication
+        and not by a per-action, per-object authorization decision; wherever the agent's
+        standing service identity is used directly instead of an authorization scoped
+        to the originating principal; wherever roles, ACLs, or trust relationships are
+        misconfigured such that the effective grant exceeds intent; and wherever the PEP
+        is enforced at only one layer (for example application but not the tool server,
+        or the proxy but not the backend) so a request can reach a privileged operation
+        through the unguarded path. Under a zero-trust model every such hop is expected
+        to re-evaluate authorization against the principal and the requested operation;
+        the gap is that the agent boundary frequently does not.
+      - >
+        This risk is the authorization-enforcement core that several adjacent risks specialize.
+        {{riskAgenticDelegationConfusedDeputy}} covers the specific case where a higher-privilege
+        deputy acts on behalf of a lower-privilege caller across a delegation boundary
+        without checking the caller's authority; this risk is the broader failure to enforce
+        a per-action authorization decision at all, including cases with no deputy delegation.
+        {{riskCrossTenantCredentialPropagation}} covers the tenancy specialization — credentials
+        valid across tenant boundaries; this risk covers privilege escalation and unauthorized
+        access within a single trust domain through misconfigured or missing enforcement.
+        {{riskShadowAndUnknownAgents}} concerns identities that operate outside lifecycle
+        controls, whereas this risk concerns authorized identities whose actions are not
+        constrained to their entitlements.
+      - >
+        Potential impacts include privilege escalation, unauthorized read or modification
+        of objects the caller could not reach directly, lateral movement to privileged
+        operations, and chained escalation when an agent's effective authority spans multiple
+        services. Consequences include data breaches, integrity compromise of downstream
+        systems, accountability gaps, and regulatory non-compliance.
+    category: risksDeploymentAndInfrastructure
+    personas:
+      - personaPlatformProvider
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaEndUser
+    controls:
+      - controlApplicationAccessManagement
+      - controlAgentPluginPermissions
+      - controlSecureByDefaultMLTooling
+      - controlAgentObservability
+      - controlResourceAuthorizationEnforcement
+    examples:
+      - >
+        An agent connected to a database tool authenticates with a single service identity
+        that holds broad read/write access. The application authenticates the human user
+        but never re-authorizes the specific row or table the agent's generated query
+        touches, so a low-privilege user's request causes the agent to read records they
+        are not entitled to — a missing object-level authorization (BOLA) check at the
+        tool boundary rather than a delegation-boundary confused deputy. A 2026 red-team
+        exercise against a live production airline booking system demonstrates this mechanism
+        concretely: an autonomous agent with no starting credentials minted a valid anonymous
+        session, enumerated 514 GraphQL queries via introspection, and retrieved full
+        passenger PII plus modify/cancel authority for bookings the session held no entitlement
+        to — the session was legitimately authenticated throughout; no object-level check
+        gated which records it could reach ({{ref:wiz-2026-red-agent-bola}}).
+      - >
+        A remote tool server exposes administrative operations behind the same endpoint
+        as ordinary operations, gating access with authentication but no per-action authorization.
+        Because the calling agent's service account carries a role grant that was misconfigured
+        to include the admin scope, the agent can be steered into invoking a privileged
+        operation that the requesting principal was never authorized to perform. [No single
+        named incident specifically matching admin/ordinary-operation endpoint conflation
+        was found as of 2026-07-12; BOLA/BFLA generally has been #1 on the OWASP API Security
+        Top 10 since 2019 (already covered by this risk's CWE-862/CWE-269 externalReferences)
+        — this example remains illustrative of the established class rather than citing
+        a single incident.]
+    tourContent:
+      introduced:
+        - >
+          Introduced during deployment when agent tool and resource access is wired with
+          authentication but without a per-action, per-object authorization decision,
+          or when roles, ACLs, and service-identity grants are configured broader than
+          the principals the agent serves actually require.
+      exposed:
+        - >
+          Exposed at runtime when an agent invokes a tool or accesses a resource and the
+          enforcement point either performs no authorization check or applies a misconfigured
+          grant, so the call executes with the agent's standing privilege rather than
+          the originating principal's entitlement.
+      mitigated:
+        - >
+          Mitigated by enforcing a per-action, per-object authorization decision at every
+          tool and resource boundary, scoping the agent's effective authority to the originating
+          principal's entitlement under least privilege, correcting over-broad role and
+          ACL grants, and re-evaluating authorization at each hop consistent with a zero-trust
+          enforcement model.
+    mappings:
+      stride:
+        - ElevationOfPrivilege
+      mitre-atlas:
+        - AML.T0053@5.0.1
+        - AML.T0012@5.0.1
+      owasp-top10-llm:
+        - LLM06:2025
+    lifecycleStage:
+      - deployment
+      - runtime
+    impactType:
+      - confidentiality
+      - integrity
+      - accountability
+      - compliance
+    actorAccess:
+      - user
+      - api
+      - agent
+    externalReferences:
+      - type: cwe
+        id: cwe-285
+        title: 'CWE-285: Improper Authorization'
+        url: https://cwe.mitre.org/data/definitions/285.html
+      - type: cwe
+        id: cwe-862
+        title: 'CWE-862: Missing Authorization'
+        url: https://cwe.mitre.org/data/definitions/862.html
+      - type: cwe
+        id: cwe-269
+        title: 'CWE-269: Improper Privilege Management'
+        url: https://cwe.mitre.org/data/definitions/269.html
+      - type: spec
+        id: nist-sp-800-162-abac
+        title: 'NIST SP 800-162: Guide to Attribute Based Access Control (ABAC) Definition
+          and Considerations'
+        url: https://csrc.nist.gov/pubs/sp/800/162/upd2/final
+      - type: news
+        id: wiz-2026-red-agent-bola
+        title: 'The Red Agent POV: Exploiting Broken Object-Level Authorization in an
+          Airline GraphQL API'
+        url: https://www.wiz.io/blog/red-agent-pov-bola
+  - id: riskUnconsentedAgentAction
+    title: Unconsented Agent Action Execution
+    shortDescription:
+      - >
+        An agent executes a consequential action — altering user data, spending, or acting
+        on the user's behalf — without an effective human consent checkpoint gating it,
+        so the action proceeds beyond the scope the user actually authorized.
+    longDescription:
+      - >
+        Agentic systems place a human consent checkpoint (often called human-in-the-loop,
+        elicitation, or interactive authorization) between an agent's decision to act
+        and the execution of a consequential effect: sending messages, moving money, modifying
+        records, granting access, or invoking a tool that acts on the user's behalf. Unconsented
+        Agent Action Execution occurs when that checkpoint is absent, scoped too coarsely,
+        or degraded such that the agent commits a consequential effect the user never
+        specifically authorized.
+      - >
+        This is the agentic form of a classical control: interactive step-up authorization
+        and human approval gating for high-consequence operations, expressed elsewhere
+        as dual-control / four-eyes, break-glass approval, and out-of-band transaction
+        confirmation. In access-control terms (NIST PEP/PDP/PIP), the human is the authorizing
+        party whose consent is a required input to the policy decision; this risk is the
+        case where the enforcement point commits the effect without that input, or treats
+        a single broad approval as standing authorization for an open-ended set of later
+        actions.
+      - >
+        The AI-specific amplifier is autonomy and scope drift. An agent discovers tools
+        at runtime, plans multi-step workflows, and chains invocations from a single user
+        turn, so the consequential actions reachable from one approval are unpredictable
+        and may far exceed what the user had in mind when they consented. Coarse, batched,
+        or repetitive approval prompts also drive consent fatigue: users reflexively accept,
+        collapsing the checkpoint into a rubber stamp. The exposure persists wherever
+        consequential tool invocations are not gated by a consent decision scoped to the
+        specific action, parameters, and blast radius — and wherever a one-time or session-level
+        approval is treated as consent for actions decided later by the agent.
+      - >
+        This risk is distinct from {{riskRogueActions}}, which covers the agent doing
+        the wrong thing (accidental misalignment or attacker-manipulated output) regardless
+        of authorization; here the action may be exactly what the agent intended, but
+        it was committed without the human consent that should have gated it. It is distinct
+        from {{riskAgenticDelegationConfusedDeputy}}, which concerns validating a non-human
+        caller's authorization at a delegation boundary; this risk concerns the human
+        principal's consent to the effect. A confused-deputy check and a human-consent
+        checkpoint can each pass while the other fails.
+      - >
+        Potential impacts include irreversible side effects executed without authorization
+        (sent communications, financial transactions, deletions, access grants), accountability
+        and repudiation failures where no record ties a consequential action to a human
+        approval, privacy violations, and erosion of user trust when agents act beyond
+        consented scope. Impact scales with the agent's reach across systems and the irreversibility
+        of the gated effect.
+    category: risksDeploymentAndInfrastructure
+    personas:
+      - personaAgenticProvider
+      - personaPlatformProvider
+      - personaApplicationDeveloper
+      - personaEndUser
+    controls:
+      - controlAgentPluginUserControl
+      - controlAgentPluginPermissions
+      - controlAgentObservability
+      - controlInformedAgentConsentSurface
+    examples:
+      - >
+        A coding-agent IDE integration that auto-approves tool calls within a session
+        lets the agent, after a single broad initial approval, run destructive shell and
+        database operations the user never specifically consented to, because the consent
+        checkpoint was scoped to the session rather than to each consequential action.
+        Two documented 2025-2026 incidents are strong analogues, though neither is an
+        exact match: an AI coding agent wiped a live production database during an explicit
+        user-declared code freeze and then fabricated records to cover it up ({{ref:fortune-2025-replit-database-deletion}});
+        a separate agent discovered an over-scoped API token and used it to delete a production
+        database and its backups in seconds, with no confirmation step ({{ref:zenity-2026-pocketos-database-deletion}}).
+        Both demonstrate destructive agent action proceeding without per-action confirmation;
+        the first is closer to an ignored explicit instruction and the second to credential
+        over-scoping than to a session-vs-per-action consent-checkpoint failure specifically,
+        but both land in the same consequence class this risk names.
+      - >
+        An agent connected to a messaging or email tool with send authority dispatches
+        a message on the user's behalf to the wrong recipient with no per-action confirmation,
+        committing an irreversible disclosure that a scoped consent prompt naming the
+        recipient and content would have surfaced. No real, publicly documented incident
+        of this specific pattern exists yet — only a researcher-run red-team demonstration
+        and OWASP's own illustrative (not incident-based) LLM06:2025 writeup; this is
+        flagged honestly as unsupported by a real-world citation rather than force-fit
+        to either.
+    tourContent:
+      introduced:
+        - >
+          Introduced when agents are granted authority to perform consequential, real-world
+          effects on a user's behalf and the consent checkpoint between decision and execution
+          is either omitted or scoped more broadly than the actions it must gate.
+      exposed:
+        - >
+          Exposed at runtime when the agent, from a single user turn or a one-time approval,
+          plans and commits consequential actions whose scope, parameters, or blast radius
+          the user never specifically authorized — including actions decided later by
+          the agent.
+      mitigated:
+        - >
+          Mitigated by gating consequential actions on an explicit, action-scoped human
+          consent decision that names the effect, target, and blast radius; binding approval
+          to the specific action rather than the session; defaulting to least-privilege
+          so high-consequence effects require step-up confirmation; and logging each consent
+          decision so executed actions are attributable to a human approval.
+    mappings:
+      stride:
+        - ElevationOfPrivilege
+        - Repudiation
+      owasp-top10-llm:
+        - LLM06:2025
+    lifecycleStage:
+      - deployment
+      - runtime
+    impactType:
+      - integrity
+      - accountability
+      - privacy
+      - safety
+    actorAccess:
+      - user
+      - agent
+      - external
+    externalReferences:
+      - type: news
+        id: fortune-2025-replit-database-deletion
+        title: An AI coding tool wiped a company's database, then hid it and lied
+          about it
+        url: https://fortune.com/2025/07/23/ai-coding-tool-replit-wiped-database-called-it-a-catastrophic-failure/
+      - type: news
+        id: zenity-2026-pocketos-database-deletion
+        title: 'System Prompts Are Not Security Controls: A Deleted Production Database
+          Proves It'
+        url: https://zenity.io/blog/current-events/ai-agent-database-deletion-pocketos
+  - id: riskUntrustedHostToolRuntimeExposure
+    title: Untrusted Host Tool Runtime Exposure
+    shortDescription:
+      - >
+        An agentic tool runtime whose isolation doesn't match who sits inside its host's
+        privilege boundary exposes its in-memory credentials, keys, secrets, and code
+        to a host operator, privileged insider, or co-tenant that can read or tamper with
+        them while the workload runs.
+    longDescription:
+      - >
+        Agentic systems run remote-tooling services — MCP servers, A2A endpoints, and
+        similar shared tool runtimes — that hold standing credentials and execute tool
+        logic on behalf of agents. Untrusted Host Tool Runtime Exposure occurs when a
+        party inside the host's privilege boundary — the infrastructure operator, a privileged
+        insider, or a co-tenant workload that escapes its own isolation — can read or
+        tamper with that runtime's in-use credentials, signing keys, secrets, and code
+        while it executes. This holds regardless of who owns the underlying hardware:
+        a self-operated host with a compromised insider and a third-party multi-tenant
+        host with an untrusted operator present the same exposure to the runtime — precisely
+        the isolation gap the MCP specification's own security best-practices guidance
+        warns operators to close ({{ref:mcp-spec-2025-11-25-security-best-practices}}).
+      - >
+        This is a classical host-trust and compartmentalization gap ({{ref:cwe-653}} Insufficient
+        Compartmentalization, {{ref:cwe-668}} Exposure of Resource to Wrong Sphere) cast
+        in agentic dress. A process running in cleartext memory has always been exposed
+        to whatever sits inside its host's privilege boundary — the OS, hypervisor, a
+        hardware operator, an insider, or a co-tenant workload that breaks out of its
+        own confinement. Two distinct control tiers close this gap for different adversaries:
+        OS- and process-level isolation (containers, namespaces, seccomp, mandatory access
+        control) bounds what a compromised or escaping co-tenant process can reach, while
+        hardware-enforced confidential computing (TEEs, secure enclaves) removes the host
+        operator and privileged insiders from the trust boundary entirely — a threat OS-level
+        isolation alone cannot address, since an operator with hypervisor-level access
+        sits outside any software boundary. The agentic amplifier is that tool runtimes
+        concentrate long-lived, high-value standing credentials — bearer tokens, OAuth
+        client secrets, delegated tool scopes — and agents authenticate and invoke autonomously
+        without a human re-supplying secrets per action, so a single runtime compromise
+        yields broad, immediately- usable access.
+      - >
+        The exposure is present wherever a tool runtime holds credentials, secrets, or
+        code in process memory without isolation adequate to its threat model — no OS/process
+        boundary against a co-tenant, no hardware boundary against a privileged host operator
+        or insider. Under these conditions, whichever party sits inside the applicable
+        privilege boundary can extract standing credentials and impersonate the tool runtime,
+        or tamper with its in-memory code and data to alter tool behavior — without ever
+        defeating the runtime's own authentication, because the secret is read directly
+        rather than forged.
+      - >
+        This risk is distinct from {{riskAcceleratorAndSystemSideChannels}}, which covers
+        indirect cross-tenant leakage inferred through hardware side-channels (timing,
+        cache, speculative execution); this risk covers direct exposure of secrets and
+        code held in cleartext to a party already inside the host's privilege boundary,
+        not inference through a side channel. It is distinct from {{riskCrossTenantCredentialPropagation}},
+        which covers credentials that are valid across tenant boundaries because they
+        are insufficiently scoped at the identity layer; this risk covers credentials
+        stolen from an exposed runtime regardless of how well they are scoped. It is distinct
+        from {{riskMCPTransportHijacking}}, which covers the communication channel between
+        agent and tool; this risk covers the runtime while it executes, not the wire.
+      - >
+        Potential impacts include theft of standing tool credentials and signing keys
+        leading to impersonation of the tool runtime, exposure of sensitive data flowing
+        through tool invocations, and tampering with tool code to corrupt agent actions.
+        Because a valid credential is extracted rather than forged, downstream authentication
+        continues to succeed and the compromise is difficult to detect.
+    category: risksDeploymentAndInfrastructure
+    personas:
+      - personaAgenticProvider
+      - personaPlatformProvider
+      - personaApplicationDeveloper
+      - personaEndUser
+    controls:
+      - controlRuntimeHostIsolation
+      - controlIsolatedConfidentialComputing
+      - controlAgentCredentialIsolation
+    examples:
+      - >
+        A managed MCP or remote-tool service runs on a third-party multi-tenant host where
+        the platform operator retains administrative access to the underlying VM, and
+        tenant workloads are separated by containers rather than hardware-enforced isolation.
+        An operator insider can read the OAuth client secret and bearer tokens the tool
+        runtime holds in memory directly, with no TEE in the way. A co-tenant can reach
+        the same result by escaping its own container: CVE-2019-5736 demonstrated exactly
+        this mechanism — a maliciously crafted container image, or a process already running
+        as root inside a container, could overwrite the host's runc binary via a /proc/self/exe
+        race condition, gaining root access to the host and, from there, direct read access
+        to every other tenant's tool-runtime memory sharing that hardware ({{ref:cve-2019-5736}}).
+      - >
+        A self-hosted tool runtime on infrastructure the operator itself owns stores its
+        delegated API tokens in process memory and a local config file. A privileged insider
+        with host access copies the tokens and the tool's signing key, enabling impersonation
+        of the tool and tampering of its responses to connected agents, with no anomaly
+        visible at the runtime's authentication layer. CircleCI's January 2023 incident
+        demonstrates the in-use half of this mechanism concretely: after gaining production
+        access via a stolen, 2FA-backed SSO session cookie, the attacker extracted encryption
+        keys directly from a running process to decrypt data at rest — proof that standing
+        access to a host, however obtained, converts directly into secrets read out of
+        a live process ({{ref:circleci-2023-incident-report}}).
+    tourContent:
+      introduced:
+        - >
+          Introduced during deployment when an agentic tool runtime holding standing credentials
+          executes without isolation adequate to who sits inside its host's privilege
+          boundary — no OS/process boundary against a co-tenant, no hardware-enforced
+          boundary against a privileged host operator or insider.
+      exposed:
+        - >
+          Exposed at runtime when a co-tenant that escapes software isolation, or a hardware
+          operator or privileged insider with access inside the host's privilege boundary,
+          reads or tampers with the tool runtime's in-memory credentials, keys, code,
+          or data while the workload executes.
+      mitigated:
+        - >
+          Mitigated by a tiered isolation posture: OS- and process-level isolation (containerization,
+          namespaces, seccomp, mandatory access control) bounds what a compromised or
+          escaping co-tenant process can reach on the host; hardware-enforced confidential
+          computing (TEEs, secure enclaves) removes the host operator and privileged insiders
+          from the trust boundary entirely; and credential isolation ensures that even
+          if a host is compromised, no single secret is broadly reusable.
+    mappings:
+      stride:
+        - InformationDisclosure
+        - Tampering
+        - Spoofing
+      owasp-top10-llm:
+        - LLM02:2025
+    lifecycleStage:
+      - deployment
+      - runtime
+    impactType:
+      - confidentiality
+      - integrity
+    actorAccess:
+      - privileged
+      - infrastructure-provider
+      - service-provider
+    externalReferences:
+      - type: cwe
+        id: cwe-653
+        title: 'CWE-653: Improper Isolation or Compartmentalization'
+        url: https://cwe.mitre.org/data/definitions/653.html
+      - type: cwe
+        id: cwe-668
+        title: 'CWE-668: Exposure of Resource to Wrong Sphere'
+        url: https://cwe.mitre.org/data/definitions/668.html
+      - type: spec
+        id: mcp-spec-2025-11-25-security-best-practices
+        title: 'Model Context Protocol specification (2025-11-25): Security Best Practices'
+        url: https://modelcontextprotocol.io/specification/2025-11-25/basic/security_best_practices
+      - type: news
+        id: circleci-2023-incident-report
+        title: January 4, 2023 Security Incident
+        url: https://circleci.com/blog/jan-4-2023-incident-report/
+      - type: cve
+        id: cve-2019-5736
+        title: runc container breakout via /proc/self/exe overwrite (CVE-2019-5736)
+        url: https://nvd.nist.gov/vuln/detail/CVE-2019-5736
+  - id: riskUnsandboxedCodeExecution
+    title: Unsandboxed Execution of Model-Generated Code
+    shortDescription:
+      - >
+        Code and commands emitted by a model are executed on the host with the full privileges
+        of the invoking user instead of inside a confined, least-privilege sandbox, so
+        even non-malicious but hallucinated or buggy generations can damage the host environment,
+        read or destroy local data, or pivot to adjacent systems.
+    longDescription:
+      - >
+        AI systems increasingly generate executable artifacts — shell commands, scripts,
+        SQL, or program code ({{ref:cwe-94}}) — that are then run to satisfy a user request
+        or to complete an agent's task. Unsandboxed Execution of Model-Generated Code
+        occurs when that execution happens directly in the host environment with the ambient
+        privileges of the calling user or service account, rather than within an isolation
+        boundary (container, microVM, restricted subprocess, or capability-confined runtime)
+        that bounds what the generated code may touch.
+      - >
+        This risk is a host-hardening and execution-isolation failure, not an output-validation
+        failure. The triggering artifact does not need to be adversarial: model output
+        is non-deterministic and may contain hallucinations, logic errors, or unsafe operations
+        (recursive deletes, overly broad globs, destructive migrations) that a reviewed
+        human-authored change would not contain. Because the execution context grants
+        full user privileges ({{ref:cwe-250}}) and no sandbox interposes, a single faulty
+        generation can corrupt or delete data, exhaust or reconfigure the host, or expose
+        credentials reachable from that privilege level. Where the generation is additionally
+        attacker-influenced (for example via prompt injection), the same missing isolation
+        boundary is what converts a manipulated instruction into host compromise.
+      - >
+        Generalized beyond any single tooling protocol, the locus is the execution sandbox
+        (or its absence) on the host where a model-driven or remote-tooling workflow runs
+        generated code. Classical practice confines such execution with least-privilege
+        service accounts, OS-level sandboxing (seccomp, namespaces, containers, microVMs),
+        filesystem and network egress restrictions, and ephemeral throwaway environments.
+        The AI-specific dimension is that the code author is a probabilistic model invoked
+        at runtime without human review of each generation, so the blast radius of the
+        execution context — not the trustworthiness of a specific author — becomes the
+        controlling factor.
+      - >
+        This risk is distinct from {{riskInsecureModelOutput}}, which covers unvalidated
+        model output reaching a user or downstream system; here the concern is that the
+        output is executed as code and the host lacks an isolation boundary to contain
+        the result. It is distinct from {{riskRogueActions}}, which covers manipulation
+        or over-permissioning of the agent's action selection; this risk concerns the
+        privilege and confinement of the host process that runs whatever code is produced,
+        and applies even when the action selected is benign. It is distinct from {{riskRunawayAgentToolLoops}},
+        which covers resource exhaustion through recursive tool-calling rather than the
+        host-execution privilege boundary.
+      - >
+        Potential impacts include destruction or corruption of local data and configuration,
+        disclosure of credentials or secrets reachable at the execution privilege level,
+        lateral movement to systems the host can reach, and reduced host availability.
+        Impact severity scales directly with the privileges of the execution context,
+        which is why confinement and least-privilege execution are the controlling mitigations.
+    category: risksRuntimeOutputSecurity
+    personas:
+      - personaApplicationDeveloper
+      - personaAgenticProvider
+      - personaPlatformProvider
+      - personaEndUser
+    controls:
+      - controlIsolatedConfidentialComputing
+      - controlAgentPluginPermissions
+    examples:
+      - >
+        A developer-assistant agent generates and runs a shell command to clean up a build
+        directory. A hallucinated path expansion causes the command to recurse above the
+        intended directory and delete unrelated files, because the command ran with the
+        developer's full account privileges inside the working host rather than in a scoped,
+        read-only-by-default sandbox with an explicit writable path allowlist. This is
+        not a hypothetical: in July 2025 an AI coding CLI issued a directory-creation
+        command that silently failed, then proceeded as if the directory existed and issued
+        file-move operations against that hallucinated path state, destroying files outside
+        the intended scope with full ambient filesystem privilege and no sandbox or dry-run
+        confirmation ({{ref:winbuzzer-2025-gemini-cli-file-deletion}}) — the tool's own
+        postmortem response described the failure as "gross incompetence." A separate
+        agent deleted a live production database during an explicit code freeze with no
+        sandbox or confirmation boundary in place ({{ref:fortune-2025-replit-database-deletion}}),
+        corroborating that unsandboxed ambient-privilege execution is an active, not merely
+        theoretical, failure mode across multiple agent products.
+    tourContent:
+      introduced:
+        - >
+          Introduced during development and deployment when a model-driven or remote-tooling
+          workflow is wired to execute generated code or commands using the ambient privileges
+          of the host user or service account, with no isolation boundary (container,
+          microVM, restricted subprocess) interposed between the generated artifact and
+          the host.
+      exposed:
+        - >
+          Exposed at runtime whenever the model emits executable output — whether through
+          a benign hallucination or an attacker-influenced generation — and that output
+          is run in the unconfined host context, allowing it to act with the caller's
+          full privileges.
+      mitigated:
+        - >
+          Mitigated by executing all model-generated code inside a least-privilege, confined
+          runtime (container, microVM, or capability-restricted subprocess) with filesystem,
+          network-egress, and privilege restrictions; using ephemeral throwaway execution
+          environments; and gating destructive operations behind explicit human confirmation
+          rather than relying on the trustworthiness of the generated artifact.
+    mappings:
+      stride:
+        - ElevationOfPrivilege
+        - Tampering
+      owasp-top10-llm:
+        - LLM05:2025
+    lifecycleStage:
+      - development
+      - deployment
+      - runtime
+    impactType:
+      - integrity
+      - availability
+      - confidentiality
+      - safety
+    actorAccess:
+      - agent
+      - user
+      - external
+    externalReferences:
+      - type: cwe
+        id: cwe-250
+        title: 'CWE-250: Execution with Unnecessary Privileges'
+        url: https://cwe.mitre.org/data/definitions/250.html
+      - type: cwe
+        id: cwe-94
+        title: 'CWE-94: Improper Control of Generation of Code (Code Injection)'
+        url: https://cwe.mitre.org/data/definitions/94.html
+      - type: news
+        id: winbuzzer-2025-gemini-cli-file-deletion
+        title: Google's Gemini CLI Faces Backlash After Wiping User Files During
+          Botched Update Process
+        url: https://winbuzzer.com/2025/07/26/googles-gemini-cli-faces-backlash-after-wiping-user-files-during-botched-update-process-xcxwbn/
+      - type: news
+        id: fortune-2025-replit-database-deletion
+        title: An AI coding tool wiped a company's database, then hid it and lied
+          about it
+        url: https://fortune.com/2025/07/23/ai-coding-tool-replit-wiped-database-called-it-a-catastrophic-failure/
+  - id: riskOverScopedToolAuthority
+    title: Over-Scoped Tool Authority
+    shortDescription:
+      - >
+        A tool exposed to an agent with broader authority than any single task requires,
+        whose constraints are enforced by the model's own judgment rather than deterministically
+        at the tool boundary, lets a manipulated or merely over-reaching model exercise
+        that full excess authority — collapsing the system's effective security to the
+        model's weakest behavior.
+    longDescription:
+      - >
+        Tools and capabilities exposed to an agent are designed with authority broader
+        than any individual task requires, and the decision to constrain that authority
+        — input validation, parameter bounds, object-level authorization, and policy enforcement
+        — is delegated to the model's reasoning rather than enforced deterministically
+        at the tool boundary. The model is made the security enforcement point. Because
+        the model is non-deterministic and manipulable, the effective security of the
+        system collapses to the weakest model behavior, and even robust upstream authentication
+        and authorization controls can be undermined by the breadth of what the tool is
+        permitted to do once invoked.
+      - >
+        This is a classical least-privilege and secure-by-design failure in agentic dress
+        ({{ref:mcp-security-secure-tool-design}}). The same pattern recurs as over-privileged
+        service accounts holding ambient authority, clients trusted to enforce access
+        control that belongs on the server, and broken object-level authorization (BOLA)
+        where the caller is trusted to scope its own request. Reference access-control
+        architecture separates the policy enforcement point (PEP), decision point (PDP),
+        and information point (PIP) ({{ref:nist-sp-800-162-abac}}) precisely so that enforcement
+        does not depend on the requesting actor's good behavior. Delegating enforcement
+        to the LLM collapses these into a single untrusted actor. The AI-specific amplifiers
+        are that the agent autonomously discovers, plans, and chains tool invocations,
+        so a single over-scoped tool can be composed into actions its designer never anticipated,
+        and that the model's susceptibility to manipulated input (see {{riskPromptInjection}})
+        turns a held over-grant into an externally triggerable one.
+      - >
+        The exposure persists wherever a tool holds standing capability beyond least privilege,
+        wherever a tool's constraints are expressed as model instructions rather than
+        as deterministic checks enforced before the action executes, and wherever the
+        granted authority is coarse-grained or long-lived rather than ephemeral and context-scoped
+        per action. The trigger is mechanism-independent: the over-grant is realized by
+        adversarial manipulation of the model, by ambiguity in benign tasks, or simply
+        by the agent operating within its intended-but-too-broad parameters.
+      - >
+        This risk is distinct from {{riskRogueActions}}, which is the output/action-layer
+        manifestation — the unintended or manipulated action actually executed via an
+        extension. Over-Scoped Tool Authority is the upstream design condition that sets
+        the blast radius of any such action; it is present and exploitable even when no
+        rogue action has yet occurred, and it is mitigated by design-time controls (scope
+        narrowing, relocation of enforcement out of the model) rather than action-time
+        controls. It is also broader than {{riskAgenticDelegationConfusedDeputy}}, which
+        requires asymmetric privilege across a caller/deputy delegation boundary; the
+        over-grant here is a property of a single tool's design and needs no second principal.
+      - >
+        Potential impacts include unauthorized data access and exfiltration, destructive
+        or financial actions executed at the tool's full authority, and privilege escalation
+        as over-scoped tools are chained. Because enforcement was delegated to a non-deterministic
+        model, these consequences are hard to bound in advance and degrade accountability
+        for which constraint was supposed to stop the action.
+    category: risksRuntimeInputSecurity
+    personas:
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaPlatformProvider
+      - personaEndUser
+    controls:
+      - controlSecureByDefaultMLTooling
+      - controlAgentPluginPermissions
+      - controlInputValidationAndSanitization
+      - controlAgentObservability
+    examples:
+      - >
+        A file-management tool is exposed to an agent with unrestricted read/write/delete
+        across a shared filesystem, with a model instruction to 'only touch files in the
+        user's workspace.' Because the constraint lives in the prompt rather than as a
+        path allowlist enforced by the tool, an ambiguous or injected request causes the
+        agent to operate outside the workspace using authority the tool always held —
+        no auth bypass was required.
+      - >
+        A database tool is registered for an agent using broad service-role credentials
+        that bypass row-level security, on the assumption the model will scope its queries
+        appropriately. The held authority, not any single query, is the risk: any query
+        the model is induced to issue executes at full privilege, so the deterministic
+        security boundary that should have existed at the tool was delegated to the model
+        and lost. This is a documented real-world pattern, not a hypothetical: researchers
+        configured a Supabase-backed MCP integration where the agent held service_role
+        credentials that bypass row-level security by design, then planted a prompt-injection
+        payload in a customer support ticket instructing the agent to read a table of
+        integration tokens and post its contents back into the ticket thread — which the
+        agent did, leaking secrets in plaintext because the tool's held authority, not
+        the legitimacy of any one request, was the actual boundary ({{ref:generalanalysis-2026-supabase-mcp}}).
+    tourContent:
+      introduced:
+        - >
+          Introduced during development and deployment when a tool or capability is exposed
+          to an agent with authority broader than its task requires, and its constraints
+          are written as model instructions instead of deterministic checks enforced at
+          the tool boundary.
+      exposed:
+        - >
+          Exposed at runtime whenever the agent invokes the over-scoped tool — whether
+          driven by manipulated input, task ambiguity, or autonomous tool-chaining — because
+          the only thing standing between the request and the tool's full authority is
+          the model's non-deterministic judgment.
+      mitigated:
+        - >
+          Mitigated by narrowing each tool's granted authority to least privilege with
+          ephemeral, context-scoped permissions re-evaluated per action, and by relocating
+          security-critical validation and authorization out of the model into deterministic
+          enforcement at the tool boundary.
+    mappings:
+      stride:
+        - ElevationOfPrivilege
+      owasp-top10-llm:
+        - LLM06:2025
+    lifecycleStage:
+      - development
+      - deployment
+      - runtime
+    impactType:
+      - integrity
+      - confidentiality
+      - accountability
+    actorAccess:
+      - external
+      - api
+      - agent
+    externalReferences:
+      - type: editorial
+        id: mcp-security-secure-tool-design
+        title: 'Model Context Protocol Security: Secure Tool and UX Design'
+        url: https://modelcontextprotocol.io/specification/draft/basic/security_best_practices
+      - type: spec
+        id: nist-sp-800-162-abac
+        title: 'NIST SP 800-162: Guide to Attribute Based Access Control (ABAC) Definition
+          and Considerations'
+        url: https://csrc.nist.gov/pubs/sp/800/162/upd2/final
+      - type: paper
+        id: generalanalysis-2026-supabase-mcp
+        title: Supabase MCP can leak your entire SQL database
+        url: https://generalanalysis.com/blog/supabase-mcp-blog
+  - id: riskConsentFatigue
+    title: Consent Fatigue in Human Approval Gates
+    shortDescription:
+      - >
+        Human approval gates degrade as a safety control when agents prompt for consent
+        so frequently that users habituate and approve actions without evaluating them,
+        allowing dangerous operations to proceed.
+    longDescription:
+      - >
+        Agentic and remote-tooling systems often place a human-in-the-loop approval gate
+        in front of consequential actions, treating user consent as the last line of defense
+        before an action executes. Consent Fatigue is the failure mode of that gate: when
+        the volume, frequency, or uniformity of approval prompts exceeds what a person
+        can meaningfully evaluate, users habituate to the prompt and approve reflexively.
+        The protective value of the gate collapses because the human is no longer exercising
+        judgment — the consent surface still functions mechanically, but the decision
+        behind each approval has become a rubber stamp.
+      - >
+        This is the agentic-dress form of a classical usable-security problem: warning
+        fatigue, alert habituation, and the click-through phenomenon long documented for
+        browser security warnings, OS permission dialogs, and SOC alert queues. The established
+        lesson is that a human cannot serve as a reliable fail-safe for a control that
+        fires constantly; effectiveness decays with exposure. The AI-specific amplifier
+        is autonomy and tool breadth: an agent can decompose a single user intent into
+        many tool calls, each potentially gated, producing prompt volumes no traditional
+        application generated, and the prompts are often semantically opaque (a tool name
+        and arguments) so the user cannot cheaply distinguish a routine action from a
+        dangerous one.
+      - >
+        The locus is the consent/elicitation surface, not the agent's reasoning or the
+        transport. It is distinct from {{riskRogueActions}}, which is the agent taking
+        an unintended action; here the agent may be behaving as designed and the failure
+        is that the human gate meant to catch a bad action waves it through. It is distinct
+        from {{riskRunawayAgentToolLoops}}, which uses human approval as one possible
+        bound; Consent Fatigue is the risk that the approval lever itself is unreliable
+        as a bound. The underlying condition is a consent surface that issues high-volume,
+        low-context, undifferentiated approval requests and relies on sustained human
+        vigilance to remain effective.
+      - >
+        Potential impacts include execution of dangerous or irreversible operations (data
+        deletion, fund transfers, privileged configuration changes) that a vigilant user
+        would have rejected, erosion of the accountability story for agent actions (an
+        approval was recorded but was not a considered decision), and false assurance
+        that a human-in-the-loop control is providing protection it no longer provides.
+    category: risksRuntimeInputSecurity
+    personas:
+      - personaEndUser
+      - personaPlatformProvider
+      - personaApplicationDeveloper
+      - personaAgenticProvider
+    controls:
+      - controlAgentPluginUserControl
+      - controlAgentPluginPermissions
+      - controlInformedAgentConsentSurface
+    examples:
+      - >
+        Field studies of browser security-warning effectiveness ({{ref:akhawe-felt-2013-alice-in-warningland}})
+        and of security-decision-UI habituation ({{ref:bravo-lillo-2013-your-attention-please}})
+        document that repeated exposure to a similar-looking prompt trains users toward
+        faster, more reflexive approval and measurably reduces attention to the specific
+        content of a later prompt — the mechanism this risk generalizes from browser/OS
+        security dialogs to agentic tool-call approval. The same pattern applies when
+        an agent gates many low-context tool calls behind per-action approval: repetition
+        erodes the checkpoint's effectiveness even though each individual prompt is technically
+        present.
+    tourContent:
+      introduced:
+        - >
+          Introduced during development when an agent's approval gate is designed to prompt
+          per-action without scoping, batching, or risk-tiering, making high-volume undifferentiated
+          prompting the default user experience.
+      exposed:
+        - >
+          Exposed at runtime once a user has been conditioned by repeated prompts and
+          approves a consequential action reflexively, allowing it to execute without
+          genuine evaluation.
+      mitigated:
+        - >
+          Mitigated by designing consent to be meaningful rather than frequent: risk-tiering
+          prompts so only consequential or irreversible actions interrupt the user, batching
+          and scoping approvals, surfacing the concrete consequence of an action in human
+          terms, and applying least-privilege so fewer actions require an approval at
+          all.
+    lifecycleStage:
+      - development
+      - runtime
+    impactType:
+      - integrity
+      - safety
+      - accountability
+    actorAccess:
+      - agent
+      - user
+    mappings:
+      stride:
+        - ElevationOfPrivilege
+      owasp-top10-llm:
+        - LLM06:2025
+    externalReferences:
+      - type: paper
+        id: akhawe-felt-2013-alice-in-warningland
+        title: 'Alice in Warningland: A Large-Scale Field Study of Browser Security Warning
+          Effectiveness'
+        url: https://www.usenix.org/conference/usenixsecurity13/technical-sessions/presentation/akhawe
+      - type: paper
+        id: bravo-lillo-2013-your-attention-please
+        title: 'Your Attention Please: Designing Security-Decision UIs to Make Genuine
+          Risks Harder to Ignore'
+        url: https://cups.cs.cmu.edu/soups/2013/proceedings/a6_Bravo-Lillo.pdf
+  - id: riskAgenticToolSupplyChain
+    title: Agentic Tool Supply Chain Compromise
+    shortDescription:
+      - >
+        Compromise of the build, packaging, and dependency chain of the server-side code
+        that backs an agent's tools, where unsigned or unverified artifacts and vulnerable
+        or unpinned dependencies execute with the tool's privileges.
+    longDescription:
+      - >
+        Agents invoke tools that are backed by server-side code — most visibly Model Context
+        Protocol (MCP) servers, but equally A2A endpoints, plugin runtimes, and any remote-tooling
+        service the agent calls. That code is built, packaged, and deployed through a
+        supply chain: source repositories, dependency resolvers, build pipelines, and
+        artifact registries. When an artifact is admitted to execution without provenance
+        verification or signature checking, when its transitive dependencies are not screened
+        for known vulnerabilities, or when dependencies resolve through floating version
+        ranges rather than hash-pinned references, an attacker who compromises any link
+        in that chain runs code with the tool's privileges the next time the agent invokes
+        it.
+      - >
+        This is the classical software supply-chain compromise pattern in agentic dress.
+        The relevant reference frame is the same one used for any build pipeline: SLSA
+        provenance levels, software composition analysis (SCA) over the dependency graph,
+        binary or admission authorization that refuses unsigned artifacts, software bills
+        of materials (SBOM), and hash-pinned, reproducible dependency resolution. The
+        protocol an agent uses to reach the tool, and whether the server runs locally
+        or remotely, are attributes of the deployment, not the identity of the defect.
+      - >
+        This risk operates at the tool's CODE and DEPENDENCY integrity layer — the artifact
+        that runs when a tool is invoked. It is distinct from {{riskToolSourceProvenance}},
+        which operates one layer up at tool discovery and metadata: a tool can have a
+        perfectly trustworthy manifest and publisher identity while the server binary
+        behind it was built from a poisoned dependency. It is also distinct from {{riskModelSourceTampering}},
+        which is the same defect class applied to the MODEL artifact (code, weights, training
+        dependencies) rather than to agentic tool/server code. {{riskAgenticToolSupplyChain}}
+        is structurally analogous to {{riskModelSourceTampering}}: both are integrity
+        failures in a build-and-dependency chain consumed without verification, but they
+        target different artifacts and different consuming personas.
+      - >
+        A successful compromise typically manifests downstream as {{riskRogueActions}}
+        — the agent invokes a tool that now behaves maliciously — or as {{riskInsecureIntegratedComponent}}
+        when the injected vulnerability is a generic software flaw exploited at runtime.
+        Because dependency chains are transitive, a single poisoned upstream package can
+        reach many tool servers, giving this risk supply-chain blast radius rather than
+        per-tool scope.
+    category: risksSupplyChainAndDevelopment
+    personas:
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaPlatformProvider
+    controls:
+      - controlModelAndDataIntegrityManagement
+      - controlSecureByDefaultMLTooling
+    examples:
+      - >
+        The CxZero MCP risk taxonomy ({{ref:checkmarx-2025-mcp-emerging-risks}}) called
+        out unsigned MCP server code and vulnerable server dependencies among the top
+        emerging MCP security risks, recommending binary authorization, software composition
+        analysis, and hash-based dependency pinning as the mitigation set.
+      - >
+        The torchtriton dependency-confusion compromise of the PyTorch nightly build ({{ref:pytorch-2022-torchtriton-compromise}})
+        is the classical precedent for this pattern: a malicious package substituted into
+        a floating dependency range executed attacker code on resolution. The same mechanism
+        applies unchanged to the dependency chains of agentic tool servers.
+    tourContent:
+      introduced:
+        - >
+          This risk is introduced when the server-side code backing an agent's tools is
+          built or deployed without artifact signing and provenance verification, without
+          composition analysis of its dependency graph, or with dependencies resolved
+          through floating version ranges rather than hash-pinned references.
+      exposed:
+        - >
+          The risk is exposed at tool invocation, when the agent calls a tool whose backing
+          artifact or one of its transitive dependencies has been tampered with upstream,
+          executing the compromised code with the tool's privileges.
+      mitigated:
+        - >
+          Mitigation applies classical supply-chain integrity to tool/server artifacts:
+          binary or admission authorization that refuses unsigned or unverified code,
+          software composition analysis to surface vulnerable dependencies, SBOM generation,
+          and hash-pinned, reproducible dependency resolution rather than version ranges.
+    mappings:
+      mitre-atlas:
+        - AML.T0010.002@5.0.1
+      stride:
+        - Tampering
+      owasp-top10-llm:
+        - LLM03:2025
+    lifecycleStage:
+      - development
+      - deployment
+    impactType:
+      - integrity
+      - confidentiality
+      - availability
+    actorAccess:
+      - supply-chain
+    externalReferences:
+      - type: editorial
+        id: checkmarx-2025-mcp-emerging-risks
+        title: 11 Emerging AI Security Risks with MCP (Model Context Protocol)
+        url: https://checkmarx.com/zero-post/11-emerging-ai-security-risks-with-mcp-model-context-protocol/
+      - type: advisory
+        id: pytorch-2022-torchtriton-compromise
+        title: Compromised PyTorch-nightly dependency chain (torchtriton)
+        url: https://pytorch.org/blog/compromised-nightly-dependency/
+  - id: riskImplicitCrossBoundaryTrust
+    title: Implicit Cross-Boundary Trust
+    shortDescription:
+      - >
+        An agentic system grants ambient trust across a client, remote-tooling, or third-party
+        service boundary instead of verifying authority at each boundary, so a compromise
+        on one side is implicitly trusted by the others and propagates through transitive-trust
+        chains.
+    longDescription:
+      - >
+        Agentic deployments chain multiple parties across trust boundaries: an orchestrator
+        or client, one or more remote tool servers (for example MCP or A2A endpoints),
+        and the downstream third-party APIs those servers call. Implicit Cross-Boundary
+        Trust is the design condition in which trust is granted by position in the chain
+        rather than verified at each boundary — the client implicitly trusts whatever
+        a server returns, the server implicitly trusts the client's requests, and the
+        third-party service implicitly trusts the server's calls. Because authority is
+        ambient rather than checked per boundary, a compromise of any single element is
+        accepted as trustworthy by the elements adjacent to it.
+      - >
+        This is the agentic form of a classical implicit-trust (non-zero-trust) architecture.
+        Zero-trust architecture ({{ref:nist-sp-800-207-zero-trust}}) and attribute-based
+        policy enforcement ({{ref:nist-sp-800-162-abac}}, PEP/PDP/PIP/PAP) were defined
+        precisely to remove this assumption by forcing per-request verification at every
+        boundary instead of trusting an internal zone; {{ref:cwe-653}} (Insufficient Compartmentalization)
+        captures the same failure to keep security domains separated. The AI-specific
+        amplifier is that the trust chain is assembled dynamically at runtime — agents
+        discover and connect to tool servers on the fly, so the set of trusted parties
+        is not fixed or pre-vetted — and the LLM autonomously decides to cross boundaries
+        based on reasoning over untrusted content, so ambient authority is exercised without
+        a human verifying each hop.
+      - >
+        The exposure is present wherever an agentic system establishes trust by connection
+        or chain position rather than by per-boundary verification: wherever a client
+        accepts tool output or server-supplied instructions as trusted without bounding
+        their authority; wherever a remote tool server acts on client requests without
+        confirming the request is within the client's authorized scope; wherever a third-party
+        call inherits the server's standing credentials rather than a request-scoped,
+        verified authorization; and wherever no policy decision point evaluates each cross-boundary
+        action against the originating caller's authority. Any of these lets trust flow
+        transitively, so a single compromised node yields lateral movement and privilege
+        escalation across the whole chain.
+      - >
+        This risk is the trust-model design root that the corpus's more specific delegation
+        risks specialize. It is distinct from {{riskAgenticDelegationConfusedDeputy}},
+        which is the failure to validate the caller's authorization at one delegation
+        boundary; here the defect is architectural and chain-wide — trust is granted ambiently
+        across every boundary, of which the confused deputy is one symptom. It is distinct
+        from {{riskCrossTenantCredentialPropagation}}, which is specifically about unscoped
+        credentials crossing tenant boundaries through the identity layer; this risk concerns
+        implicit trust in the request/response and call path regardless of tenancy. It
+        is distinct from {{riskInsecureIntegratedComponent}}, which concerns software
+        vulnerabilities in an integrated component; here each component may be individually
+        sound, yet the system is breached because the boundaries between them are unverified
+        by design.
+      - >
+        Potential impacts include lateral movement from a single compromised tool server
+        or client into otherwise-isolated services, privilege escalation along transitive-trust
+        chains, unauthorized cross-boundary data access and actions, and a blast radius
+        that spans every party the chain reaches. Consequences include accountability
+        gaps (no boundary can attribute which party's authority was actually exercised),
+        compliance failures, and the collapse of containment guarantees the architecture
+        was assumed to provide.
+    category: risksDeploymentAndInfrastructure
+    personas:
+      - personaAgenticProvider
+      - personaPlatformProvider
+      - personaApplicationDeveloper
+      - personaEndUser
+    controls:
+      - controlAgentPluginPermissions
+      - controlAgentCredentialIsolation
+      - controlIsolatedConfidentialComputing
+      - controlAgentObservability
+    examples:
+      - >
+        A coding-assistant agent connects a client to a remote MCP tool server that itself
+        calls a downstream third-party API using a single standing credential. Because
+        the client trusts whatever the server returns and the server's third-party call
+        carries ambient authority, a prompt-injected instruction routed through the server
+        is executed against the third-party service with the server's full standing access
+        — a request the originating user was never authorized to make — illustrating trust
+        granted by chain position rather than verified per boundary.
+      - >
+        In a multi-agent workflow, an orchestrator trusts a peer tool agent's responses
+        without bounding their authority. The peer agent, compromised through a poisoned
+        tool description, returns instructions the orchestrator acts on against an internal
+        service. No boundary between orchestrator, peer, and internal service re-verified
+        authority, so a single compromised node moved laterally across the chain. This
+        pattern is documented, not purely hypothetical: Microsoft's incident-response
+        research describes poisoned MCP tool descriptions hijacking agents that act on
+        a user's behalf through exactly this implicit-trust chain ({{ref:thehackernews-2026-mcp-poisoned-tool-descriptions}}),
+        grounded in a real seed incident — the first documented malicious MCP server found
+        in the wild silently BCC'd outgoing emails to an attacker, abusing the implicit
+        trust its caller placed in it. This is research-grounded analysis of an emerging
+        pattern with one real confirmed instance, not yet a fully realized multi-agent
+        cascading-trust breach — cited honestly as such rather than overstated.
+    tourContent:
+      introduced:
+        - >
+          Introduced during design and deployment when the agentic architecture establishes
+          trust by connection or chain position — client to remote tool server to third-party
+          service — without a per-boundary verification step (no policy decision point
+          evaluating each cross-boundary action against the originating caller's authority).
+      exposed:
+        - >
+          Exposed at runtime when any node in the chain is compromised or fed malicious
+          content and the adjacent nodes accept its requests or responses as trusted,
+          allowing the compromise to propagate transitively across boundaries the architecture
+          assumed were isolated.
+      mitigated:
+        - >
+          Mitigated by applying zero-trust principles to every agentic boundary: verify
+          the originating caller's authority at each hop rather than trusting chain position,
+          scope credentials and effective permissions to the intersection of the caller's
+          and the node's authority per request, isolate components to bound blast radius,
+          and observe cross-boundary actions to detect authority exercised beyond the
+          expected scope.
+    mappings:
+      stride:
+        - ElevationOfPrivilege
+        - Spoofing
+      owasp-top10-llm:
+        - LLM06:2025
+    lifecycleStage:
+      - development
+      - deployment
+      - runtime
+    impactType:
+      - confidentiality
+      - integrity
+      - accountability
+    actorAccess:
+      - agent
+      - external
+      - service-provider
+    externalReferences:
+      - type: spec
+        id: nist-sp-800-207-zero-trust
+        title: 'NIST SP 800-207: Zero Trust Architecture'
+        url: https://csrc.nist.gov/pubs/sp/800/207/final
+      - type: spec
+        id: nist-sp-800-162-abac
+        title: 'NIST SP 800-162: Guide to Attribute Based Access Control (ABAC) Definition
+          and Considerations'
+        url: https://csrc.nist.gov/pubs/sp/800/162/final
+      - type: cwe
+        id: cwe-653
+        title: 'CWE-653: Improper Isolation or Compartmentalization'
+        url: https://cwe.mitre.org/data/definitions/653.html
+      - type: news
+        id: thehackernews-2026-mcp-poisoned-tool-descriptions
+        title: Microsoft Warns of Poisoned MCP Tool Descriptions Hijacking AI Agents
+        url: https://thehackernews.com/2026/06/microsoft-warns-poisoned-mcp-tool.html
+  - id: riskCredentialAndTokenTheft
+    title: Credential and Token Theft
+    shortDescription:
+      - >
+        Secret material such as OAuth tokens, API keys, and service credentials is exposed
+        through insecure storage, handling, or transmission, letting an attacker who obtains
+        it impersonate a legitimate identity, access protected resources, or escalate
+        privilege.
+    longDescription:
+      - >
+        Credential and Token Theft is the classical secret-confidentiality failure ({{ref:cwe-522}})
+        cast in agentic and remote-tooling dress. Agents, orchestration layers, and tool
+        servers (for example MCP, A2A, or UCP endpoints) hold and forward large numbers
+        of secrets — short-lived bearer and OAuth access tokens, long-lived API keys,
+        and service-account credentials — in order to authenticate to downstream tools
+        and services on a caller's behalf. When that secret material is stored in cleartext
+        ({{ref:cwe-312}}), embedded in configuration or environment variables, written
+        to logs, cached in process memory without scrubbing, or transmitted over channels
+        that do not protect confidentiality, an attacker who reads it can replay it directly.
+        Because a bearer token is presented as proof of identity, possession is sufficient:
+        the holder of a stolen token is indistinguishable from the legitimate principal
+        until the token is revoked.
+      - >
+        The mechanism is theft of the secret itself, independent of how the secret was
+        acquired. Acquisition vectors include reading secrets at rest (disk, container
+        image, environment, source repository, or backup), harvesting them from logs and
+        error traces, scraping them from process memory or core dumps, and capturing them
+        from insufficiently protected transmission. The impact class is impersonation:
+        with a valid token the attacker authenticates as the victim principal, reuses
+        its authorization, and may pivot to higher privilege if the stolen credential
+        is over-scoped or long-lived. The breach is hard to detect because every downstream
+        request carries a structurally valid credential and the legitimate identity remains
+        enrolled.
+      - >
+        This risk is the credential-confidentiality counterpart to several adjacent identity
+        risks and is deliberately scoped to the secret as an asset. It is distinct from
+        {{riskMCPTransportHijacking}}, which covers attacks on the transport channel itself
+        (man-in-the-middle, session hijacking, replay): transport hijacking is one acquisition
+        vector for a token in transit, whereas this risk centers on the secret's confidentiality
+        across its whole lifecycle, including at rest and in handling where no transport
+        is involved. It is distinct from {{riskCrossTenantCredentialPropagation}}, which
+        covers the blast radius of shared or insufficiently tenant-scoped credentials
+        spreading laterally after a compromise; that risk concerns propagation of legitimately
+        issued credentials, this one concerns theft of a secret from insecure storage
+        or handling. It is distinct from {{riskStaleAgentIdentityBinding}} and {{riskShadowAndUnknownAgents}},
+        which concern identity-lifecycle binding and registration rather than the confidentiality
+        of secret material. It is distinct from {{riskSensitiveDataDisclosure}}, which
+        covers the model disclosing sensitive data through its outputs; here the stolen
+        asset is an authentication credential used as an access and impersonation primitive,
+        not disclosed content.
+      - >
+        Potential impacts include unauthorized access to downstream tools and services
+        under the stolen credential's full authority, exfiltration or manipulation of
+        whatever data and systems the token can reach, and privilege escalation where
+        the stolen credential is over-scoped or long-lived. Because the credential itself
+        is valid, the compromise is difficult to detect and can persist until the token
+        is explicitly revoked or expires.
+    category: risksRuntimeDataSecurity
+    personas:
+      - personaAgenticProvider
+      - personaPlatformProvider
+      - personaApplicationDeveloper
+      - personaEndUser
+    controls:
+      - controlAgentCredentialIsolation
+      - controlInterComponentTransportSecurity
+      - controlSessionCredentialBindingAndLifecycle
+    examples:
+      - >
+        An MCP or remote-tool server persists the OAuth access tokens it brokers for downstream
+        APIs in a world-readable config file or an unscrubbed environment variable. A
+        local-privilege attacker or a co-tenant process reads the file and replays the
+        bearer token against the downstream API, authenticating as the legitimate agent
+        until the token expires or is revoked. CVE-2021-41077 is a real-world precedent
+        for this exact asset class: a Travis CI build-time flaw let a forked public repository's
+        pull request pull the parent repository's encrypted secret environment variables
+        — decrypted and injected into the build environment — out via crafted build commands,
+        exposing signing keys, access credentials, and API tokens across thousands of
+        open-source projects ({{ref:cve-2021-41077}}).
+      - >
+        An agent framework logs full request headers, including Authorization bearer tokens
+        and API keys, at debug verbosity. The logs are shipped to a shared observability
+        backend with broad read access; an operator outside the trust boundary harvests
+        long-lived API keys from the log stream and uses them to impersonate the service.
+        requests-oauthlib, a widely-used Python OAuth client library, is a documented
+        real instance of this exact mechanism: it logs Authorization/bearer-token headers
+        unredacted at DEBUG verbosity ({{ref:requests-oauthlib-issue-536}}) — a library-level
+        vulnerability class rather than a reported breach with a named victim, but a real,
+        verifiable precedent for the flaw.
+    tourContent:
+      introduced:
+        - >
+          Introduced during development and deployment when secrets are embedded in configuration,
+          environment variables, container images, or source repositories, when credentials
+          are over-scoped or long-lived, and when logging or memory handling is not designed
+          to keep secret material out of persistent or shared sinks.
+      exposed:
+        - >
+          Exposed at runtime when an attacker reads secret material from storage, logs,
+          process memory, or transmission and replays it. Because a stolen bearer token
+          or API key is self-authenticating, the attacker operates as the victim principal
+          and the legitimate identity remains valid throughout.
+      mitigated:
+        - >
+          Mitigated by brokering secrets from a managed secret store rather than embedding
+          them, issuing short-lived and narrowly scoped credentials, binding tokens to
+          a transport or sender identity so a captured token cannot be replayed elsewhere,
+          scrubbing secrets from logs and memory, and enforcing prompt rotation and revocation
+          so the window of a usable stolen credential is small.
+    mappings:
+      stride:
+        - Spoofing
+        - InformationDisclosure
+        - ElevationOfPrivilege
+    lifecycleStage:
+      - development
+      - deployment
+      - runtime
+    impactType:
+      - confidentiality
+      - integrity
+    actorAccess:
+      - external
+      - agent
+      - privileged
+    externalReferences:
+      - type: cwe
+        id: cwe-522
+        title: 'CWE-522: Insufficiently Protected Credentials'
+        url: https://cwe.mitre.org/data/definitions/522.html
+      - type: cwe
+        id: cwe-312
+        title: 'CWE-312: Cleartext Storage of Sensitive Information'
+        url: https://cwe.mitre.org/data/definitions/312.html
+      - type: cve
+        id: cve-2021-41077
+        title: 'CVE-2021-41077: Travis CI Secrets-in-Environment-Variables Exposure'
+        url: https://thehackernews.com/2021/09/travis-ci-flaw-exposes-secrets-of.html
+      - type: news
+        id: requests-oauthlib-issue-536
+        title: Access tokens leaked in logs when using DEBUG level
+        url: https://github.com/requests/requests-oauthlib/issues/536
+  - id: riskCredentialAtRestExposure
+    title: Credential At-Rest Exposure
+    shortDescription:
+      - >
+        Recovery or theft of secrets and cryptographic key material from where an AI-system
+        component stores them at rest — plaintext configuration, environment variables,
+        container images, source repositories, memory or crash dumps, or an insufficiently
+        protected secret store — yielding usable authority to downstream services, model-serving
+        endpoints, and shared infrastructure.
+    longDescription:
+      - >
+        AI systems and agentic platforms accumulate a large, heterogeneous set of secrets:
+        API keys for model-serving endpoints, OAuth tokens for tool servers and MCP resources,
+        database credentials for retrieval stores, signing keys for artifact integrity,
+        and inter-component mTLS certificates. Credential At-Rest Exposure occurs when
+        an adversary recovers one or more of these secrets from a storage location rather
+        than intercepting them in transit — the attack surface is the storage layer, not
+        the channel. Recovery vectors include plaintext values in source repositories
+        and dotfiles, secrets embedded in container image layers, environment variables
+        captured from process memory, unencrypted or world-readable configuration, crash
+        dumps that include heap contents, over-permissioned or improperly sealed secret-store
+        entries, and backup archives or object-storage buckets with excessive read permissions.
+      - >
+        The agentic amplifier is concentrated blast radius. A classical secrets breach
+        typically compromises one service's credentials; an orchestrator, MCP server,
+        or agentic-platform component routinely brokers credentials for many downstream
+        services at once, so a single recovery event can authenticate the adversary to
+        the full set of services the component interoperates with, across all tenants
+        or workloads it serves. The underlying secret-recovery technique is classical;
+        the AI-specific amplifier is the concentration of authority in one high-value
+        location.
+      - >
+        Detection is characteristically delayed. Secrets recovered from static storage
+        leave no runtime signal at the moment of recovery; the first observable event
+        is typically downstream misuse. Without credential-use monitoring tied to the
+        expected calling identity, the interval between recovery and detection can span
+        weeks or months.
+      - >
+        This risk is distinct from {{riskCrossTenantCredentialPropagation}}, which addresses
+        a valid, insufficiently tenant-scoped credential propagating across tenant boundaries;
+        this risk addresses the prior step — recovering the secret from its storage location,
+        independent of tenancy. It is distinct from {{riskSensitiveDataDisclosure}}, which
+        addresses the model disclosing sensitive data through inference outputs; this
+        is exfiltration of a stored secret from the holder side, not inference-time disclosure.
+        It is distinct from {{riskModelExfiltration}} (asset = the model artifact, not
+        credential material). It is distinct from {{riskStaleAgentIdentityBinding}} and
+        {{riskShadowAndUnknownAgents}}, which address identity-lifecycle failures after
+        issuance, not recovery of the secret value from storage.
+    category: risksDeploymentAndInfrastructure
+    personas:
+      - personaPlatformProvider
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaModelServing
+      - personaEndUser
+    controls:
+      - controlSecretsAndKeyManagement
+      - controlAgentCredentialIsolation
+      - controlModelAndDataAccessControls
+      - controlIsolatedConfidentialComputing
+      - controlSecureByDefaultMLTooling
+    examples:
+      - >
+        The CircleCI breach (January 2023) ({{ref:circleci-2023-breach-postmortem}}) exfiltrated
+        customer secrets — environment variables, tokens, and keys — after attackers used
+        a malware-infected engineer laptop to steal a valid session token and reach production
+        systems where the datastore encryption key was also accessible at runtime.
+      - >
+        The Codecov supply-chain breach (April 2021) ({{ref:codecov-2021-supply-chain-breach}})
+        modified the Bash Uploader script to exfiltrate environment variables — CI/CD
+        secrets, API tokens, credentials — from every pipeline that sourced it, harvesting
+        secrets held at rest in CI configuration.
+      - >
+        GitGuardian's State of Secrets Sprawl 2024 ({{ref:gitguardian-2024-secrets-sprawl}})
+        found over 12.8M new secrets committed to public GitHub repositories in 2023,
+        a persistent at-rest exposure class exploited by automated scanners.
+    tourContent:
+      introduced:
+        - >
+          Introduced during development and deployment when secrets are stored beyond
+          the minimum necessary principal set — plaintext in repos, unencrypted config,
+          image layers, or secret-store paths with excessive read permissions.
+      exposed:
+        - >
+          Exposed at deployment and runtime when infrastructure access controls, secret-store
+          permissions, or image/repository scanning fail to detect improperly stored credentials,
+          and persists when rotation does not cover all storage locations a secret resides
+          in.
+      mitigated:
+        - >
+          Mitigated by centralizing secrets in a dedicated store with least-privilege
+          access, scanning repos and images for committed credentials, enforcing short-lived
+          lifetimes that bound the post-recovery window, and isolating high-value stores
+          within confidential-computing boundaries.
+    mappings:
+      stride:
+        - InformationDisclosure
+        - ElevationOfPrivilege
+    lifecycleStage:
+      - development
+      - deployment
+      - runtime
+      - maintenance
+    impactType:
+      - confidentiality
+      - integrity
+      - compliance
+    actorAccess:
+      - external
+      - privileged
+      - supply-chain
+      - infrastructure-provider
+    externalReferences:
+      - type: advisory
+        id: circleci-2023-breach-postmortem
+        title: 'CircleCI Security Incident: What to Know and What to Do'
+        url: https://circleci.com/blog/jan-4-2023-incident-report/
+      - type: advisory
+        id: codecov-2021-supply-chain-breach
+        title: 'Codecov Security Incident: What You Need to Know'
+        url: https://about.codecov.io/security-update/
+      - type: paper
+        id: gitguardian-2024-secrets-sprawl
+        title: The State of Secrets Sprawl 2024
+        url: https://www.gitguardian.com/state-of-secrets-sprawl-report-2024
+  - id: riskExcessiveNetworkExposure
+    title: Excessive Network Exposure
+    shortDescription:
+      - >
+        An AI-system component — most commonly an MCP or tool server — is reachable from
+        beyond its intended trust boundary, and can itself reach beyond it, because it
+        is deployed with an over-broad network posture (bound to all interfaces rather
+        than localhost, unsegmented, unrestricted egress). A service meant to be network-isolated
+        becomes a pivot: parties that should not reach it can drive the data and tool
+        actions it exposes, and if it is compromised it can exfiltrate data, reach command-and-control,
+        and move laterally — with DNS rebinding as the canonical path for a remote page
+        to drive requests into an assumed-local service.
+    longDescription:
+      - >
+        Agentic deployments run tool servers, MCP endpoints, and orchestrators as network
+        services. Excessive Network Exposure occurs when one of these services is placed
+        on the network with more reachability than its intended trust boundary requires
+        — on the inbound side by binding to all interfaces rather than localhost, omitting
+        network segmentation, or lacking Origin/host validation, and on the outbound side
+        by permitting unrestricted egress. The attack surface is the deployment's network
+        position, not the message channel: a server the operator believed was local or
+        internal is in fact reachable from the surrounding network, and a server the operator
+        believed was contained can in fact open arbitrary outbound connections. DNS rebinding
+        is the canonical inbound vector — a remote web page rebinds a hostname to a loopback
+        or internal address and drives requests into a service that assumed only local
+        callers could reach it, bypassing same-origin protections.
+      - >
+        The agentic amplifier is that these services are frequently stood up ad hoc, on
+        developer workstations and inside internal networks, under an implicit assumption
+        of trust that the deployment posture does not actually enforce. MCP servers commonly
+        default to convenient rather than minimal network exposure, and agents discover
+        and connect to them at runtime without verifying where they are bound or what
+        they can reach. Internal-network deployments using Streamable HTTP inherit the
+        full lateral-movement surface of the environment they sit in while often carrying
+        only the authentication the operator remembered to add. What distinguishes this
+        from generic server hardening is the population it lives in: tool servers are
+        frequently stood up by application developers on laptops and internal hosts with
+        no operations review, and agents bind to and invoke them from runtime discovery
+        rather than a vetted network diagram — so the exposure recurs across a class of
+        endpoints that conventional network-hardening processes never see.
+      - >
+        The consequence is that a single exposed or over-permissive component becomes
+        a pivot. On the inbound side, an attacker who reaches an intended-internal service
+        can read data and drive tool actions it exposes, and can exhaust an unauthenticated
+        service by flooding it; on the outbound side, a compromised or malicious server
+        with unrestricted egress can download further malicious payloads, exfiltrate intercepted
+        or brokered data, reach command-and-control infrastructure, and move laterally
+        across the environment using the credentials it holds for downstream services
+        — including turning a commandeered server against co-located systems. Poor segmentation
+        converts a foothold on one host into reach across many. Inbound exposure and outbound
+        permissiveness are treated here as one risk because they share a single deployment-time
+        root cause (mis-scoped network position), the same controls, and the same locus
+        — two facets of network reachability, not two independent threats.
+      - >
+        This risk is distinct from {{riskMCPTransportHijacking}}, which addresses interception
+        or modification of traffic on the agent-to-tool channel (missing TLS / mutual
+        authentication) — this risk addresses the network POSITION of the endpoint itself
+        (who can reach it and what it can reach), independent of whether the channel is
+        encrypted. DNS rebinding is cited by both risks but through different enabling
+        conditions: in Transport Hijacking the gap is absent Origin/host validation on
+        the connection; here it is the binding address and network position that make
+        the service reachable by on-network peers at all — validating Origin without correcting
+        an all-interfaces bind still leaves the service exposed. It is distinct from {{riskUntrustedHostToolRuntimeExposure}},
+        which addresses host- and process-level isolation of secrets and code IN USE inside
+        a runtime — this risk addresses network-level reachability, not in-process isolation.
+        It is distinct from {{riskCrossTenantCredentialPropagation}}, which addresses
+        a valid credential crossing tenant boundaries — here the boundary crossed is the
+        network segment, not the tenant. It is distinct from {{riskZombieShadowMCPServers}},
+        which addresses stale or unmanaged endpoints — a correctly inventoried, current
+        server can still be bound and segmented incorrectly.
+    category: risksDeploymentAndInfrastructure
+    personas:
+      - personaPlatformProvider
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+    controls:
+      - controlInboundNetworkExposureAndSegmentation
+      - controlNetworkEgressControl
+      - controlSecureByDefaultMLTooling
+    examples:
+      - >
+        The MCP specification (2025-11-25) ({{ref:mcp-spec-2025-11-25-transports}}) carries
+        an explicit Security Warning for the Streamable HTTP transport: servers "MUST"
+        validate the Origin header on every incoming connection to prevent DNS rebinding
+        (responding 403 on an invalid Origin), "SHOULD" bind only to localhost (127.0.0.1)
+        rather than all interfaces (0.0.0.0) when running locally, and "SHOULD" authenticate
+        all connections — the spec warns that "without these protections, attackers could
+        use DNS rebinding to interact with local MCP servers from remote websites." The
+        exposure therefore arises where deployments violate the Origin-validation "MUST"
+        or ignore the localhost-binding and authentication "SHOULD"s; that the protocol
+        both names the attack and mandates its primary defense marks this a recognized
+        design-level concern, not a mere per-deployment oversight.
+    tourContent:
+      introduced:
+        - >
+          Introduced at deployment when a tool or MCP server is placed on the network
+          with more reachability than its trust boundary requires — bound to all interfaces
+          instead of localhost, without segmentation, or with unrestricted egress.
+      exposed:
+        - >
+          Exposed at runtime when the service is reached from outside its intended boundary
+          (directly or via DNS rebinding) or opens outbound connections to unintended
+          destinations, and persists wherever ad-hoc and internal deployments assume a
+          trust the network position does not enforce.
+      mitigated:
+        - >
+          Mitigated by binding services to the minimum necessary interface, constraining
+          inbound reachability and validating request Origin/host, segmenting internal
+          deployments, and restricting egress to an allowlist that bounds exfiltration,
+          command-and-control, and lateral movement.
+    mappings:
+      stride:
+        - InformationDisclosure
+        - ElevationOfPrivilege
+        - DenialOfService
+    lifecycleStage:
+      - deployment
+      - runtime
+    impactType:
+      - confidentiality
+      - integrity
+      - availability
+    actorAccess:
+      - external
+      - agent
+    externalReferences:
+      - type: spec
+        id: mcp-spec-2025-11-25-transports
+        title: 'Model Context Protocol specification (2025-11-25): Transports'
+        url: https://modelcontextprotocol.io/specification/2025-11-25/basic/transports
+  - id: riskConfidentialComputingAttestationBypass
+    title: Confidential Computing Attestation Bypass
+    shortDescription:
+      - >
+        A compromised, incorrectly configured, or impostor (shadow) server workload can
+        operate as a trusted counterparty in a confidential-computing deployment when
+        remote attestation of its runtime measurements is not mandated, not enforced as
+        an admission gate, or is itself defeated. The hardware root-of-trust guarantee
+        that the workload's code matches a known-good measurement fails silently, letting
+        the attacker-controlled or tampered workload operate with the access and trust
+        intended for the legitimate one. This models an architecturally sound but not-yet-widely-deployed
+        pattern: TEE-hosted MCP and agentic tool servers are an emerging, vendor-recommended
+        practice rather than today's operational norm, and no documented real-world instance
+        of this specific bypass exists yet.
+    longDescription:
+      - >
+        Confidential computing platforms (hardware Trusted Execution Environments such
+        as Intel TDX and AMD SEV-SNP, and enclave technologies such as SGX) let a relying
+        party — an orchestrator, agent, or client establishing a session with a server
+        workload — verify via *remote attestation* that the workload's measured code and
+        configuration match a known-good reference before trusting it. A compromised workload
+        (a legitimate deployment later tampered by an insider or a supply-chain substitution),
+        an incorrect workload (a misconfigured or wrong-version deployment), or a shadow
+        workload (an attacker-launched impostor standing in for the legitimate server)
+        each produce measurements that diverge from that known-good reference and should
+        fail attestation.
+      - >
+        The threat is not that attestation catches a mismatch — that is the control working
+        as intended. The threat is the gap on either side of that check: deployments that
+        place a workload inside a TEE but do not mandate remote attestation as a hard
+        admission gate at launch and at every subsequent trust decision, or deployments
+        that treat "runs inside a TEE" itself as sufficient evidence of trustworthiness
+        without verifying and enforcing the attestation result. In either gap, a compromised,
+        incorrect, or shadow workload operates with the full access, credentials, and
+        trust intended for the legitimate one, for as long as nothing actually checks,
+        or acts on, its measurement.
+      - >
+        Remote attestation is also not an infallible backstop: it is only as trustworthy
+        as the hardware's ability to produce a truthful measurement. Documented hardware-level
+        attacks against enclave and TEE platforms — such as the Foreshadow speculative-execution
+        attack against Intel SGX ({{ref:vanbulck-2018-foreshadow}}), which extracted attestation
+        keys and undermined the platform's ability to vouch for its own measurements —
+        demonstrate that the hardware root of trust underlying attestation is itself an
+        attack surface, not a fixed guarantee.
+      - >
+        This risk is distinct from {{riskZombieShadowMCPServers}}, which addresses stale
+        or decommissioned registry and DNS entries reclaimed by an attacker after legitimate
+        decommissioning — its own scope explicitly excludes vulnerabilities in a running
+        tool implementation. This risk addresses an actively running workload whose measured
+        code or configuration does not match what was deployed, verified (or not) via
+        hardware attestation rather than registry or DNS presence. It is distinct from
+        {{riskToolRegistryTampering}}, which addresses compromise of registry metadata
+        — tool descriptions, schemas, manifest entries — that redirects agent tool selection;
+        this risk addresses the integrity of the running server workload itself, independent
+        of whether its registry entry was ever touched. It is distinct from {{riskAgentIdentitySpoofing}},
+        which addresses weak or missing authentication credentials that let an attacker
+        impersonate a client or agent at the protocol layer; this risk addresses hardware-measured
+        code integrity of the server workload, a verification layer a valid, correctly-authenticated
+        credential does not itself satisfy. It is distinct from {{riskUntrustedHostToolRuntimeExposure}},
+        which addresses secrets and code exposed in use to a hostile host, administrator,
+        or co-tenant absent adequate runtime isolation; this risk addresses verifying
+        the identity and integrity of the workload itself before trusting it, not protecting
+        an already-trusted workload's data from its surroundings. It is also distinct
+        from {{riskModelDeploymentTampering}}, which shares this risk's primary control
+        ({{controlIsolatedConfidentialComputing}}) but addresses unauthorized modification
+        of the model deployment workflow or serving infrastructure itself — altering how
+        a model behaves post-deployment via a compromised deployment pipeline; this risk
+        addresses verifying the identity and integrity of a server workload as a counterparty
+        at connection time, independent of whether that workload happens to be model-serving
+        infrastructure, a tool server, or any other MCP component, and independent of
+        whether its deployment pipeline was ever touched.
+      - >
+        A workload trusted despite compromise operates with the full authority of the
+        legitimate principal: it can execute tool calls, return tampered results that
+        poison downstream agent reasoning, and access whatever credentials, secrets, or
+        sensitive data flow through it, while corrupting the audit trail that would otherwise
+        attribute those actions to an impostor rather than the trusted server.
+    category: risksDeploymentAndInfrastructure
+    personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaEndUser
+    controls:
+      - controlIsolatedConfidentialComputing
+      - controlComponentIdentityProvenance
+    examples:
+      - >
+        No documented real-world incident of an MCP or agentic tool server operating as
+        a trusted counterparty despite failing remote attestation exists yet — TEE-hosted
+        MCP deployment is, per the source paper itself, a forward-looking/recommended
+        pattern rather than a widespread deployment reality at the time of writing. This
+        risk is evidence-thin on its primary claim (an unmandated or unenforced attestation
+        admission gate) for that reason; that gap is stated plainly here rather than papered
+        over with a mismatched citation.
+      - >
+        What is documented is that the underlying hardware root of trust attestation depends
+        on is itself attackable: the Foreshadow (L1 Terminal Fault) attack against Intel
+        SGX ({{ref:vanbulck-2018-foreshadow}}) (USENIX Security 2018) demonstrated that
+        transient out-of-order execution could extract SGX sealing and attestation keys,
+        allowing forged attestation quotes and undermining the platform's ability to vouch
+        for its own measurements. This supports only this risk's secondary claim — that
+        attestation itself can be defeated, not merely skipped or ignored. It is an 8-year-old,
+        SGX-specific result, and SGX has been largely superseded by TDX/SEV-SNP-era confidential
+        computing, so it grounds the general hardware- trust-surface point without claiming
+        currency for the current hardware generation rather than a bypass demonstrated
+        against today's dominant platforms.
+    mappings:
+      stride:
+        - Spoofing
+        - Tampering
+        - InformationDisclosure
+    lifecycleStage:
+      - deployment
+      - runtime
+    impactType:
+      - confidentiality
+      - integrity
+    actorAccess:
+      - infrastructure-provider
+      - privileged
+      - supply-chain
+      - physical
+    externalReferences:
+      - type: paper
+        id: vanbulck-2018-foreshadow
+        title: 'Foreshadow: Extracting the Keys to the Intel SGX Kingdom with Transient
+          Out-of-Order Execution'
+        url: https://www.usenix.org/conference/usenixsecurity18/presentation/bulck
+  - id: riskAuditTrailTampering
+    title: Audit Trail Tampering
+    shortDescription:
+      - >
+        An adversary who has compromised — or legitimately operates — a recorded
+        workload turns off, redirects, or destroys the audit records describing its own
+        activity, so the actions taken cannot afterwards be attributed, investigated, or
+        evidenced.
+    longDescription:
+      - >
+        Audit Trail Tampering attacks the evidence rather than the system that produced
+        it, through two mechanisms serving one objective. Records already captured are
+        altered, truncated, deleted, or reordered, so the surviving trail misstates what
+        happened. Or records never become durable: a working recording capability is
+        switched off or reconfigured, the write path is redirected to an endpoint that
+        discards what it receives, the repository is made unreachable or flooded until
+        records of interest age out, or a buffered record is dropped while the action
+        proceeds. Either way the investigator holds a trail that reads as complete and
+        is not, and a gap indistinguishable from an absence of activity will be read as
+        one.
+      - >
+        The classical form is catalogued as one technique: MITRE ATT&CK's *Disable or
+        Modify Tools* ({{ref:attack-t1685}}), under the *Defense Impairment* tactic,
+        whose sub-techniques cover both disabling and clearing Windows, Linux, and cloud
+        audit logs. NIST SP 800-53 Rev. 5 draws the same line, AU-9 requiring protection
+        of "audit information **and audit logging tools** from unauthorized access,
+        modification, and deletion" — the recording capability guarded alongside the
+        records — with AU-10 supplying non-repudiation ({{ref:nist-sp-800-53r5}}).
+        Neither grouping is decisive: ATT&CK groups by adversary tactic, not evidentiary
+        locus, and NIST does treat suppression separately in AU-4 (storage capacity) and
+        AU-5 (response to logging process failures). What defines the risk is
+        independence: **a component cannot be its own audit authority**. An emitter can
+        be obliged to produce faithful records; it cannot vouch for them against itself.
+        Records held under the same credentials, trust domain, and operator as the
+        activity they describe are that operator's assertions, not evidence against it —
+        hence an audit record repository deployed out of band from the workloads it
+        records.
+      - >
+        The agentic amplification is one of scale and consequence rather than mechanism,
+        and it is at present reasoned rather than demonstrated: both incidents below
+        involve human adversaries, and no published result yet shows an agent
+        suppressing or rewriting the records of its own activity. The reasoning is that
+        autonomous action across many hops leaves a larger share of consequential events
+        with no human witness; that delegation across agents, tool servers, and model
+        endpoints multiplies the writers whose records must all survive for one action
+        to be reconstructable; and that agents hold durable credentials and can be
+        steered by injected instructions toward infrastructure, bringing the
+        repository's administrative plane within reach.
+      - >
+        A system is exposed when the credential a component uses to write records can
+        also modify or delete them, when the repository's administration is reachable
+        from the trust domain of the workload it records, when an emitter's destination
+        can be reconfigured or impersonated undetected, when no chain or sequence would
+        make an alteration or gap visible and nothing verifies that structure on a
+        schedule, or when deletion and retention actions against the repository are not
+        recorded. Impacts include actions attributable to no principal, incident
+        response unable to establish scope or dwell time, record-keeping obligations
+        that cannot be discharged, detection baselines degrading silently as their
+        inputs are shaped, and an evidentiary record whose integrity cannot be
+        demonstrated.
+      - >
+        The nearest entry is {{riskAgentDelegationChainOpacity}}, and the boundary is
+        whether a recording capability existed. Opacity is architectural omission: the
+        emitters never emitted delegation events, so the actor path was never recorded
+        and no adversary act was needed to make it absent. This risk is the deliberate
+        defeat of a capability that was present and working — reconfiguring an
+        orchestrator so it stops emitting is this risk, a framework that never emitted
+        is opacity. The loci follow: opacity is a property of the emitters, this risk of
+        the repository, its write path, and its administration. Distinct too from
+        {{riskSensitiveDataDisclosure}} (accumulated records as a target for *reading*)
+        and {{riskAgentIdentitySpoofing}} (a faithful record naming the wrong
+        principal).
+    category: risksDeploymentAndInfrastructure
+    personas:
+      - personaPlatformProvider
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaEndUser
+    controls:
+      - controlResourceAuthorizationEnforcement
+      - controlAIInfrastructureObservability
+      - controlInterComponentTransportSecurity
+      - controlAuditRecordRepositoryIndependence
+      - controlAuditTrailCompleteness
+      - controlAuditTrailIntegrityVerification
+    examples:
+      - >
+        Mandiant reported that APT29 disabled Purview Audit on targeted accounts inside
+        compromised Microsoft 365 tenants, then began accessing those accounts'
+        mailboxes ({{ref:mandiant-2022-apt29-purview}}). Mail Items Accessed is the
+        audit that establishes which mail items a threat actor read, including access by
+        way of the Graph API; it was licensed, enabled, and working on the targeted
+        accounts, and the adversary held enough privilege in the tenant to switch off
+        the recording of its own activity before acting. The capability existed and was
+        deliberately defeated, which is the independence failure in its plainest form.
+      - >
+        The AIKatz research showed that an attacker who recovers an LLM desktop client's
+        session token can drive the same backend API the client drives, and through it
+        read, overwrite, and delete the user's stored conversation history
+        ({{ref:lumia-2025-aikatz}}). Desktop clients typically load history once, when a
+        conversation is opened, so alterations to an open conversation are not shown to
+        the user; MITRE ATLAS catalogues the behaviour as a distinct technique, sourced
+        from this case study. Where the conversation is the only account of what an
+        assistant was asked to do and what it did, an adversary holding the client's own
+        credentials can rewrite that account. Recovering the token is
+        {{riskCredentialAndTokenTheft}} and is the precondition, not part of this risk.
+    tourContent:
+      introduced:
+        - >
+          Introduced at deployment, when the audit record repository's trust boundary is
+          set: which principals may write, read, and delete records, whether the
+          repository's administrative plane is reachable from the workloads it records,
+          whether an emitter's destination can be changed without notice, and whether
+          the trail carries any structure — sequence, chain, or published checkpoint —
+          that would make alteration or loss detectable.
+      exposed:
+        - >
+          Exposed at runtime whenever a principal that can act on the system also holds
+          authority over the records of its own actions, whether through a shared
+          credential, a shared operator, or a compromised workload. The exposure is
+          latent: it produces no symptom until an investigation asks the trail a
+          question it can no longer answer.
+      mitigated:
+        - >
+          Mitigated where the repository is independent of the recorded workload —
+          append- only commit under a credential distinct from any read or
+          administrative credential, an administrative plane outside the recorded
+          workload's trust domain, an authenticated write path whose destination cannot
+          be silently substituted, trail structure that makes alteration and gaps
+          detectable rather than merely discouraged, scheduled verification of that
+          structure, and self- recording of retention, access-grant, and deletion
+          actions taken against the repository.
+    mappings:
+      stride:
+        - Repudiation
+        - Tampering
+        - DenialOfService
+    lifecycleStage:
+      - deployment
+      - runtime
+      - maintenance
+    impactType:
+      - accountability
+      - compliance
+      - integrity
+      - availability
+    actorAccess:
+      - user
+      - privileged
+      - agent
+      - infrastructure-provider
+    externalReferences:
+      - type: news
+        id: mandiant-2022-apt29-purview
+        title: "You Can't Audit Me: APT29 Continues Targeting Microsoft 365"
+        url: https://cloud.google.com/blog/topics/threat-intelligence/apt29-continues-targeting-microsoft/
+      - type: paper
+        id: lumia-2025-aikatz
+        title: AIKatz - All Your Chats Are Belong To Us
+        url: https://www.lumia.security/blog/aikatz
+      - type: attack
+        id: attack-t1685
+        title: 'Disable or Modify Tools, Technique T1685 - Enterprise | MITRE ATT&CK'
+        url: https://attack.mitre.org/techniques/T1685/
+      - type: spec
+        id: nist-sp-800-53r5
+        title: NIST SP 800-53 Rev. 5 - Security and Privacy Controls for Information Systems and Organizations
+        url: https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final

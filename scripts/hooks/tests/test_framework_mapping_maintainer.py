@@ -3293,16 +3293,17 @@ class TestLiveCorpusInventory:
 
     def test_live_corpus_report_contains_total_block_count(self):
         """
-        The report output contains the total framework-sub-block count: 96.
+        The report output contains the total framework-sub-block count: 172.
 
         Given: the 4 live consumer YAMLs
         When:  migrate --report-legacy is run
-        Then:  the string '96' appears in the report output
+        Then:  the string '172' appears in the report output
 
-        #343 plan §1 / issue body: "96 framework-sub-blocks across 4 consumer YAMLs."
-        This is a corpus-scale sanity check — the TOTAL counts legacy + pinned, so
-        it stays 96 after migration. The migration-completeness guard is
-        test_live_corpus_fully_migrated_no_legacy.
+        #343 plan §1 / issue body recorded 96 framework-sub-blocks across 4 consumer
+        YAMLs; the decomposition's controls and risks landing raised it to 172. The
+        TOTAL counts legacy + pinned, so this number tracks corpus size, not
+        migration progress — it moves whenever the corpus grows. The
+        migration-completeness guard is test_live_corpus_fully_migrated_no_legacy.
         """
         args = ["migrate", "--report-legacy"]
         for f in _CONTENT_FILES:
@@ -3311,21 +3312,23 @@ class TestLiveCorpusInventory:
         result = _run(*args)
         assert result.returncode == 0
         combined_output = result.stdout + result.stderr
-        assert "96" in combined_output, (
-            f"Expected '96' (total legacy block count) in report output; got:\n{combined_output}"
+        assert "172" in combined_output, (
+            f"Expected '172' (total block count) in report output; got:\n{combined_output}"
         )
 
     def test_live_corpus_report_contains_total_value_count(self):
         """
-        The report output contains the total value count: 146.
+        The report output contains the total value count: 245.
 
         Given: the 4 live consumer YAMLs
         When:  migrate --report-legacy is run
-        Then:  the string '146' appears in the report output
+        Then:  the string '245' appears in the report output
 
-        #343 plan §1 / issue body: "146 total values across 4 consumer YAMLs."
-        Corpus-scale sanity check (legacy + pinned); see
-        test_live_corpus_fully_migrated_no_legacy for the completeness guard.
+        #343 plan §1 / issue body recorded 146 total values across 4 consumer YAMLs;
+        the decomposition's controls and risks landing raised it to 245. Corpus-scale
+        sanity check (legacy + pinned), so it tracks corpus size rather than migration
+        progress; see test_live_corpus_fully_migrated_no_legacy for the completeness
+        guard.
         """
         args = ["migrate", "--report-legacy"]
         for f in _CONTENT_FILES:
@@ -3334,8 +3337,8 @@ class TestLiveCorpusInventory:
         result = _run(*args)
         assert result.returncode == 0
         combined_output = result.stdout + result.stderr
-        assert "146" in combined_output, (
-            f"Expected '146' (total legacy value count) in report output; got:\n{combined_output}"
+        assert "245" in combined_output, (
+            f"Expected '245' (total value count) in report output; got:\n{combined_output}"
         )
 
     def test_live_corpus_fully_migrated_no_legacy(self):
