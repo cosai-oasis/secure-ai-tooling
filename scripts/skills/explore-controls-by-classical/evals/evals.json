@@ -1,0 +1,46 @@
+{
+  "skill_name": "explore-controls-by-classical",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "What CoSAI controls are like a Policy Enforcement Point (PEP)?",
+      "expected_output": "Grounds PEP via classical-lexicon (NIST SP 800-207/800-162), finds controls that embody enforcement/permission-gating, explains the bridge, lists control ids + the risks they address.",
+      "expectations": [
+        "Grounds 'PEP' as Policy Enforcement Point (NIST SP 800-207 / 800-162), reusing classical-lexicon rather than re-deriving",
+        "Surfaces real controls from controls.yaml that embody policy enforcement / permission gating (e.g. agent permissions, access controls), with their ids",
+        "Explains how each embodies the PEP concept and notes the risks each addresses",
+        "Read-only; links control ids"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "How does the principle of least privilege show up in the CoSAI framework?",
+      "expected_output": "Narrative bridge; finds controls whose descriptions ground in least privilege, explains the classical→AI extension.",
+      "expectations": [
+        "Confirms least privilege (Saltzer & Schroeder / NIST AC-6) as the concept",
+        "Surfaces controls whose objectives embody least privilege (e.g. agent/tool permission scoping, access controls) with ids",
+        "Explains the AI-specific amplifier (why least privilege is harder/different for agents)"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "We use TLS/mTLS everywhere classically — what's the CoSAI equivalent for AI components?",
+      "expected_output": "Maps transport security to the inter-component transport-security control(s), explains, lists risks addressed.",
+      "expectations": [
+        "Recognizes TLS/mTLS/mutual authentication as the transport-security concept",
+        "Surfaces the inter-component transport security control (and any adjacent), with id",
+        "Notes the risks it addresses (e.g. transport hijacking) and links ids"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "There's no control for hardware security modules — can you add one mapped to that classical concept?",
+      "expected_output": "Recognizes authoring is out of scope; redirects to control-creator / classical-lexicon; does not edit YAML.",
+      "expectations": [
+        "Recognizes adding a control is out of scope for this read-only skill",
+        "Redirects to control-creator (and classical-lexicon for grounding)",
+        "Does not edit controls.yaml; may note the nearest existing controls"
+      ]
+    }
+  ]
+}
