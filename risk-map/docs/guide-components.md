@@ -14,6 +14,8 @@ Three consequences follow, and each is a common source of review findings:
 
 Adding a component is the highest-blast-radius change in the corpus: it cascades into reciprocal edges on every component it touches, the controls and risks that reference it, and the regenerated graphs and tables. Before adding one, test whether an existing component absorbs it — and if the candidate is too broad to instruct a reader, decompose an existing component instead of adding a wider one.
 
+> **Tip:** You can draft this manually with the steps below, or start from an assisted draft — invoke the [`component-creator`](../../scripts/agents/component-creator.md) agent, stress-test the draft with [`component-critic`](../../scripts/agents/component-critic.md), then run [`content-reviewer`](../../scripts/agents/content-reviewer.md). See [Authoring with Agents](contributing/authoring-with-agents.md).
+
 ## 1. Add the new component ID to the schema
 
 First, derive the new component ID from the component title (`component` + camelCase descriptor — e.g., "Feature Store" → `componentFeatureStore`) and declare it in the schema. This makes the system aware of the new component and allows for validation. (The issue-template flow derives this ID automatically; when authoring YAML/schema directly via PR, apply the same convention by hand.)
