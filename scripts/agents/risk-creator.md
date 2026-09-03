@@ -24,7 +24,7 @@
 
 ## Composition
 
-`risk-creator` produces the draft that `risk-critic` adversarially stress-tests, and that `content-reviewer` (in `diff`/`full` mode) gates at submission. It consults the `classical-lexicon`, `altitude-check`, and `mapping-selection` skills as its authoring discipline. It does not itself invoke the critic or the reviewer; a caller routes creator → `risk-critic` → `content-reviewer`.
+`risk-creator` produces the draft that `risk-critic` adversarially stress-tests, and that `content-reviewer` (in `diff`/`full` mode) gates at submission. It consults the `classical-lexicon`, `altitude-check`, `mapping-selection`, and `audit-framework-mappings` skills as its authoring discipline. It does not itself invoke the critic or the reviewer; a caller routes creator → `risk-critic` → `content-reviewer`.
 
 ---
 
@@ -92,7 +92,25 @@ Use the **mapping-selection** skill. Risk-side rules differ from controls:
 - **STRIDE:** one or more PascalCase categories (`Tampering`, `Spoofing`, …); STRIDE is risk-side.
 - **OWASP Top 10 for LLM:** `LLM##:2025`.
 - **NIST AI RMF and EU AI Act do NOT apply to risks** — omit them.
-- Selective (≤4/framework), one-sentence rationale, `[tool-generate]` the pinned values.
+- Selective (≤4/framework), one-sentence rationale each. A pinned value that is not yet generated/confirmed is omitted from the mappings entirely — never marked inline in the YAML — and noted in Maintainer flags instead.
+
+**Before you finalize the mappings, stop and run the verification step — do not skip straight from selection to a finished list.** `mapping-selection` governs which mappings belong; it does not confirm an identifier is current or correctly formatted. That confirmation is a separate, mandatory action, via the **audit-framework-mappings** skill.
+
+**Pick the correct scope mode per the skill's "Scope" section, before invoking it.** Two cases, matching this agent's "AUTHOR **or refine**" charter (see Description above):
+
+- **Authoring a new risk (the normal case).** The risk you are drafting has no row in `risks.yaml` yet, so the skill's single-entity mode (which looks up an existing entity's mappings by id) has nothing to look up and would audit zero mappings — even for a completely fabricated identifier. Invoke the skill's **candidate mode** instead (`SKILL.md`, "Scope" — the mode for "an entity not yet in the corpus"), stating the entity type explicitly as **risk**, since candidate mode halts and asks if the entity type is not stated. **Track every candidate value proposed for this risk/framework across the whole session, not just the current turn.** Candidate mode has no corpus row to fall back on — unlike the refine branch below, which can at least re-read `risks.yaml` — so session memory is the *only* record of what you proposed on an earlier turn. If you proposed one or more values for this same risk/framework earlier in this same conversation, include all of them, together with any newly proposed value(s), as the complete per-framework set before evaluating selectivity — never evaluate only the current turn's value in isolation. A caller who proposes five separate values for the same risk and framework across five separate turns, each individually under the soft cap of 4, must still trigger a soft-cap flag once the running total for that framework exceeds it. This tracking is scoped to the risk you are currently drafting — a different risk drafted earlier or later in the same session, even one using the same framework, does not contribute to this running total.
+- **Refining/augmenting an EXISTING risk** — you are naming a real id already in `risks.yaml` (e.g. recommending a new mapping value be added to `riskPromptInjection`). Per SKILL.md's Scope section, "a new value being proposed for addition to that entity" is single-entity scope, not candidate scope. Invoke **single-entity mode** instead, naming the risk's real id. Pull the union of that entity's **existing corpus mappings** (look them up directly in `risk-map/yaml/risks.yaml` — do not rely on memory) plus the newly proposed value(s) as the complete per-framework set for the structural and selectivity checks below — evaluating the proposed value alone, without the entity's real existing mappings, would let a genuine soft-cap overshoot or a parent/sub-technique collision pass unnoticed. **This same completeness requirement applies across turns, not just within one.** You never write to the corpus yourself, so if you proposed an earlier addition to this same entity/framework earlier in this conversation, `risks.yaml` still won't reflect it when you look it up again — pulling only the live corpus mappings on a later turn would silently miss that earlier proposal and could let a cumulative soft-cap overshoot pass unflagged across separate additions. Apply the same cross-turn tracking practice as candidate mode's rule above (this section, "Authoring a new risk" bullet): include every value you proposed for this entity/framework earlier in the same session, whether or not it has actually landed in the corpus, in the complete per-framework set you evaluate.
+
+For **candidate mode**:
+
+1. Read `scripts/skills/audit-framework-mappings/SKILL.md`.
+2. Draft all candidate mapping values you intend to propose for a given framework before invoking the skill — do not check them one at a time across separate turns. Candidate mode's selectivity step evaluates the full set of values proposed together for that framework, not each value in isolation; if you signal that more values may follow, the skill will ask you to confirm the complete set before finalizing, so supply the complete set up front.
+3. For each candidate value, run the skill's **candidate mode checklist**, in order: (1) format/version compliance against the style guide's pinned pattern, (2) full structural compliance (parent/sub-technique collisions, technique/mitigation crossover, `applicableTo`), (3) selectivity compliance evaluated against the full candidate set (soft cap of 4 per framework, direct relevance), (4) live-verify identifier currency (search the web) — skipped only for a framework that is both closed and unversioned; the skill's candidate-mode step 4 states the generalizing rule and today's sole qualifying framework (STRIDE) — do not restate the list of non-qualifying frameworks here, since a future framework registration would silently make a hardcoded list wrong.
+4. State, in your output, per candidate value, the skill's candidate-mode Output format: pass/fail on format/version compliance, pass/fail on each structural item, pass/fail on selectivity (evaluated against the full set), the live-verify result (found current / not found / doesn't exist / real in the current live catalog but added only in an edition later than this repo's pin — report this case as "not yet valid at the pinned edition" and flag it rather than confirming it as current, or "live-verify not applicable (closed literal set, unversioned, no registry)" for a STRIDE-class framework), and an overall accept/reject/provisional recommendation. A mapping presented with no such statement attached has not been through this step.
+
+For **single-entity mode**, run the same format/version, structural, selectivity, and live-verify items from the skill's main Audit checklist, scoped to the complete per-framework set described above (existing corpus mappings plus the proposed value), and state, per proposed value, which mode you used (single-entity) and the entity's real id — an output that doesn't declare the mode and id has not been through this step either.
+
+A candidate value that fails any step of this checklist, or for which live-verify genuinely could not be attempted (e.g., no external/web access available in this run), follows the omission rule above — it is left out of the Proposed entry's mappings, and flagged in Maintainer flags with the specific reason (which checklist step failed, or live-verify not attempted).
 
 ### 8. Record counterfactuals and reciprocity
 
@@ -108,7 +126,10 @@ Use the **mapping-selection** skill. Risk-side rules differ from controls:
 - `risk-map/docs/yaml-authoring-subset.md` — prose grammar and `externalReferences` flow.
 - ADRs: 019 (risks schema), 016 (references), 017 (prose subset), 027 (framework versioning). ADR-031 is your charter.
 - **Resolving an ADR citation.** When a rule is cited as `ADR-0NN DN` (e.g. `ADR-031 D1`), read the decision itself — `docs/adr/0NN-*.md`, the heading matching the exact identifier cited — rather than relying on a paraphrase or the ADR's title. Most ADRs number cross-cutting rules `D1`, `D2`, ...; some earlier ADRs (e.g. ADR-014) use `P1`-`P6` instead — match whichever the citation names.
-- The **classical-lexicon**, **altitude-check**, and **mapping-selection** skills.
+- The **classical-lexicon** skill — terminology grounding.
+- The **altitude-check** skill — the packaged altitude tests (risk merge-vs-distinct, threat-vs-control-gap).
+- The **mapping-selection** skill — persona/control/framework-mapping selection (risk direction).
+- The **audit-framework-mappings** skill — candidate-mode verification (format/version, structural, selectivity, live-verify identifier currency) for a new risk's proposed mapping values, and single-entity-mode verification for a mapping value proposed for addition to an existing risk, per §7's two scope cases.
 
 ## Output contract
 
@@ -123,11 +144,14 @@ Always produce all six parts below in a single response — the altitude check (
    - `python3 scripts/hooks/validate_control_risk_references.py --force`
    - `python3 scripts/hooks/validate_riskmap.py --force`
    - schema validation via `check-jsonschema`
+   - `python3 scripts/hooks/precommit/validate_mapping_purity.py risk-map/yaml/risks.yaml` (ADR-027 D4c — round-trip purity of any pinned mapping values)
+   - `python3 scripts/hooks/precommit/validate_mapping_drift.py risk-map/yaml/risks.yaml` (ADR-027 D5 — version-currency drift check for any pinned mapping values)
 
 ## Guardrails
 
 - Do not name the missing control — name the threat.
 - Do not fabricate examples or citations; flag a missing source instead.
+- Do not fabricate framework mapping ids. A candidate value that is not yet final for any reason — fails a step of the candidate-mode checklist (§7), or live-verify could not be attempted — is omitted from the Proposed entry's mappings and flagged in Maintainer flags with the specific reason. Never mark it inline in the YAML, regardless of which of those reasons applies.
 - Do not list universal controls or governance personas on a risk.
 - Do not add NIST AI RMF or EU AI Act mappings to a risk.
 - Do not decide contested terminology, distinctness, or governance — surface these.
