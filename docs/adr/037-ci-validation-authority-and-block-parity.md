@@ -42,7 +42,7 @@ The rule quantifies over pre-commit's **blocking** hooks, not over a fixed list 
 
 This settles the developer question directly. Contributors who have not installed hooks are fully covered, because nothing depends on their having done so. Hooks are an accelerator that moves a failure from minutes-after-push to seconds-before-commit; they are not load-bearing for correctness. "The hook may not be installed" stops being a caveat and becomes a statement about latency.
 
-The twelve hooks the rule resolves to, and what it requires of each. The table lists the rule's *instances*, not the rule; it is expected to grow without this ADR changing. It is a dated record of what the change consisted of, not the register the rule quantifies over — see [D9c](#d9c-d1s-instance-table-is-a-dated-record-not-the-register) in the 2026-08-04 addendum, which is where the register is defined.
+The thirteen hooks the rule resolves to, and what it requires of each. The table lists the rule's *instances*, not the rule; it is expected to grow without this ADR changing. It is a dated record of what the change consisted of, not the register the rule quantifies over — see [D9c](#d9c-d1s-instance-table-is-a-dated-record-not-the-register) in the 2026-08-04 addendum, which is where the register is defined.
 
 | pre-commit hook id | Validator | CI state before this decision | Required by D1 | Instance |
 |---|---|---|---|---|
@@ -58,6 +58,7 @@ The twelve hooks the rule resolves to, and what it requires of each. The table l
 | `validate-neutrality` | `scripts/hooks/precommit/validate_neutrality.py` | not invoked | add the invocation | D8 |
 | `validate-neutrality-policy` | `scripts/hooks/precommit/validate_neutrality.py` | not invoked | add the invocation | D8 |
 | `validate-prose-references` | `scripts/hooks/precommit/validate_prose_references.py` | not invoked | add the invocation | D7 |
+| `validate-eval-pairing` | `scripts/hooks/precommit/validate_eval_pairing.py` | not invoked | add the invocation | D8 |
 
 D3 carves the one exception, and it is an exception at the level of a specific *invocation* rather than of a validator: the validator D2 governs is also called for graph emission, and that call site does not take the flag.
 

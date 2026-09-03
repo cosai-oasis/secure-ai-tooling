@@ -6844,6 +6844,33 @@ def _write_neutrality_self_scan_corpus(base: Path, poisoned: bool) -> None:
     target.write_text(text, encoding="utf-8")
 
 
+# Relative path a self-scanning validate-eval-pairing corpus writes its probe
+# agent at. Not a real shipped agent name — a synthetic one, so this probe
+# cannot collide with a real EXEMPT_AGENT_NAMES entry and always exercises the
+# "missing eval" finding class rather than the grandfathered-pass path.
+_EVAL_PAIRING_PROBE_AGENT_NAME = "eval-pairing-probe"
+_EVAL_PAIRING_PROBE_REL_PATH = f"scripts/agents/{_EVAL_PAIRING_PROBE_AGENT_NAME}.md"
+
+
+def _write_eval_pairing_corpus(base: Path, poisoned: bool) -> None:
+    """Corpus for validate_eval_pairing.py's self-scanning hook (validate-eval-pairing).
+
+    Writes one shipped agent under scripts/agents/ so discover_shipped_agents
+    finds it from the mirror's working directory. The clean case also writes
+    the paired eval at scripts/agents-evals/<name>/evals.json; the poisoned
+    case omits it, reproducing the "missing eval" finding — this probe's name
+    is not in EXEMPT_AGENT_NAMES, so the omission is a real violation rather
+    than a grandfathered pass.
+    """
+    target = base / _EVAL_PAIRING_PROBE_REL_PATH
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("# Eval Pairing Probe Agent\n\nBody.\n", encoding="utf-8")
+    if not poisoned:
+        eval_path = base / "scripts" / "agents-evals" / _EVAL_PAIRING_PROBE_AGENT_NAME / "evals.json"
+        eval_path.parent.mkdir(parents=True, exist_ok=True)
+        eval_path.write_text('{"cases": []}\n', encoding="utf-8")
+
+
 class UnflaggedProbe(NamedTuple):
     """A flagless blocking validator plus the means to make it fail.
 
@@ -6892,6 +6919,11 @@ UNFLAGGED_PROBES: dict[str, UnflaggedProbe] = {
         write_corpus=_write_neutrality_self_scan_corpus,
         marker=_NEUTRALITY_POISON_TERM,
         rule="ADR-033 vendor/product denylist term under scripts/agents|skills/**",
+    ),
+    "validate_eval_pairing.py": UnflaggedProbe(
+        write_corpus=_write_eval_pairing_corpus,
+        marker=_EVAL_PAIRING_PROBE_AGENT_NAME,
+        rule="agent shipped with no matching eval (ADR-033 D6/D8, ADR-031 D6)",
     ),
 }
 

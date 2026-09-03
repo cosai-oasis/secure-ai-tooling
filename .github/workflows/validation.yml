@@ -21,6 +21,7 @@ on:
       - 'scripts/hooks/precommit/validate_all_schemas.py'
       - 'scripts/hooks/precommit/validate_persona_site_build.py'
       - 'scripts/hooks/precommit/validate_neutrality.py'
+      - 'scripts/hooks/precommit/validate_eval_pairing.py'
       - 'scripts/tools/hook_file_list.py'
       # ADR-037 D1: content the governed hooks above scan, and modules their
       # validators import locally — not the validators themselves, which are
@@ -28,6 +29,7 @@ on:
       # its_governed_hooks_scan in scripts/hooks/tests/test_ci_block_parity.py.
       - 'scripts/agents/*.md'
       - 'scripts/skills/**'
+      - 'scripts/agents-evals/**'
       - 'scripts/build_persona_site_data.py'
       - 'scripts/hooks/_sentinel_expansion.py'
       - 'scripts/hooks/precommit/_linter_types.py'
@@ -55,6 +57,7 @@ on:
       - 'scripts/hooks/precommit/validate_all_schemas.py'
       - 'scripts/hooks/precommit/validate_persona_site_build.py'
       - 'scripts/hooks/precommit/validate_neutrality.py'
+      - 'scripts/hooks/precommit/validate_eval_pairing.py'
       - 'scripts/tools/hook_file_list.py'
       # ADR-037 D1: content the governed hooks above scan, and modules their
       # validators import locally — not the validators themselves, which are
@@ -62,6 +65,7 @@ on:
       # its_governed_hooks_scan in scripts/hooks/tests/test_ci_block_parity.py.
       - 'scripts/agents/*.md'
       - 'scripts/skills/**'
+      - 'scripts/agents-evals/**'
       - 'scripts/build_persona_site_data.py'
       - 'scripts/hooks/_sentinel_expansion.py'
       - 'scripts/hooks/precommit/_linter_types.py'
@@ -692,6 +696,40 @@ jobs:
           exit 1
         fi
 
+  eval-pairing-validation:
+    runs-on: ubuntu-latest
+    name: Eval Pairing Validation
+    needs: setup
+    outputs:
+      eval_pairing_status: ${{ steps.validate-eval-pairing.outputs.status }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: '3.14'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: Run Eval Pairing Validation
+      id: validate-eval-pairing
+      run: |
+        echo "🔍 Running agent/skill eval pairing validation..."
+
+        if python3 scripts/hooks/precommit/validate_eval_pairing.py; then
+          echo "✅ Agent/skill eval pairing validation completed successfully"
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Agent/skill eval pairing validation failed"
+          echo "::error::Agent/skill eval pairing validation failed (ADR-033 D6/D8, ADR-031 D6)"
+          echo "status=failed" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
   graph-validation:
     runs-on: ubuntu-latest
     name: Graph Validation
@@ -778,7 +816,7 @@ jobs:
   validation-summary:
     runs-on: ubuntu-latest
     name: Validation Summary
-    needs: [schema-validation, format-validation, component-edge-validation, control-risk-validation, framework-validation, identification-questions-validation, prose-subset-validation, prose-references-validation, mapping-purity-validation, mapping-drift-validation, versionid-purity-validation, persona-site-build-validation, neutrality-validation, neutrality-policy-validation, graph-validation]
+    needs: [schema-validation, format-validation, component-edge-validation, control-risk-validation, framework-validation, identification-questions-validation, prose-subset-validation, prose-references-validation, mapping-purity-validation, mapping-drift-validation, versionid-purity-validation, persona-site-build-validation, neutrality-validation, neutrality-policy-validation, eval-pairing-validation, graph-validation]
     if: always()
     steps:
     - name: Generate Summary
@@ -801,6 +839,7 @@ jobs:
         persona_site_build_result="${{ needs.persona-site-build-validation.result }}"
         neutrality_result="${{ needs.neutrality-validation.result }}"
         neutrality_policy_result="${{ needs.neutrality-policy-validation.result }}"
+        eval_pairing_result="${{ needs.eval-pairing-validation.result }}"
         graph_result="${{ needs.graph-validation.result }}"
 
         # Get output details
@@ -907,6 +946,13 @@ jobs:
           echo "- ✅ **Agent/skill neutrality policy re-scan**: Passed" >> $GITHUB_STEP_SUMMARY
         else
           echo "- ❌ **Agent/skill neutrality policy re-scan**: $neutrality_policy_result" >> $GITHUB_STEP_SUMMARY
+          overall_success=false
+        fi
+
+        if [ "$eval_pairing_result" = "success" ]; then
+          echo "- ✅ **Agent/skill eval pairing validation**: Passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- ❌ **Agent/skill eval pairing validation**: $eval_pairing_result" >> $GITHUB_STEP_SUMMARY
           overall_success=false
         fi
 

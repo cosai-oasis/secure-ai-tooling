@@ -2,9 +2,10 @@
 """
 Tests for scripts/hooks/precommit/validate_neutrality.py.
 
-ADR-033 D2a/D5 establish a "vendor-neutral shipping" contract for the two
-authoring surfaces that ship in this repository: `scripts/agents/**` and
-`scripts/skills/**`. Prose in those trees must not name a specific AI harness
+ADR-033 D2a/D5/D8 establish a "vendor-neutral shipping" contract for the
+three authoring surfaces that ship in this repository: `scripts/agents/**`,
+`scripts/skills/**`, and `scripts/agents-evals/**`. Prose in those trees
+must not name a specific AI harness
 product, company, CLI entry point, or model identifier; must not embed
 harness-invocation stage directions (`<invoke ... tool>`, `subagent_type`,
 "auto-loads"/"auto-triggers"); and must not reference harness-specific config
@@ -27,7 +28,8 @@ Public API under test (scripts/hooks/precommit/validate_neutrality.py):
       allowlist suppression) plus frontmatter-key checks for one file.
       Returns `[]` (not `None`) when clean.
     - `discover_neutral_surface_files(root: Path) -> list[Path]` — files
-      under `root/scripts/agents/**` and `root/scripts/skills/**` only.
+      under `root/scripts/agents/**`, `root/scripts/skills/**`, and
+      `root/scripts/agents-evals/**`.
     - `format_violation(violation: Violation) -> str` — stderr line,
       `<hook_name>: <file>:<line>: <message>`.
     - `main(argv: list[str]) -> int` — CLI entry point; explicit file args or
@@ -138,6 +140,40 @@ def _write_nested_skill_md_reference(tmp_path: Path, content: str) -> Path:
     ref_dir.mkdir(parents=True, exist_ok=True)
     path = ref_dir / "SKILL.md"
     path.write_text(content, encoding="utf-8")
+    return path
+
+
+def _write_agents_evals_file(
+    tmp_path: Path, content: str, agent_name: str = "example-agent", relative: str = "evals.json"
+) -> Path:
+    """
+    Write a synthetic file under <tmp_path>/scripts/agents-evals/<agent_name>/<relative>.
+
+    ADR-033 Amendment D8 ships agent portable evals at
+    scripts/agents-evals/<agent-name>/evals.json, a sibling tree to
+    scripts/agents/ and scripts/skills/. This tree does not exist anywhere in
+    the repository yet (no PR has created it), so every test that uses this
+    helper builds it as a synthetic tmp_path fixture, matching how
+    _write_agent_file/_write_skill_file build the other two trees.
+    """
+    path = tmp_path / "scripts" / "agents-evals" / agent_name / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    return path
+
+
+def _write_agents_evals_asset_bytes(
+    tmp_path: Path, relative: str, data: bytes, agent_name: str = "example-agent"
+) -> Path:
+    """
+    Write raw bytes at scripts/agents-evals/<agent_name>/<relative> and return its path.
+
+    Mirrors _write_skill_asset_bytes; used for the agents-evals tree's
+    non-text-extension discovery-exclusion test.
+    """
+    path = tmp_path / "scripts" / "agents-evals" / agent_name / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(data)
     return path
 
 
@@ -555,6 +591,158 @@ class TestScopeBoundaries:
 
         assert agent in discovered
         assert not any("skills" in path.parts for path in discovered)
+
+
+class TestAgentsEvalsSubtree:
+    """
+    ADR-033 Amendment D8: scripts/agents-evals/<agent-name>/evals.json ships
+    portable agent evals as a third authoring surface — a sibling tree to
+    scripts/agents/ and scripts/skills/ — so eval JSON and D7b-style fixture
+    Markdown shipped there get the same neutrality scan the other two trees
+    already get.
+
+    `discover_neutral_surface_files` walks this tree via a three-entry
+    tuple, `("scripts/agents", "scripts/skills", "scripts/agents-evals")`
+    (validate_neutrality.py:471), appended last to preserve the existing
+    agents/skills discovery order.
+
+    scripts/agents-evals/ does not exist anywhere in the repository yet (no
+    PR has created it) — every fixture here is synthetic, built under
+    tmp_path exactly like the existing scripts/agents/ and scripts/skills/
+    fixtures elsewhere in this file.
+    """
+
+    def test_evals_json_under_agents_evals_is_discovered(self, tmp_path):
+        """
+        Given: scripts/agents-evals/<agent-name>/evals.json in a fixture repo root
+        When: discover_neutral_surface_files scans the root
+        Then: The evals.json file is included in the returned list
+        """
+        evals = _write_agents_evals_file(tmp_path, '{"cases": []}\n')
+
+        discovered = discover_neutral_surface_files(tmp_path)
+
+        assert evals in discovered
+
+    def test_nested_fixture_under_agents_evals_is_discovered(self, tmp_path):
+        """
+        Given: scripts/agents-evals/<agent-name>/fixtures/some-fixture.md
+               (nested subdirectory, matching how scripts/agents/** and
+               scripts/skills/** already support nesting)
+        When: discover_neutral_surface_files scans the root
+        Then: The nested fixture file is included in the returned list
+        """
+        fixture = _write_agents_evals_file(
+            tmp_path, "# Fixture\n\nSample D7b-style fixture content.\n", relative="fixtures/some-fixture.md"
+        )
+
+        discovered = discover_neutral_surface_files(tmp_path)
+
+        assert fixture in discovered
+
+    def test_discover_returns_files_from_all_three_trees(self, tmp_path):
+        """
+        Given: A fixture repo with files under scripts/agents/, scripts/skills/,
+               and scripts/agents-evals/
+        When: discover_neutral_surface_files scans the root
+        Then: All three trees' files are returned, not just the two legacy trees
+        """
+        agent = _write_agent_file(tmp_path, "content\n")
+        skill = _write_skill_file(tmp_path, "---\nname: x\ndescription: y\n---\nbody\n")
+        evals = _write_agents_evals_file(tmp_path, '{"cases": []}\n')
+
+        discovered = discover_neutral_surface_files(tmp_path)
+
+        assert set(discovered) == {agent, skill, evals}
+
+    def test_absent_agents_evals_subtree_contributes_nothing_without_erroring(self, tmp_path):
+        """
+        Given: A synthetic root with scripts/agents/ and scripts/skills/
+               present (one file each) and scripts/agents-evals/ entirely absent
+        When: discover_neutral_surface_files scans the root
+        Then: Both legacy files are discovered, nothing is returned under
+              scripts/agents-evals/, and discovery does not error
+
+        Regression guard, mirroring
+        test_absent_skills_subtree_contributes_nothing_without_erroring: the
+        docstring's "Either subtree may be empty (or absent) without error"
+        must extend to the third tree once it is added — a repo that has not
+        adopted scripts/agents-evals/ yet must keep working exactly as it
+        does today.
+        """
+        agent = _write_agent_file(tmp_path, "clean agent content\n")
+        skill = _write_skill_file(tmp_path, "---\nname: x\ndescription: y\n---\nbody\n")
+        assert not (tmp_path / "scripts" / "agents-evals").exists()
+
+        discovered = discover_neutral_surface_files(tmp_path)
+
+        assert set(discovered) == {agent, skill}
+        assert not any("agents-evals" in path.parts for path in discovered)
+
+    def test_agents_evals_files_land_after_skills_in_discovery_order(self, tmp_path):
+        """
+        Given: One file each under scripts/agents/, scripts/skills/, and
+               scripts/agents-evals/
+        When: discover_neutral_surface_files scans the root
+        Then: The returned list orders agents first, skills second,
+              agents-evals third
+
+        Design decision, not an assumption: the docstring documents "agents
+        subtree first, skills subtree second, each subtree sorted" for the
+        two-tree case. Appending "scripts/agents-evals" to the walk tuple is
+        the natural, low-risk extension — existing callers that rely on the
+        agents-first/skills-second relative order are unaffected — so this
+        test locks that ordering rather than, e.g., inserting agents-evals
+        between agents and skills. If a later design decision picks a
+        different ordering, this is the test that decision must update.
+        """
+        agent = _write_agent_file(tmp_path, "content\n")
+        skill = _write_skill_file(tmp_path, "---\nname: x\ndescription: y\n---\nbody\n")
+        evals = _write_agents_evals_file(tmp_path, '{"cases": []}\n')
+
+        discovered = discover_neutral_surface_files(tmp_path)
+
+        assert discovered.index(agent) < discovered.index(skill) < discovered.index(evals)
+
+    def test_non_text_file_under_agents_evals_is_excluded(self, tmp_path):
+        """
+        Given: A non-text asset (.png) under scripts/agents-evals/<agent-name>/
+        When: discover_neutral_surface_files scans the root
+        Then: The .png file is excluded, matching the existing text-extension
+              filter behavior already locked for scripts/agents/** and
+              scripts/skills/** (test_discovery_excludes_binary_asset)
+        """
+        icon = _write_agents_evals_asset_bytes(
+            tmp_path,
+            "assets/icon.png",
+            b"\x89PNG\r\n\x1a\n" + b"\x00\x01\x02\x03" * 16 + b"\xff\xfe\xfd",
+        )
+        evals = _write_agents_evals_file(tmp_path, '{"cases": []}\n')
+
+        discovered = discover_neutral_surface_files(tmp_path)
+
+        assert icon not in discovered
+        assert evals in discovered
+
+    def test_dangling_symlink_under_agents_evals_is_discovered(self, tmp_path):
+        """
+        Given: A dangling symlink (broken target) under
+               scripts/agents-evals/<agent-name>/
+        When: discover_neutral_surface_files scans the root
+        Then: The dangling symlink is included, matching the documented
+              behavior already locked for scripts/agents/** and
+              scripts/skills/** (test_e10_dangling_symlink_is_discovered_and_flagged)
+        """
+        target_dir = tmp_path / "scripts" / "agents-evals" / "example-agent"
+        target_dir.mkdir(parents=True, exist_ok=True)
+        link = target_dir / "dangling.json"
+        link.symlink_to(target_dir / "nonexistent-target.json")
+
+        discovered = discover_neutral_surface_files(tmp_path)
+
+        assert link in discovered, (
+            "a dangling symlink under scripts/agents-evals/ must be discovered, not filtered out"
+        )
 
 
 class TestFrontmatterRulesSkill:
@@ -2018,7 +2206,7 @@ class TestTextBinaryPolicyFinding3:
 """
 Test Summary
 ============
-Total Tests: 152 (counting parametrize expansion)
+Total Tests: 159 (counting parametrize expansion)
 
 Original suite (74), unchanged except the TestScopeBoundaries/TestLiveCorpus
 moves noted below:
@@ -2028,6 +2216,16 @@ moves noted below:
 - TestFrameworkAllowlist: 8
 - TestScopeBoundaries: 4 — gained `test_absent_skills_subtree_contributes_
   nothing_without_erroring`, moved in from TestLiveCorpus (see below).
+- TestAgentsEvalsSubtree: 7 (ADR-033 Amendment D8) —
+  `discover_neutral_surface_files` now includes the
+  scripts/agents-evals/<agent-name>/ tree (a third sibling to scripts/agents/
+  and scripts/skills/, shipping portable eval JSON and D7b-style fixture
+  Markdown), appended as the third entry in its walk tuple. Covers:
+  evals.json discovered, a nested fixtures/*.md discovered, all three trees returned
+  together, the absent-third-tree case still working (mirrors the absent-
+  skills regression guard above), discovery ordering (agents, skills,
+  agents-evals — the tuple-append choice, locked here rather than assumed),
+  a non-text asset excluded, and a dangling symlink discovered.
 - TestFrontmatterRulesSkill: 6
 - TestFrontmatterRulesAgent: 7
 - TestCli: 6

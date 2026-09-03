@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Pre-commit lint: enforce ADR-033 D2a/D5 vendor-neutrality for shipped surfaces.
+Pre-commit lint: enforce ADR-033 D2a/D5/D8 vendor-neutrality for shipped surfaces.
 
-`scripts/agents/**` and `scripts/skills/**` are the two authoring surfaces
-that ship in this repository. Prose in those trees must not name a specific
+`scripts/agents/**`, `scripts/skills/**`, and `scripts/agents-evals/**` are
+the three authoring surfaces that ship in this repository. Prose in those
+trees must not name a specific
 AI harness product, company, CLI entry point, or model identifier; must not
 embed harness-invocation stage directions (`<invoke ... tool>`,
 `subagent_type`, "auto-loads"/"auto-triggers"); and must not reference
@@ -439,9 +440,10 @@ def validate_file(path: Path) -> list[Violation]:
 
 def discover_neutral_surface_files(root: Path) -> list[Path]:
     """
-    Return files under `root/scripts/agents/**` and `root/scripts/skills/**`.
+    Return files under `root/scripts/agents/**`, `root/scripts/skills/**`, and
+    `root/scripts/agents-evals/**`.
 
-    Deliberately targets only these two subtrees directly rather than walking
+    Deliberately targets only these three subtrees directly rather than walking
     a common `scripts/` ancestor and filtering — that would risk reaching
     `scripts/hooks/`, this checker's own home and the one place denylist
     tokens legitimately appear as detection data.
@@ -464,11 +466,12 @@ def discover_neutral_surface_files(root: Path) -> list[Path]:
     feeding a directory to `validate_file` would not make sense.
 
     Returns:
-        Discovered files, agents subtree first, skills subtree second, each
-        subtree sorted. Either subtree may be empty (or absent) without error.
+        Discovered files in subtree-append order: agents, skills, then
+        agents-evals, each subtree sorted internally. Any subtree may be
+        empty (or absent) without error.
     """
     discovered: list[Path] = []
-    for subdir in ("scripts/agents", "scripts/skills"):
+    for subdir in ("scripts/agents", "scripts/skills", "scripts/agents-evals"):
         base = root / subdir
         if not base.is_dir():
             continue
