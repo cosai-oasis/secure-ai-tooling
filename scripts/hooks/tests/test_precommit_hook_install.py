@@ -759,6 +759,14 @@ _LOCAL_VALIDATOR_TRIGGER_COVERAGE: dict[str, set[str] | None] = {
     # Exempt per ADR-005 § Addendum 2026-05-08: Hook trigger-vs-read-set
     # invariant.
     "validate-neutrality-policy": None,
+    # validate-eval-pairing: SENTINEL — corpus-completeness hook for ADR-033
+    # D6/D8 / ADR-031 D6 eval pairing. With no file args, main([]) self-
+    # discovers via find_pairing_violations(cwd), which walks scripts/agents/**,
+    # scripts/agents-evals/** and scripts/skills/** at runtime; the read set is
+    # whatever agents/skills currently exist in those trees, not a fixed list.
+    # Exempt per ADR-005 § Addendum 2026-05-08: Hook trigger-vs-read-set
+    # invariant.
+    "validate-eval-pairing": None,
     # validate-frameworks-versionid-purity: reads only frameworks.yaml at the
     # canonical path. Trigger is anchored on the same path.
     "validate-frameworks-versionid-purity": {
