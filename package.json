@@ -2,7 +2,7 @@
   "name": "secure-ai-tooling",
   "dependencies": {
     "@mermaid-js/mermaid-cli": "^11.17.0",
-    "playwright": "1.62.1",
+    "playwright": "1.63.0",
     "prettier": "^3.9.6",
     "puppeteer": "^25"
   }
