@@ -54,7 +54,9 @@ lifecycleStages:
   - id: decommissioning
     title: Decommissioning
     description: >-
-      Terminal retirement of the AI system: revoking authenticators and tombstoning
-      identities, revoking delegated authority across descendants, and disposing of
-      models, data, memory, and decision traces against a verified disposition record
+      Terminal retirement of the AI system, ending its authority to act: revoking
+      authenticators and tombstoning identities, revoking delegated authority across
+      descendants, disposing of models, data, memory, and decision traces against a
+      verified disposition record, and publishing the terminal state and its effective
+      time where a relying party can verify it. Any later return is a new admission
     order: 9

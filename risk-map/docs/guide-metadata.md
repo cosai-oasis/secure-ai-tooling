@@ -80,7 +80,7 @@ lifecycleStage: none  # Not applicable to any specific stage
 
 ### Valid Values
 
-The 8-stage AI lifecycle model:
+The 9-stage AI lifecycle model:
 
 1. **planning** - Initial planning, design, and architecture definition
 2. **data-preparation** - Data collection, cleaning, labeling, and preparation
@@ -90,6 +90,7 @@ The 8-stage AI lifecycle model:
 6. **deployment** - Production deployment and initial rollout
 7. **runtime** - Active operation and serving in production
 8. **maintenance** - Ongoing monitoring, updates, and retraining
+9. **decommissioning** - Terminal retirement: authenticators revoked, identity tombstoned, delegated authority revoked across descendants, assets disposed of against a verified disposition record
 
 ### Example
 
