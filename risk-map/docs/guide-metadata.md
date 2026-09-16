@@ -80,7 +80,7 @@ lifecycleStage: none  # Not applicable to any specific stage
 
 ### Valid Values
 
-The 8-stage AI lifecycle model:
+The 9-stage AI lifecycle model:
 
 1. **planning** - Initial planning, design, and architecture definition
 2. **data-preparation** - Data collection, cleaning, labeling, and preparation
@@ -90,6 +90,7 @@ The 8-stage AI lifecycle model:
 6. **deployment** - Production deployment and initial rollout
 7. **runtime** - Active operation and serving in production
 8. **maintenance** - Ongoing monitoring, updates, and retraining
+9. **decommissioning** - Terminal retirement: authenticators revoked, identity tombstoned, delegated authority revoked across descendants, assets disposed of against a verified disposition record
 
 ### Example
 
@@ -347,7 +348,7 @@ The schemas enforce these validation rules for metadata fields:
 
 3. **Enum Constraints**: All specific values must match their respective schema enums:
    - Framework IDs in `mappings` must exist in `frameworks.yaml`
-   - Lifecycle stages must be one of the 8 stages defined in `lifecycle-stage.schema.json`
+   - Lifecycle stages must be one of the 9 stages defined in `lifecycle-stage.schema.json`
    - Impact types must be one of the 10 types defined in `impact-type.schema.json`
    - Actor access levels must be one of the 9 levels defined in `actor-access.schema.json`
 
@@ -357,7 +358,7 @@ The schemas enforce these validation rules for metadata fields:
 
 1. **Be selective**: Only include metadata fields that add meaningful context
 2. **Use multiple values**: Most metadata fields accept arrays - include all relevant values
-3. **Consider the full lifecycle**: Think about where risks/controls apply across all 8 stages
+3. **Consider the full lifecycle**: Think about where risks/controls apply across all 9 stages
 4. **Map to multiple frameworks**: Cross-referencing helps users from different security backgrounds
 5. **Choose primary impacts**: Focus on the most significant impact types rather than listing everything
 
