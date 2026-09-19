@@ -1,0 +1,45 @@
+{
+  "skill_name": "explore-framework-coverage",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "What's our NIST AI RMF GOVERN-6.2 coverage — which entries map to it?",
+      "expected_output": "Knows NIST AI RMF applies to controls only; searches for GOVERN-6.2@1.0; lists the controls mapped to it (ids + titles).",
+      "expectations": [
+        "Recognizes NIST AI RMF maps to controls only (not risks/personas)",
+        "Searches for the version-pinned value GOVERN-6.2@1.0 and lists the controls that carry it, with ids",
+        "Read-only; links ids"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Which risks map to MITRE ATLAS AML.T0051?",
+      "expected_output": "Knows ATLAS techniques (AML.T####) appear on risks; searches AML.T0051@5.0.1; lists the risks (or reports none).",
+      "expectations": [
+        "Recognizes AML.T#### techniques map to risks (mitigations AML.M#### map to controls)",
+        "Searches the version-pinned AML.T0051@5.0.1 and lists the risks that carry it (or reports a gap if none)",
+        "Links ids"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Show me our EU AI Act Article 14 coverage.",
+      "expected_output": "Knows EU AI Act maps to controls + personas; searches Article 14@2024; if nothing maps, reports the coverage gap plainly rather than inventing mappings.",
+      "expectations": [
+        "Recognizes EU AI Act applies to controls and personas (not risks)",
+        "Searches for Article 14@2024 across controls.yaml and personas.yaml",
+        "If no entries map, reports the coverage gap explicitly (does not invent or infer mappings)"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Is the STRIDE value on riskDataPoisoning formatted correctly and version-pinned?",
+      "expected_output": "Recognizes this is a mapping-correctness/style question, not a coverage query; redirects to audit-framework-mappings.",
+      "expectations": [
+        "Recognizes checking mapping format/correctness is out of scope for this coverage skill",
+        "Redirects to audit-framework-mappings",
+        "Does not attempt a style audit itself"
+      ]
+    }
+  ]
+}
