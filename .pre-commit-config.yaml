@@ -248,20 +248,21 @@ repos:
         pass_filenames: true
 
   # ---------------------------------------------------------------------------
-  # ADR-033 D2a/D5 vendor-neutrality check. Scoped to the two neutral-surface
-  # trees that ship in this repository — scripts/agents/** and
-  # scripts/skills/** — not the whole repo; scripts/skills/ does not exist yet,
-  # but the `files:` pattern activates automatically once it does. Flags
-  # harness-specific vendor/product/model names, invocation stage directions,
-  # and config paths in those two trees only.
+  # ADR-033 D2a/D5/D8 vendor-neutrality check. Scoped to the three neutral-surface
+  # trees that ship in this repository — scripts/agents/**, scripts/skills/**,
+  # and scripts/agents-evals/** — not the whole repo; scripts/skills/ and
+  # scripts/agents-evals/ do not exist yet, but the `files:` pattern activates
+  # automatically once either does. Flags harness-specific vendor/product/model
+  # names, invocation stage directions, and config paths in those three trees
+  # only.
   # ---------------------------------------------------------------------------
   - repo: local
     hooks:
       - id: validate-neutrality
-        name: 'validate: vendor-neutrality of agent/skill surfaces (ADR-033)'
+        name: 'validate: vendor-neutrality of agent/skill/evals surfaces (ADR-033)'
         language: system
         entry: python3 scripts/hooks/precommit/validate_neutrality.py
-        files: ^scripts/(agents|skills)/
+        files: ^scripts/(agents|skills|agents-evals)/
         pass_filenames: true
       # Re-scans the whole agent/skill corpus when the denylist/allowlist
       # policy data or the validator logic itself changes, since neither is
@@ -278,6 +279,23 @@ repos:
         language: system
         entry: python3 scripts/hooks/precommit/validate_neutrality.py
         files: ^scripts/hooks/precommit/(validate_neutrality|_neutrality_data)\.py$
+        pass_filenames: false
+
+  # ---------------------------------------------------------------------------
+  # ADR-033 D6/D8 and ADR-031 D6 eval pairing check: every shipped agent
+  # (scripts/agents/<name>.md, unless grandfathered) and every shipped skill
+  # (scripts/skills/<name>/) must have a matching eval on disk. This is a
+  # corpus-completeness check, not a per-file scanner, so pass_filenames is
+  # false and the validator always self-discovers from the repo root via
+  # find_pairing_violations regardless of which files triggered it.
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: validate-eval-pairing
+        name: 'validate: agent/skill eval pairing (ADR-033 D6/D8, ADR-031 D6)'
+        language: system
+        entry: python3 scripts/hooks/precommit/validate_eval_pairing.py
+        files: ^scripts/(agents|agents-evals|skills)/
         pass_filenames: false
 
   # ---------------------------------------------------------------------------
