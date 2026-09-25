@@ -9,11 +9,12 @@ to ensure it matches the devcontainer refactor spec.
 Test Coverage:
 ==============
 Total Test Classes: 8
-Total Test Methods: 26
+Total Test Methods: 27
 
 1. TestDockerfileExists (2): file exists, non-empty
 2. TestDockerfileBaseImage (2): uses ubuntu:noble, no playwright reference
-3. TestDockerfileSystemPackages (4): core packages, Playwright deps,
+3. TestDockerfileSystemPackages (5): core packages, Git absent from apt,
+   Playwright deps,
    --no-install-recommends, apt cache cleanup
 4. TestDockerfileUserManagement (5): no UID/GID ARGs, USERNAME ARG is vscode,
    creates vscode user, no sudoers, USER directives for build-time install
@@ -49,6 +50,25 @@ def dockerfile_content():
 def dockerfile_lines(dockerfile_content):
     """Split Dockerfile into lines for line-by-line analysis."""
     return dockerfile_content.splitlines()
+
+
+@pytest.fixture(scope="module")
+def apt_install_packages(dockerfile_lines):
+    """Return package tokens from the Dockerfile apt-get install block."""
+    packages = []
+    in_apt_install = False
+    for line in dockerfile_lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if not in_apt_install:
+            if "apt-get install" in stripped:
+                in_apt_install = True
+            continue
+        if stripped.startswith("&&"):
+            break
+        packages.append(stripped.removesuffix("\\").strip())
+    return packages
 
 
 # =============================================================================
@@ -127,21 +147,31 @@ class TestDockerfileSystemPackages:
     --no-install-recommends flag, and apt cache cleanup.
     """
 
-    def test_core_packages_present(self, dockerfile_content):
+    def test_core_packages_present(self, apt_install_packages):
         """
         Given: The Dockerfile content
         When: Checking for core system packages
-        Then: build-essential, curl, wget, git, ca-certificates are present
+        Then: build-essential, curl, wget, ca-certificates are present
         """
         core_packages = [
             "build-essential",
             "curl",
             "wget",
-            "git",
             "ca-certificates",
         ]
         for pkg in core_packages:
-            assert pkg in dockerfile_content, f"Core package '{pkg}' should be in Dockerfile"
+            assert pkg in apt_install_packages, f"Core package '{pkg}' should be installed by Dockerfile"
+
+    def test_git_not_installed_by_apt(self, apt_install_packages):
+        """
+        Given: The Dockerfile apt install block
+        When: Checking for Git
+        Then: git is not installed by apt in the Dockerfile
+
+        Git is installed by ghcr.io/devcontainers/features/git:1 so the
+        container can use the feature's current stable Git source.
+        """
+        assert "git" not in apt_install_packages, "Dockerfile should not install git via apt"
 
     def test_playwright_system_deps_present(self, dockerfile_content):
         """
@@ -535,11 +565,12 @@ class TestDockerfileBuildTimeToolInstall:
 Test Summary
 ============
 Total Test Classes: 8
-Total Test Methods: 26
+Total Test Methods: 27
 
 1. TestDockerfileExists (2): file exists, non-empty
 2. TestDockerfileBaseImage (2): uses ubuntu:noble, no playwright reference
-3. TestDockerfileSystemPackages (4): core packages, Playwright deps,
+3. TestDockerfileSystemPackages (5): core packages, Git absent from apt,
+   Playwright deps,
    --no-install-recommends, apt cache cleanup
 4. TestDockerfileUserManagement (5): no UID/GID ARGs, USERNAME ARG is vscode,
    creates vscode user, no sudoers, USER directives for build-time install
@@ -552,7 +583,8 @@ Total Test Methods: 26
 
 Coverage Areas:
 - Base image selection (ubuntu:noble, no Playwright)
-- Core system packages (build-essential, curl, wget, git, ca-certificates)
+- Core system packages (build-essential, curl, wget, ca-certificates)
+- Git installed by devcontainer feature, not Dockerfile apt
 - Playwright Chromium system dependencies (representative subset)
 - Image optimization (--no-install-recommends, apt cache cleanup)
 - User management for build-time tool install (vscode user, USER directives)
