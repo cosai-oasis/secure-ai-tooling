@@ -1,0 +1,48 @@
+{
+  "skill_name": "explore-persona-self-id",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I fine-tune open-weight models and publish them for other teams to use. Which persona am I, and what should I focus on?",
+      "expected_output": "Identifies personaModelProvider (citing matching identificationQuestions), explains the role, then surfaces both the risks that impact it and the controls it implements, with ids.",
+      "expectations": [
+        "Identifies the persona as Model Provider (personaModelProvider), citing the identificationQuestions it matches",
+        "Explains the role's responsibilities from personas.yaml",
+        "Surfaces BOTH the risks that impact this persona AND the controls this persona implements, distinguishing the two, with ids",
+        "Persona-tagging is corpus-true: every risk/control presented as impacting or implemented by the identified persona is genuinely tagged to it in risks.yaml/controls.yaml (nothing un-tagged presented as tagged); when it surfaces a prioritized subset rather than the full tagged set it says so explicitly and never implies completeness. A small tagged set (like Model Provider's ~10 risks / 9 controls) should appear complete; a large one may be a clearly-prioritized representative subset (checkable by diffing output ids against the persona-tagged sets)",
+        "Read-only"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I'm honestly not sure where I fit in this framework. Can you help me figure out my persona?",
+      "expected_output": "Since no activity was given, runs a guided walkthrough — asks a few distinguishing identificationQuestions from personas.yaml — rather than guessing.",
+      "expectations": [
+        "Recognizes there is not enough signal and asks distinguishing identificationQuestions (guided walkthrough) rather than guessing a persona",
+        "Draws the questions from the actual personas.yaml identificationQuestions",
+        "Explains it will identify the persona from the answers"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I build internal business apps on top of a vendor's hosted LLM API. Which persona am I?",
+      "expected_output": "Identifies personaApplicationDeveloper; explains the role and its risks/controls; notes the boundary vs adjacent personas (end user, agentic provider).",
+      "expectations": [
+        "Identifies the persona as Application Developer (personaApplicationDeveloper)",
+        "Surfaces its impacted risks and implemented controls with ids",
+        "Persona-tagging is corpus-true: every risk/control presented as impacting or implemented by personaApplicationDeveloper is genuinely tagged to it (nothing un-tagged presented as tagged); because its tagged set is large (32 risks / 20 controls), a clearly-prioritized representative subset is acceptable PROVIDED the answer is explicit it is prioritizing and does not imply it surfaced the full set",
+        "Notes the boundary vs adjacent personas (e.g. not the model provider, not merely an end user)"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "None of the personas quite fit what my team does — can you add a new one for us?",
+      "expected_output": "Recognizes authoring is out of scope; redirects to persona-creator (which will apply the high necessity bar); does not edit personas.yaml.",
+      "expectations": [
+        "Recognizes adding a persona is out of scope for this read-only skill",
+        "Redirects to persona-creator",
+        "Offers to identify the closest existing persona instead; does not edit YAML"
+      ]
+    }
+  ]
+}
