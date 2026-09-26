@@ -10,7 +10,7 @@ skill behavior — the canonical skills under `scripts/skills/explore-*` remain 
 source of truth for what they do.
 
 **Version:** 1.0
-**Last Updated:** 2026-07-13
+**Last Updated:** 2026-09-26
 
 ---
 
@@ -99,7 +99,10 @@ they are — resync the bullets below if either surface's discriminator wording 
 
 The one place the exploration surface needs knowledge *outside* the corpus is
 `explore-exposure`'s product→component resolution (ADR-032 D5): mapping a named product
-or technology to the CoSAI component(s) it implements or protects.
+or technology to the CoSAI component(s) it implements or protects. Most rows are
+**one-part** — the product implements or protects a single component. A handful are
+**two-part**: the product implements a boundary component and protects the workloads
+that run inside it, the boundary's *exposure via* candidates.
 
 **Home / source of truth for the contents.** The live lexicon ships bundled with the
 skill at
@@ -119,11 +122,15 @@ hazard the defer-don't-duplicate rule exists to prevent.
 **Structure (design).** The lexicon is a **seed**, not a comprehensive registry —
 category-grouped tables (confidential/isolated compute, model serving/inference,
 model & data storage/registries, agent frameworks/orchestration, retrieval/memory,
-I/O handling & guardrails — these mirror the lexicon file's own `##` category
-headings; resync this list if that file is reorganized). Each row maps a
-product/technology to the component id(s)
-it **implements** (it *is* that locus) or **protects** (it secures that locus), with a
-short note that says which and why. Component ids are verified against
+input/output handling & guardrails — these mirror the lexicon file's own `##` category
+headings; resync this list if that file is reorganized). Most rows are **one-part**:
+the product implements or protects a single component id (or a short, listed set),
+with a note that says which and why. The confidential-compute section's rows are
+**two-part**: `Implements` names the boundary component the product *is*, `Exposure
+via (candidates)` names the components it *protects* — the workloads the corpus
+places inside that boundary. The section's prose states each candidate's ground, and
+each row's note names the note-only components a control covers without the corpus
+placing them inside the boundary. Component ids are verified against
 [`components.yaml`](../../yaml/components.yaml).
 
 **The curated-vs-inferred honesty rule (ADR-032 D5).** A *listed* product is a
@@ -141,6 +148,12 @@ delegated to the inferred-with-flag path so the *curated* set can stay small.
 - Every entry must (a) target a real component id, verified against
   [`components.yaml`](../../yaml/components.yaml) at review time, and (b) state whether
   the product *implements* or *protects* that component.
+- **Two-part rows are reserved for isolation/hosting-boundary products** — where the
+  corpus places other workloads inside the boundary. Each *exposure via* candidate
+  must cite its ground: an ADR containment/confinement statement, or the component's
+  own description — never an inference drawn from an edge. Reverse lookup (finding
+  which row names a given component) is keyed on what a row **implements**, never on
+  a two-part row's candidates.
 - **Bounded by design.** The curation burden is kept small on purpose: the seed covers
   common, stable products; the long tail is served by the inferred-with-flag path, not
   by growing the table toward completeness.
@@ -166,6 +179,9 @@ Recorded as design intent (ADR-032 D2/D4); the skills implement these:
 - **Lexicon ownership cadence.** The curated-vs-inferred split bounds the curation
   burden, but the seed will need periodic pruning as component ids evolve; revisit if
   the inferred-path flag proves insufficient in practice.
+- **Zero-control components.** Some components have no component-specific controls
+  today; `explore-exposure` reports that plainly, as a measured statement about the
+  current corpus, rather than borrowing a neighbour's exposure to fill the gap.
 - **Eval story.** An exploration eval is a *query → expected set of surfaced entities*
   (ADR-032 D1), shipped per-skill as a portable `evals/evals.json`. These run as
   docs-only specs today; whether to adopt or build an in-repo eval runner is an open,
