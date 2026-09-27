@@ -1,4 +1,4 @@
-check-jsonschema==0.38.0
+check-jsonschema==0.38.2
 jsonschema==4.26.0
 packaging==26.3
 pre-commit==4.6.2
