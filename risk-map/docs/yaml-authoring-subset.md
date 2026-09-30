@@ -16,9 +16,10 @@ defect.
 - **Redistributors** ingesting the YAML directly, who need to know what tokens the prose
   fields carry.
 
-Prose fields are: `description`, `shortDescription`, `longDescription`, `examples`,
-`responsibilities`, `tourContent.*`, and equivalents. Identifiers, enums, and
-structured-reference fields are not prose and are not covered here.
+Prose fields are: `description`, `guidance` (controls), `shortDescription`,
+`longDescription`, `examples`, `responsibilities`, `tourContent.*`, and equivalents.
+Identifiers, enums, and structured-reference fields are not prose and are not covered
+here.
 
 ---
 

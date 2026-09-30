@@ -88,7 +88,7 @@ If you maintain templates, see [`template-sync-procedures.md`](./template-sync-p
 **Required for review (6):**
 
 1. **Control Title** - Concise noun phrase naming the defense (e.g., "Privacy Enhancing Technologies for Model Training"). See [`control-titles-style-guide.md`](./control-titles-style-guide.md). The Control ID is mechanically derived from this title (`control` prefix + camelCase descriptor, e.g., `controlPrivacyEnhancingTechnologiesForModelTraining`).
-2. **Control Description** - Detailed explanation of purpose, implementation, and expected outcomes
+2. **Control Description** - The control's description. See [Control Description and Guidance Design](../design/control-description-and-guidance.md) for what belongs here and what belongs in Control Guidance.
 3. **Control Category** - One of: `controlsData`, `controlsInfrastructure`, `controlsModel`, `controlsApplication`, `controlsAssurance`, `controlsGovernance`
 4. **Applicable Personas** - Which personas **implement** this control. See [persona model](./submission-readiness-guide.md#section-3-the-persona-model).
 5. **Applicable Components** - Component IDs this control applies to (one per line) or `all`/`none`
@@ -96,6 +96,7 @@ If you maintain templates, see [`template-sync-procedures.md`](./template-sync-p
 
 **Optional Fields:**
 
+- Control Guidance - How to meet the objective, where it applies, and how the control differs from sibling controls
 - Framework mappings (dynamically shown based on entity type)
 - Lifecycle stages
 - Impact types
@@ -143,7 +144,7 @@ The template includes inline links to:
 **Required for review (3):**
 
 1. **Control Permalink** - GitHub permalink to the control in `controls.yaml` (right-click line number → Copy permalink)
-2. **Change Type** - What you're changing (description, mappings, category, metadata, other)
+2. **Change Type** - What you're changing (description/title, guidance, add mappings, remove mappings, category or personas, metadata, other)
 3. **Proposed Changes** - Free-form description of what to change and why
 
 **Optional Quick Actions:**

@@ -3,6 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-04-25
 **Authors:** Architect agent, with maintainer review
+**Extended by:** [Amendment 2026-09-30](#amendment-2026-09-30-optional-guidance-prose-field) (below) — adds D9 (the optional `guidance` prose property), adds one row to the D1 field table and three rows to the D8 enforcement table, and records that both `description` shapes named in D1 and D4 (file-level and per-control) are `utils/prose-strict`. D1–D8 are otherwise unchanged.
 
 ---
 
@@ -245,3 +246,85 @@ Every rule above is machine-enforced or scheduled to become so under a named fol
 - **Sibling ADRs.** [ADR-018](018-components-schema.md) and [ADR-019](019-risks-schema.md) document components and risks; [ADR-021](021-personas-and-self-assessment-schema.md) documents personas and runs alongside this ADR; [ADR-022](022-supporting-schemas.md) covers supporting schemas. Each per-file schema ADR decides independently on the [ADR-017](017-yaml-prose-authoring-subset.md) D3 opt-in question; this ADR defers, matching ADRs 018 and 019.
 - **If a future controls-specific structured field is needed** (a `severity` enum, a `maturity` taxonomy, a per-stage applicability matrix), it lands as a schema-edit PR that cites this ADR and either fits one of the five P2 classes or motivates a P2 revisit. Adding open prose fields is discouraged per [ADR-014](014-yaml-content-security-posture.md) P3.
 - **If [ADR-019](019-risks-schema.md) D6 migrates `relevantQuestions` content to a `controls.yaml` `questions` field** during its sweep, that addition is owned by the ADR-019 sweep and adds a `questions` definition to `controls.schema.json` at that time. This ADR records the current state (no `questions` field) and does not pre-empt the migration's design choices.
+
+---
+
+## Amendment 2026-09-30: optional `guidance` prose field
+
+**Status:** Draft (2026-09-30). Extends D1 and D8 and adds D9. Does not alter the Accepted status of D1–D8.
+**Authors:** Architect agent, with maintainer review.
+
+### Context
+
+A control carries two prose fields. `description` states what the control is: its objective and a positive statement of its scope. `guidance`, which is optional, holds how to meet the objective, where it applies, and how the control differs from sibling controls. The rules that decide which text goes in which field are framework-content design and live in [`risk-map/docs/design/control-description-and-guidance.md`](../../risk-map/docs/design/control-description-and-guidance.md).
+
+This amendment records the schema-level consequences that ADR-020 owns: the new property's content class, its shape, and its enforcement layers. It also reconciles the property with the Follow-up note that "adding open prose fields is discouraged per [ADR-014](014-yaml-content-security-posture.md) P3".
+
+### D9. `guidance` is an optional prose property on `control`
+
+`definitions/control/properties/guidance` is a `$ref` to `riskmap.schema.json#/definitions/utils/prose-strict`. It is not listed in `required`. `additionalProperties: false` on `control` is unchanged, so a control can carry `guidance` only once the property is declared.
+
+- **Content class.** `guidance` is **prose** under [ADR-014](014-yaml-content-security-posture.md) P2. It inherits the prose handling contract: shape at the schema, content at the [ADR-017](017-yaml-prose-authoring-subset.md) lint, sentinel resolution under [ADR-016](016-reference-strategy.md), and escaping at render boundaries.
+- **Linter coverage follows from the declared shape.** The prose linters discover prose fields by their `$ref` to `utils/prose-strict` or `utils/text`. Declaring `guidance` with that `$ref` is what places it under lint. A property declared any other way would fall outside it.
+- **Placement is content-style.** Which text belongs in `description` and which in `guidance` is owned by the design document above. D3 treats the appropriateness of `"all"` versus `"none"` versus an explicit list the same way.
+- **No ghost field.** Every consumer that reads control prose reads `guidance`:
+  - the persona-site builder emits it as an optional field under the [ADR-011](011-persona-site-data-schema-contract.md) contract, whose schema declares it;
+  - the site renders it as secondary content;
+  - the full-detail table emits it with the same prose handling as `description`.
+
+  Summary views read `description` only.
+
+#### D9a. Reconciliation with ADR-014 P3
+
+P3 makes structured-reference fields authoritative for intra-framework links, including control-to-control, and prose is not a linking surface. `guidance` adds no linking surface. Its boundary section may mention sibling controls by `{{control…}}` sentinel. As under P3, those mentions are secondary and cosmetic: they are resolved and checked like any sentinel, but they do not form a relation set that tools may rely on.
+
+The corpus has no structured control-to-control relation field. The design document sets the condition for adding one: a validator or tool needs to consume control-to-control relations as data.
+
+The Follow-up note discouraging open prose fields guards against prose becoming a linking or taxonomy surface. `guidance` is neither. It is prose under the same class contract as `description`.
+
+#### D9b. Both `description` shapes are `utils/prose-strict`
+
+D1's field table (the `description` "(control, file)" row) and D4 ("Both reference `riskmap.schema.json#/definitions/utils/text`") name `utils/text` as the shape of both `description` sites. Both sites in `controls.schema.json` reference `utils/prose-strict` (commit `e188994`):
+
+- the file-level `description` (`properties/description`);
+- the per-control `description` (`definitions/control/properties/description`).
+
+`guidance` uses the same `utils/prose-strict` shape. Read every `utils/text` reference to either `description` in D1 and D4 as `utils/prose-strict`. D4's reasoning about the shared prose definition is otherwise unchanged.
+
+### D1 addition
+
+| Field | P2 class | Schema shape | Enforcement |
+|---|---|---|---|
+| `guidance` (control) | prose | `$ref riskmap.schema.json#/definitions/utils/prose-strict`; optional | schema (shape) + lint per [ADR-017](017-yaml-prose-authoring-subset.md) D4 + sentinel resolution per [ADR-016](016-reference-strategy.md) |
+
+### D8 additions
+
+| Rule | Mechanism | Status |
+|---|---|---|
+| D9 `guidance` prose shape, optional | `controls.schema.json` `$ref` to `utils/prose-strict`, absent from `required` | Machine-enforced |
+| D9 `guidance` prose content and sentinel resolution | ADR-017 / ADR-016 linters via schema-driven prose-field discovery | Machine-enforced |
+| D9 no `{{control…}}` sentinel in per-control `description` | Mechanical check, owned by the design document | Scheduled: becomes machine-enforced under the named follow-up below, once no control in the corpus violates it |
+
+D8's closing statement continues to hold: every row is machine-enforced or scheduled to become so under a named follow-up. The design document's placement rules that need judgment (for example, negated means, mechanism neutrality, sibling controls named without a sentinel, reciprocal boundary statements) are content-style guidance like D3's `"all"`/`"none"` appropriateness. They are not schema rules and have no D8 row.
+
+### Alternatives Considered
+
+- **A new ADR for `guidance`.** Rejected. The per-file schema ADRs are non-overlapping, and ADR-020 owns `controls.schema.json`.
+- **Record the change only in the design document.** Rejected. D1's field table, the no-ghost-field statement, and D8's enforcement table would be incomplete. The Follow-up section also asks that a new control field cite this ADR and place itself in a P2 class.
+- **Rename `description` to a statement-specific name.** Rejected. `description` is required and populated on every control and read by every consumer. A rename costs a corpus-wide migration and gains nothing that the design document's field contract does not already provide.
+
+### Consequences
+
+**Positive**
+
+- The schema states the two-field shape, and every enforcement layer is named.
+- Lint coverage of `guidance` follows from its declared shape, with no per-field wiring.
+
+**Negative**
+
+- Placement rules that need judgment are enforced by review, not by schema or lint.
+- Controls use `description` and `guidance`; risks use `shortDescription` and `longDescription`. Contributors learn each entity's convention separately.
+
+**Follow-up**
+
+- The mechanical check that per-control `description` carries no `{{control…}}` sentinel. Trigger: no control on `main` or `develop` violates it.

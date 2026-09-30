@@ -28,6 +28,12 @@ came through a structured field, not free prose. The full rule is in
 [yaml-authoring-subset.md](./yaml-authoring-subset.md) and
 [ADR-017](../../docs/adr/017-yaml-prose-authoring-subset.md).
 
+**Control prose.** A control carries a normative `description` and an optional,
+informative `guidance`. The control's summary is its `description`, not the position of a
+paragraph, and `guidance` is never needed to understand what the control is. Sentinels
+resolve alike in both fields. See
+[control-description-and-guidance.md](./design/control-description-and-guidance.md).
+
 **Provenance.** Every change to `risk-map/yaml/**` lands through a reviewed pull request,
 attributed to identifiable contributors, with AI-assisted contributions tagged per
 [ADR-004](../../docs/adr/004-ai-assistant-trailer.md). The git history is the provenance
