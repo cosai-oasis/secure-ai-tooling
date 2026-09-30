@@ -348,6 +348,15 @@ def build_site_data(
             ],
             "riskIds": normalize_control_risk_ids(raw_control.get("risks"), all_risk_ids),
         }
+        # guidance is optional; emit it only when present so the output contract
+        # stays unchanged for controls that do not carry it.
+        if "guidance" in raw_control:
+            control_record["guidance"] = normalize_text_entries(
+                raw_control["guidance"],
+                intra_lookup=intra_lookup,
+                ref_lookup=ref_lookup,
+                field_path=f"{control_field}.guidance",
+            )
         if "externalReferences" in raw_control:
             control_record["externalReferences"] = raw_control["externalReferences"]
 

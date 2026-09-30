@@ -36,6 +36,7 @@ body:
       description: What type of change are you proposing?
       options:
         - Update description/title (clarification or correction)
+        - Update guidance
         - Add mappings (components, risks, frameworks)
         - Remove mappings (components, risks, frameworks)
         - Change category or personas

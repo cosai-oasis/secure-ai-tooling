@@ -2,6 +2,7 @@
 # This template teaches/solicits conventions from:
 #   - ADR-016: externalReferences field shape; sentinel grammar ({{ref:identifier}}, {{controlXxx}})
 #   - ADR-017 D1: allowed prose authoring tokens
+#   - ADR-020: controls schema (optional guidance property alongside description)
 #   - ADR-022 D5b: canonical framework mapping value forms
 name: New Control Proposal
 description: Propose a new security control for the CoSAI Risk Map
@@ -42,6 +43,18 @@ body:
       placeholder: "Describe the control's purpose, implementation approach, and expected outcomes..."
     validations:
       required: true
+
+  - type: textarea
+    id: control-guidance
+    attributes:
+      label: Control Guidance
+      description: |
+        Optional. How to meet the objective, where it applies, and how it differs from sibling controls.
+
+        Outbound citations go in External References below and are cited via {{ref:identifier}}.
+      placeholder: 'Describe implementation approaches, applicability, and boundaries with related controls...'
+    validations:
+      required: false
 
   - type: dropdown
     id: control-category

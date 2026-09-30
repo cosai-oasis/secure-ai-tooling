@@ -495,6 +495,32 @@ function renderRiskGroups(resultsModel) {
     .join("");
 }
 
+/**
+ * Render a control's prose: description[0] is always visible; one collapsed
+ * panel holds description[1:] followed by guidance. When guidance is present
+ * it is introduced by a constant "Guidance" label (never derived from input).
+ * No panel is emitted when both are empty. Escaping is delegated to
+ * renderRichParagraphs (ADR-015).
+ */
+export function renderControlProse(control) {
+  const description = control.description;
+  const guidance = control.guidance ?? [];
+  const collapsed = [...description.slice(1), ...guidance];
+
+  if (collapsed.length === 0) {
+    return renderRichParagraphs(description);
+  }
+
+  return `
+    ${renderRichParagraphs(description.slice(0, 1))}
+    <details class="details-panel">
+      <summary>See CoSAI-RM content</summary>
+      ${renderRichParagraphs(description.slice(1))}
+      ${guidance.length ? `<p class="eyebrow">Guidance</p>${renderRichParagraphs(guidance)}` : ""}
+    </details>
+  `;
+}
+
 function renderControlGroups(resultsModel) {
   if (!resultsModel.controls.length) {
     return `
@@ -525,17 +551,7 @@ function renderControlGroups(resultsModel) {
                       </div>
                       <span class="micro-tag">${escapeHtml(group.category.title)}</span>
                     </div>
-                    ${
-                      control.description.length > 1
-                        ? `
-                          ${renderRichParagraphs(control.description.slice(0, 1))}
-                          <details class="details-panel">
-                            <summary>See CoSAI-RM content</summary>
-                            ${renderRichParagraphs(control.description.slice(1))}
-                          </details>
-                        `
-                        : renderRichParagraphs(control.description)
-                    }
+                    ${renderControlProse(control)}
                     <div class="chip-row">
                       ${renderPersonaBadges(
                         resultsModel.includedPersonas.filter((persona) => control.personaIds.includes(persona.id)),

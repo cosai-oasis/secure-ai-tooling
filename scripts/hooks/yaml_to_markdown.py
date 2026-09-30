@@ -339,7 +339,7 @@ class FullDetailTableGenerator(TableGenerator):
         Returns:
             Formatted markdown table string, followed by any References sub-sections
         """
-        collapsable = ["description", "shortDescription", "longDescription", "examples"]
+        collapsable = ["description", "guidance", "shortDescription", "longDescription", "examples"]
 
         entries = yaml_data.get(ytype) or []
         sorted_entries = sorted(entries, key=lambda e: e.get("id", ""))
@@ -348,6 +348,14 @@ class FullDetailTableGenerator(TableGenerator):
         df = pd.DataFrame(entries)
         if "externalReferences" in df.columns:
             df = df.drop(columns=["externalReferences"])
+
+        # pandas orders columns by first appearance across entries, so guidance would
+        # land wherever the first entry carrying it puts the key. Pin it directly
+        # after description.
+        if "guidance" in df.columns and "description" in df.columns:
+            cols = [c for c in df.columns if c != "guidance"]
+            cols.insert(cols.index("description") + 1, "guidance")
+            df = df[cols]
 
         # Apply column-specific formatting; use per-row sentinel expansion for prose fields.
         for col in df.columns:
