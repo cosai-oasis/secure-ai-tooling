@@ -5,6 +5,11 @@
 | controlAdversarialTrainingAndTesting       | Adversarial Training and Testing                  | riskModelEvasion                         | Model Evasion                            |
 | controlAdversarialTrainingAndTesting       | Adversarial Training and Testing                  | riskPromptInjection                      | Prompt Injection                         |
 | controlAdversarialTrainingAndTesting       | Adversarial Training and Testing                  | riskSensitiveDataDisclosure              | Sensitive Data Disclosure                |
+| controlAgentBehavioralMonitoring           | Agent Behavioral Monitoring                       | riskAgenticDelegationConfusedDeputy      | Agentic Delegation Confused Deputy       |
+| controlAgentBehavioralMonitoring           | Agent Behavioral Monitoring                       | riskCovertChannelsInModelOutputs         | Covert Channels in Model Outputs         |
+| controlAgentBehavioralMonitoring           | Agent Behavioral Monitoring                       | riskRogueActions                         | Rogue Actions                            |
+| controlAgentBehavioralMonitoring           | Agent Behavioral Monitoring                       | riskRunawayAgentToolLoops                | Runaway Agent Tool Loops                 |
+| controlAgentBehavioralMonitoring           | Agent Behavioral Monitoring                       | riskSensitiveDataDisclosure              | Sensitive Data Disclosure                |
 | controlAgentCredentialIsolation            | Agent Credential Isolation                        | riskCrossTenantCredentialPropagation     | Cross-Tenant Credential Propagation      |
 | controlAgentCredentialIsolation            | Agent Credential Isolation                        | riskShadowAndUnknownAgents               | Shadow and Unknown Agents                |
 | controlAgentCredentialIsolation            | Agent Credential Isolation                        | riskStaleAgentIdentityBinding            | Stale Agent Identity Binding             |

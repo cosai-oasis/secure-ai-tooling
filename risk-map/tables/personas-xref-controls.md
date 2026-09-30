@@ -1,5 +1,6 @@
 | Persona ID                  | Persona Title                            | Control ID                                 | Control Title                                     |
 |:----------------------------|:-----------------------------------------|:-------------------------------------------|:--------------------------------------------------|
+| personaAgenticProvider      | Agentic Platform and Framework Providers | controlAgentBehavioralMonitoring           | Agent Behavioral Monitoring                       |
 | personaAgenticProvider      | Agentic Platform and Framework Providers | controlAgentCredentialIsolation            | Agent Credential Isolation                        |
 | personaAgenticProvider      | Agentic Platform and Framework Providers | controlAgentExecutionBounds                | Agent Execution Bounds                            |
 | personaAgenticProvider      | Agentic Platform and Framework Providers | controlAgentIntegrityManagement            | Agent Integrity Management                        |
@@ -19,6 +20,7 @@
 | personaAgenticProvider      | Agentic Platform and Framework Providers | controlToolRegistryAndDiscoveryIntegrity   | Tool Registry and Discovery Integrity             |
 | personaAgenticProvider      | Agentic Platform and Framework Providers | controlUserTransparencyAndControls         | User Transparency and Controls                    |
 | personaApplicationDeveloper | Application Developer                    | controlAdversarialTrainingAndTesting       | Adversarial Training and Testing                  |
+| personaApplicationDeveloper | Application Developer                    | controlAgentBehavioralMonitoring           | Agent Behavioral Monitoring                       |
 | personaApplicationDeveloper | Application Developer                    | controlAgentCredentialIsolation            | Agent Credential Isolation                        |
 | personaApplicationDeveloper | Application Developer                    | controlAgentExecutionBounds                | Agent Execution Bounds                            |
 | personaApplicationDeveloper | Application Developer                    | controlAgentObservability                  | Agent Observability                               |
@@ -54,6 +56,7 @@
 | personaEndUser              | AI System Users                          | controlUserDataManagement                  | User Data Management                              |
 | personaEndUser              | AI System Users                          | controlUserPoliciesAndEducation            | User Policies and Education                       |
 | personaEndUser              | AI System Users                          | controlVulnerabilityManagement             | Vulnerability Management                          |
+| personaGovernance           | AI System Governance                     | controlAgentBehavioralMonitoring           | Agent Behavioral Monitoring                       |
 | personaGovernance           | AI System Governance                     | controlAgentCredentialIsolation            | Agent Credential Isolation                        |
 | personaGovernance           | AI System Governance                     | controlAgentIntegrityManagement            | Agent Integrity Management                        |
 | personaGovernance           | AI System Governance                     | controlAgentInventoryManagement            | Agent Inventory Management                        |

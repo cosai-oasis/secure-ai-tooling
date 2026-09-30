@@ -1139,6 +1139,7 @@ risks:
       - controlAgentObservability
       - controlUserTransparencyAndControls
       - controlUserPoliciesAndEducation
+      - controlAgentBehavioralMonitoring
     examples:
       - >
         One study showed that recitation checkers that scan for verbatim repetition of
@@ -1411,6 +1412,7 @@ risks:
       - controlAgentPluginUserControl
       - controlOutputValidationAndSanitization
       - controlAgentObservability
+      - controlAgentBehavioralMonitoring
     examples:
       - >
         An attack on ChatGPT plugins was described in Plugin Vulnerabilities: Visit a
@@ -2107,6 +2109,7 @@ risks:
     controls:
       - controlOutputValidationAndSanitization
       - controlModelAndDataIntegrityManagement
+      - controlAgentBehavioralMonitoring
     examples:
       - >
         Research demonstrates emergent steganographic collusion in LLMs ({{ref:mathew-2024-steganographic-collusion}})
@@ -3028,6 +3031,7 @@ risks:
     controls:
       - controlAgentObservability
       - controlAgentExecutionBounds
+      - controlAgentBehavioralMonitoring
     examples:
       - >
         The Microsoft AutoGen infinite loop issue (#108) ({{ref:github-autogen-infinite-loops-issue-108}})
@@ -3144,6 +3148,7 @@ risks:
       - controlSecureByDefaultMLTooling
       - controlAgentPluginPermissions
       - controlAgentObservability
+      - controlAgentBehavioralMonitoring
     examples:
       - >
         In the Supabase/Cursor data exfiltration (2025) ({{ref:generalanalysis-2026-supabase-mcp}}),

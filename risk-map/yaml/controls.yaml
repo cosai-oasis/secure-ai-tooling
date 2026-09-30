@@ -1163,3 +1163,73 @@ controls:
     risks:
       - riskToolRegistryTampering
       - riskToolSourceProvenance
+  - id: controlAgentBehavioralMonitoring
+    title: Agent Behavioral Monitoring
+    description:
+      - >
+        Compare each agent's observed behavior with an approved profile of its expected
+        behavior, and raise an evidenced finding when the two diverge. Like user and
+        entity behavior analytics in classical security, this control evaluates activity
+        rather than capturing it. {{controlAgentObservability}} makes agent activity
+        visible and {{controlAgentExecutionBounds}} enforces resource and loop limits, but
+        an agent can stay within those limits and still act outside its approved task.
+      - >
+        The agent owner defines the tools, tool arguments, call volumes, data access,
+        delegation, and shared-state interactions expected for the agent's task, and the
+        production profile is approved before deployment. A change that could materially
+        affect expected behavior requires renewed approval; monitoring does not silently
+        learn a new normal. Detection targets named failure modes, including cumulative
+        patterns such as sensitive-data collection across individually permitted actions,
+        and coordinated behavior across agents, such as delegation or shared-state covert
+        channels, where each agent appears acceptable on its own. Reasoning content may be
+        used as a signal when it is available and its use is authorized, but it is not a
+        required signal.
+      - >
+        Each finding identifies the agent or set of agents, the approved profile version,
+        the observed action or pattern, the triggering reason, and the requested response,
+        and its evidence is preserved in the audit record for investigation and tuning. A
+        predefined response policy maps findings to investigation, heightened monitoring,
+        throttling, or a restriction or halt request, which a separate enforcement path
+        carries out. When a required monitoring signal or evaluation path is unavailable,
+        including an outage that affects a fleet of agents, a predefined policy determines
+        which actions may continue and which are restricted or suspended. A monitoring
+        outage is not treated as evidence that behavior is safe.
+      - >
+        This control does not prescribe a detection technique and does not guarantee that
+        every failure mode is detected.
+    category: controlsApplication
+    personas:
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaGovernance
+    components:
+      - componentReasoningCore
+      - componentOrchestrationInputHandling
+      - componentOrchestrationOutputHandling
+      - componentAgentInputHandling
+      - componentAgentOutputHandling
+      - componentMemory
+      - componentAuditRecordRepository
+    risks:
+      - riskRogueActions
+      - riskSensitiveDataDisclosure
+      - riskAgenticDelegationConfusedDeputy
+      - riskCovertChannelsInModelOutputs
+      - riskRunawayAgentToolLoops
+    mappings:
+      owasp-top10-llm:
+        - LLM06:2025
+      nist-ai-rmf:
+        - MEASURE-2.4@1.0
+        - MANAGE-4.1@1.0
+    lifecycleStage:
+      - deployment
+      - runtime
+      - maintenance
+    impactType:
+      - integrity
+      - confidentiality
+      - safety
+      - accountability
+    actorAccess:
+      - agent

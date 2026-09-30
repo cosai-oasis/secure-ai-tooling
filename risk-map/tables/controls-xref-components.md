@@ -1,6 +1,13 @@
 | Control ID                                 | Control Title                                     | Component ID                         | Component Title                                         |
 |:-------------------------------------------|:--------------------------------------------------|:-------------------------------------|:--------------------------------------------------------|
 | controlAdversarialTrainingAndTesting       | Adversarial Training and Testing                  | componentTheModel                    | The Model                                               |
+| controlAgentBehavioralMonitoring           | Agent Behavioral Monitoring                       | componentAgentInputHandling          | Agent Input Handling                                    |
+| controlAgentBehavioralMonitoring           | Agent Behavioral Monitoring                       | componentAgentOutputHandling         | Agent Output Handling                                   |
+| controlAgentBehavioralMonitoring           | Agent Behavioral Monitoring                       | componentAuditRecordRepository       | Audit Record Repository                                 |
+| controlAgentBehavioralMonitoring           | Agent Behavioral Monitoring                       | componentMemory                      | Model Memory                                            |
+| controlAgentBehavioralMonitoring           | Agent Behavioral Monitoring                       | componentOrchestrationInputHandling  | Orchestration Input Handling                            |
+| controlAgentBehavioralMonitoring           | Agent Behavioral Monitoring                       | componentOrchestrationOutputHandling | Orchestration Output Handling                           |
+| controlAgentBehavioralMonitoring           | Agent Behavioral Monitoring                       | componentReasoningCore               | Agent Reasoning Core                                    |
 | controlAgentCredentialIsolation            | Agent Credential Isolation                        | componentMemory                      | Model Memory                                            |
 | controlAgentCredentialIsolation            | Agent Credential Isolation                        | componentOrchestrationInputHandling  | Orchestration Input Handling                            |
 | controlAgentCredentialIsolation            | Agent Credential Isolation                        | componentOrchestrationOutputHandling | Orchestration Output Handling                           |
