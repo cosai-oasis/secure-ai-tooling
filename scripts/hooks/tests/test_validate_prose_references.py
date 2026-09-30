@@ -1977,3 +1977,90 @@ class TestNestedIndexDiagnostic:
             assert not re.search(r"description\[\d+\]\[\d+\]:", line), (
                 f"Flat-array line must not contain double brackets: {line!r}"
             )
+
+
+# ===========================================================================
+# TestGuidanceFieldReferencesChecked — sentinels in guidance are resolved
+# ===========================================================================
+# The optional ``guidance`` property (ADR-020 D9 amendment; design record
+# control-description-and-guidance.md) shares the description prose shape and
+# the design record requires every consumer that resolves sentinels in
+# description to resolve them in guidance too. The linter discovers prose
+# fields from the schema, so these tests run the CLI against the REAL
+# risk-map/schemas/ dir with a synthetic controls.yaml. The basename is
+# pinned to controls.yaml so schema inference resolves controls.schema.json.
+# The ID index is built from the synthetic file itself via --id-sources.
+# ===========================================================================
+
+
+class TestGuidanceFieldReferencesChecked:
+    r"""Reference violations inside ``guidance`` are reported with field name ``guidance``."""
+
+    _REAL_SCHEMA_DIR = _REPO_ROOT / "risk-map" / "schemas"
+
+    def _write_controls_yaml(self, tmp_path: Path, guidance: list) -> Path:
+        r"""Write ``<tmp_path>/controls.yaml`` with one clean-description control carrying guidance."""
+        entry = _make_control("controlAlpha", description=["A clean description."])
+        entry["guidance"] = guidance
+        return _write_yaml(tmp_path, "controls.yaml", {"controls": [entry]})
+
+    def _run_block(self, yaml_path: Path, capsys) -> tuple[int, list[str]]:
+        r"""Run main() in --block mode with the file as its own id source."""
+        with pytest.raises(SystemExit) as exc_info:
+            main(
+                [
+                    str(yaml_path),
+                    "--schema-dir",
+                    str(self._REAL_SCHEMA_DIR),
+                    "--id-sources",
+                    str(yaml_path),
+                    "--block",
+                ]
+            )
+        err = capsys.readouterr().err
+        return exc_info.value.code, [ln for ln in err.splitlines() if ln.strip()]
+
+    def test_unresolved_control_sentinel_in_guidance_reported_with_field_guidance(self, tmp_path, capsys):
+        r"""
+        An unresolved {{control...}} sentinel in guidance produces one diagnostic naming guidance.
+
+        Given: guidance ["Pair with {{controlDoesNotExist}} for defence in depth."] and an
+               ID index containing only controlAlpha
+        When: main() is called with --block
+        Then: exit code 1 and exactly one stderr line located at
+              ``:controlAlpha:guidance[0]:`` whose reason names controlDoesNotExist
+        """
+        yaml_path = self._write_controls_yaml(tmp_path, ["Pair with {{controlDoesNotExist}} in depth."])
+        code, lines = self._run_block(yaml_path, capsys)
+        assert code == 1, f"expected --block exit 1 for an unresolved sentinel in guidance; stderr={lines!r}"
+        assert len(lines) == 1, f"expected exactly one diagnostic; got {lines!r}"
+        assert re.search(r":controlAlpha:guidance\[0\]: ", lines[0]), lines[0]
+        assert "controlDoesNotExist" in lines[0], lines[0]
+        assert _DIAG_PATTERN.match(lines[0]), f"diagnostic does not match committed format: {lines[0]!r}"
+
+    def test_bare_camelcase_in_nested_guidance_item_reported_with_nested_index(self, tmp_path, capsys):
+        r"""
+        A bare entity id inside an inner-list guidance item carries the nested index.
+
+        Given: guidance ["Lead.", ["Also see riskBeta without a sentinel."]]
+        When: main() is called with --block
+        Then: exit code 1 and the single diagnostic is located at ``guidance[1][0]``
+        """
+        yaml_path = self._write_controls_yaml(tmp_path, ["Lead.", ["Also see riskBeta without a sentinel."]])
+        code, lines = self._run_block(yaml_path, capsys)
+        assert code == 1, f"expected --block exit 1 for a bare id in nested guidance; stderr={lines!r}"
+        assert len(lines) == 1, f"expected exactly one diagnostic; got {lines!r}"
+        assert re.search(r":controlAlpha:guidance\[1\]\[0\]: ", lines[0]), lines[0]
+
+    def test_resolved_sentinel_in_guidance_produces_no_diagnostic(self, tmp_path, capsys):
+        r"""
+        A sentinel in guidance that resolves against the ID index passes silently.
+
+        Given: guidance ["Complements {{controlAlpha}}."] with controlAlpha in the index
+        When: main() is called with --block
+        Then: exit code 0 and no stderr output
+        """
+        yaml_path = self._write_controls_yaml(tmp_path, ["Complements {{controlAlpha}}."])
+        code, lines = self._run_block(yaml_path, capsys)
+        assert code == 0
+        assert lines == []

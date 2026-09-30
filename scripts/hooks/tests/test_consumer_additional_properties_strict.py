@@ -529,6 +529,91 @@ class TestRisksYamlValidatesCleanPostTightening:
 
 
 # ============================================================================
+# Controls guidance property — optional, same prose shape, strictness kept
+# ============================================================================
+
+
+class TestControlGuidancePropertyUnderStrictness:
+    """
+    The optional per-control ``guidance`` property (ADR-020 D9 amendment;
+    design record control-description-and-guidance.md) must be admitted by
+    the closed ``definitions/control`` schema, while a misspelt key remains
+    rejected by ``additionalProperties: false``.
+
+    Uses the real controls.schema.json so the assertions track the shipped
+    schema, not a mock.
+    """
+
+    def test_minimal_control_with_guidance_validates(self, schemas_dir: Path):
+        """
+        Test that a minimal control carrying a flat-array guidance validates.
+
+        Given: The minimal valid control entry plus guidance: ["How to meet it."]
+        When: It is validated against the real controls.schema.json definitions/control
+        Then: No validation errors (guidance is a declared property)
+        """
+        entry = dict(_MINIMAL_CONTROL)
+        entry["guidance"] = ["How to meet the objective in practice."]
+
+        validator = _entity_validator(schemas_dir, "controls.schema.json", "control")
+        errors = [e.message for e in validator.iter_errors(entry)]
+        assert not errors, (
+            "controls.schema.json definitions/control must declare an optional 'guidance' "
+            f"property; a minimal control plus guidance was rejected: {errors}"
+        )
+
+    def test_control_guidance_accepts_nested_list_paragraph(self, schemas_dir: Path):
+        """
+        Test that guidance shares the description prose shape (one nesting level).
+
+        Given: A minimal control whose guidance is ["Lead.", ["Bullet a.", "Bullet b."]]
+        When: It is validated against definitions/control
+        Then: No validation errors (prose-strict admits one level of nesting)
+        """
+        entry = dict(_MINIMAL_CONTROL)
+        entry["guidance"] = ["Implementation lead.", ["Bullet a.", "Bullet b."]]
+
+        validator = _entity_validator(schemas_dir, "controls.schema.json", "control")
+        errors = [e.message for e in validator.iter_errors(entry)]
+        assert not errors, f"guidance must accept the description prose shape (nested list); got: {errors}"
+
+    def test_control_guidance_rejects_empty_array(self, schemas_dir: Path):
+        """
+        Test that guidance inherits prose-strict's minItems: 1 constraint.
+
+        Given: A minimal control with guidance: []
+        When: It is validated against definitions/control
+        Then: Every error is a minItems violation on the guidance path — not an
+              additionalProperties rejection of the key itself
+        """
+        entry = dict(_MINIMAL_CONTROL)
+        entry["guidance"] = []
+
+        validator = _entity_validator(schemas_dir, "controls.schema.json", "control")
+        errors = list(validator.iter_errors(entry))
+        assert errors, "guidance: [] must be rejected (prose-strict minItems: 1)"
+        assert all(e.validator == "minItems" and list(e.absolute_path) == ["guidance"] for e in errors), (
+            "guidance: [] must fail on minItems at path ['guidance'], not on additionalProperties; got: "
+            + str([(e.validator, list(e.absolute_path), e.message) for e in errors])
+        )
+
+    def test_misspelt_guidance_key_still_rejected(self, schemas_dir: Path):
+        """
+        Test that additionalProperties: false still rejects a misspelt guidance key.
+
+        Given: A minimal control with the misspelt key guidence: ["..."]
+        When: It is validated against definitions/control
+        Then: ValidationError(s) are produced (the typo is not silently accepted)
+        """
+        entry = dict(_MINIMAL_CONTROL)
+        entry["guidence"] = ["Misspelt key."]
+
+        validator = _entity_validator(schemas_dir, "controls.schema.json", "control")
+        errors = list(validator.iter_errors(entry))
+        assert errors, "controls.schema.json definitions/control must reject the misspelt key 'guidence'"
+
+
+# ============================================================================
 # Test summary
 # ============================================================================
 """
@@ -536,8 +621,12 @@ Test Summary
 ============
 Parametrized sites: 12 new entity definitions + 1 pre-existing
   (framework-mapping-patterns) + 4 mappings-host entities
-Standalone test methods: 1 (corpus ordering guard)
-Test classes: 5
+Standalone test methods: 1 (corpus ordering guard) + 4 (control guidance)
+Test classes: 6
+
+- TestControlGuidancePropertyUnderStrictness (4) — the optional per-control
+  guidance property validates (flat and nested prose), rejects an empty
+  array, and a misspelt key is still rejected.
 
 - TestEntityDefinitionsHaveAdditionalPropertiesFalse (12 parametrized) —
   every entity definition declares additionalProperties:false.

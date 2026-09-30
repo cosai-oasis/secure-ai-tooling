@@ -396,4 +396,103 @@ Coverage areas:
   - utils/prose-strict synthetic: schema using prose-strict ref is discovered
   - utils/text no-regression: utils/text remains recognised after the fix
   - Additive fix validation: both refs work simultaneously in one schema_dir
+
+Section 4 — per-control guidance discovered from the real controls schema (3):
+  test_real_controls_schema_discovers_guidance_field
+  test_real_controls_schema_guidance_nested_list_carries_nested_index
+  test_real_controls_schema_control_without_guidance_yields_no_guidance_field
 """
+
+
+# ---------------------------------------------------------------------------
+# Section 4 — per-control guidance discovered from the real controls schema
+#
+# The optional ``guidance`` property (ADR-020 D9 amendment; design record
+# control-description-and-guidance.md) shares the description prose shape.
+# Both prose linters discover fields from the schema, so declaring the property
+# is what makes ``guidance`` lint-visible. These tests run against the REAL
+# risk-map/schemas/ directory with a synthetic controls.yaml.
+#
+# The YAML basename is pinned to ``controls.yaml`` so ``_infer_schema_name``
+# resolves controls.schema.json by stem; any other basename can fall back to
+# array-key matching against a different schema and pass vacuously.
+# ---------------------------------------------------------------------------
+
+
+def _write_synthetic_controls_yaml(tmp_path: Path, control: dict) -> Path:
+    """Write ``<tmp_path>/controls.yaml`` holding a single control entry."""
+    yaml_path = tmp_path / "controls.yaml"
+    yaml_path.write_text(yaml.dump({"controls": [control]}))
+    return yaml_path
+
+
+def test_real_controls_schema_discovers_guidance_field(tmp_path):
+    """
+    Given: The real risk-map/schemas/ dir and a controls.yaml whose one control
+           carries guidance: ["How to meet the objective."]
+    When:  find_prose_fields(yaml_path, real_schema_dir) is called
+    Then:  Exactly one ProseField has field_name == "guidance", with the entry id
+           and raw text of that control
+    """
+    guidance_text = "How to meet the objective."
+    yaml_path = _write_synthetic_controls_yaml(
+        tmp_path,
+        {
+            "id": "controlAlpha",
+            "title": "Alpha",
+            "description": ["What the control is."],
+            "guidance": [guidance_text],
+        },
+    )
+
+    fields = [f for f in find_prose_fields(yaml_path, _REAL_SCHEMA_DIR) if f.field_name == "guidance"]
+
+    assert len(fields) == 1, (
+        "controls.schema.json must declare definitions/control/properties/guidance with the "
+        f"prose-strict $ref so the linters discover it; got guidance fields: {fields!r}"
+    )
+    assert fields[0].entry_id == "controlAlpha"
+    assert fields[0].raw_text == guidance_text
+    assert fields[0].index == 0
+    assert fields[0].nested_index is None
+
+
+def test_real_controls_schema_guidance_nested_list_carries_nested_index(tmp_path):
+    """
+    Given: A control whose guidance is ["Lead.", ["Bullet a.", "Bullet b."]]
+    When:  find_prose_fields is called against the real schema dir
+    Then:  Three guidance ProseFields are yielded with (index, nested_index)
+           == {(0, None), (1, 0), (1, 1)} — the same nesting contract as description
+    """
+    yaml_path = _write_synthetic_controls_yaml(
+        tmp_path,
+        {
+            "id": "controlAlpha",
+            "title": "Alpha",
+            "description": ["What the control is."],
+            "guidance": ["Lead.", ["Bullet a.", "Bullet b."]],
+        },
+    )
+
+    guidance_fields = [f for f in find_prose_fields(yaml_path, _REAL_SCHEMA_DIR) if f.field_name == "guidance"]
+    positions = {(f.index, f.nested_index) for f in guidance_fields}
+
+    assert positions == {(0, None), (1, 0), (1, 1)}, f"unexpected guidance positions: {positions!r}"
+
+
+def test_real_controls_schema_control_without_guidance_yields_no_guidance_field(tmp_path):
+    """
+    Given: A control with a description and no guidance key
+    When:  find_prose_fields is called against the real schema dir
+    Then:  The description is discovered and no ProseField has field_name "guidance"
+           (the optional field is silently absent, not an error)
+    """
+    yaml_path = _write_synthetic_controls_yaml(
+        tmp_path,
+        {"id": "controlAlpha", "title": "Alpha", "description": ["What the control is."]},
+    )
+
+    fields = list(find_prose_fields(yaml_path, _REAL_SCHEMA_DIR))
+
+    assert any(f.field_name == "description" for f in fields), "description must still be discovered"
+    assert not any(f.field_name == "guidance" for f in fields), "absent guidance must not yield a ProseField"

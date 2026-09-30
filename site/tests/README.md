@@ -10,9 +10,9 @@ Authoritative for ES-module tests under `site/tests/`. A pointer from `risk-map/
 
 ## Scope
 
-Only pure-logic ES modules today. No DOM manipulation, no `fetch`, no integration against a running site.
+Pure-logic ES modules, plus the exported render helpers of `site/assets/app.mjs`. No DOM emulation, no `fetch`, no integration against a running site.
 
-The canonical subject is `site/assets/persona-logic.mjs` — pure input→output functions. `site/assets/app.mjs` (the DOM renderer) is **not** covered by these tests; if you need to test DOM rendering, see [Escalation](#escalation).
+The canonical subject is `site/assets/persona-logic.mjs` — pure input→output functions. `site/assets/app.mjs` (the DOM renderer) is covered only through its exported string-returning helpers (`renderRichParagraphs`, `renderControlProse`): the test installs a minimal `document`/`window`/`fetch` stub on `globalThis` before a dynamic `import()` so the module body can load, then asserts on the returned HTML strings. Precedent: `app-render-rich-paragraphs.test.mjs`. Rendering that needs a real DOM (event wiring, `innerHTML` effects) is out of scope; see [Escalation](#escalation).
 
 ## Layout
 
@@ -27,7 +27,7 @@ The canonical subject is `site/assets/persona-logic.mjs` — pure input→output
 
 ### File naming
 
-`<module>.test.mjs` — one test file per module under test.
+`<module>.test.mjs` — one test file per module under test. Exception: `app.mjs` helpers get one file per helper, `app-render-<helper>.test.mjs`, because each file carries its own module-load shim.
 
 ### Imports
 
@@ -75,7 +75,7 @@ Each exported function: at least one direct test, plus one per documented branch
 
 ### Determinism
 
-No `Math.random`, no date/time, no reliance on `Object.keys` iteration order, no filesystem or network access.
+No `Math.random`, no date/time, no reliance on `Object.keys` iteration order, no network access, no filesystem writes or temp files. Read-only access to the module under test's own source text (or a checked-in fixture under `site/tests/fixtures/`) is permitted for structural assertions — precedent: the bounded-emission tests in `sanitizer.test.mjs` and the wiring test in `app-render-control-prose.test.mjs`.
 
 ## Running
 
@@ -95,7 +95,7 @@ The shell expands the glob; no install step required. There is no built-in watch
 
 ## Concurrency
 
-`node --test` runs test files in parallel worker threads by default. This is safe for pure-logic tests because each file's `createFixture()` constructs its own state and there is no shared global.
+`node --test` runs each test file in its own separate process, in parallel by default. This is safe for pure-logic tests because each file's `createFixture()` constructs its own state and there is no shared global. The `app.mjs` helper tests are also safe: each file installs its own `globalThis` stub inside its own process, and no test mutates shared state.
 
 If DOM-emulating tests are ever added (see [Escalation](#escalation)), they must be serialized — DOM globals cannot be shared safely across workers. Options at that time:
 

@@ -2560,3 +2560,198 @@ class TestFlatFlag:
         data_rows = [line for line in lines[2:] if line.strip()]
         for row in data_rows:
             assert "<br>" not in row, f"Flat output should not contain <br> tags, found in: {row}"
+
+
+# ============================================================================
+# Per-control guidance column in the full-detail table
+# ============================================================================
+# The optional ``guidance`` field (ADR-020 D9 amendment; design record
+# control-description-and-guidance.md) is rendered by the full table with the
+# same collapse handling as ``description``, in a column that directly follows
+# ``description`` regardless of YAML key order. The summary table is unchanged.
+# ============================================================================
+
+
+def _md_table_cells(line: str) -> list[str]:
+    """Split one markdown table line into stripped cell strings."""
+    return [cell.strip() for cell in line.strip().strip("|").split("|")]
+
+
+def _md_table_header(markdown: str) -> list[str]:
+    """Return the header cells of the first markdown table in the output."""
+    first_line = next(line for line in markdown.splitlines() if line.strip().startswith("|"))
+    return _md_table_cells(first_line)
+
+
+def _md_table_row(markdown: str, entry_id: str) -> list[str]:
+    """Return the cells of the table row whose first cell equals entry_id."""
+    for line in markdown.splitlines():
+        if line.strip().startswith("|"):
+            cells = _md_table_cells(line)
+            if cells and cells[0] == entry_id:
+                return cells
+    raise AssertionError(f"no table row for {entry_id!r} in:\n{markdown}")
+
+
+class TestControlGuidanceColumn:
+    """Full-detail table renders guidance next to description; summary table ignores it."""
+
+    # The guidance key is deliberately LAST in the dict: pandas would append the
+    # column at the end (after risks), so the after-description placement must
+    # come from the generator, not from YAML key order.
+    _NESTED_PROSE = ["Lead paragraph.", ["Sub A.", "Sub B."]]
+
+    @pytest.fixture
+    def controls_with_guidance(self):
+        """Two synthetic controls: one with nested-list guidance, one without."""
+        return {
+            "controls": [
+                {
+                    "id": "controlGuided",
+                    "title": "Guided Control",
+                    "description": list(self._NESTED_PROSE),
+                    "category": "controlsData",
+                    "personas": ["personaTest"],
+                    "components": ["componentDataSources"],
+                    "risks": ["riskTest"],
+                    "guidance": list(self._NESTED_PROSE),
+                },
+                {
+                    "id": "controlPlain",
+                    "title": "Plain Control",
+                    "description": ["Only a description."],
+                    "category": "controlsModel",
+                    "personas": ["personaTest"],
+                    "components": ["componentModelServing"],
+                    "risks": ["riskTest"],
+                },
+            ]
+        }
+
+    def test_full_table_places_guidance_column_directly_after_description(self, controls_with_guidance):
+        """
+        Test that the guidance column directly follows description.
+
+        Given: Controls data where the guidance key is the last key of the entry
+        When: FullDetailTableGenerator.generate is called
+        Then: The header has a 'guidance' column at index(description) + 1
+        """
+        result = yaml_to_markdown.FullDetailTableGenerator().generate(controls_with_guidance, "controls")
+
+        header = _md_table_header(result)
+        assert "guidance" in header, f"full table must render a guidance column; header={header}"
+        assert header.index("guidance") == header.index("description") + 1, (
+            f"guidance column must directly follow description; header={header}"
+        )
+
+    def test_full_table_renders_nested_list_guidance_collapsed_like_description(self, controls_with_guidance):
+        """
+        Test that nested-list guidance renders (no crash) with description's collapse handling.
+
+        Given: A control whose description and guidance hold the same nested list
+        When: FullDetailTableGenerator.generate is called
+        Then: The row renders, the guidance cell equals the description cell, and
+              the sub-items appear joined with <br> (collapse_column shape)
+        """
+        result = yaml_to_markdown.FullDetailTableGenerator().generate(controls_with_guidance, "controls")
+
+        header = _md_table_header(result)
+        row = _md_table_row(result, "controlGuided")
+        guidance_cell = row[header.index("guidance")]
+        description_cell = row[header.index("description")]
+        assert guidance_cell == description_cell, (
+            f"guidance must collapse like description; guidance={guidance_cell!r} description={description_cell!r}"
+        )
+        assert "Lead paragraph." in guidance_cell and "Sub A." in guidance_cell and "Sub B." in guidance_cell
+        assert "<br>" in guidance_cell
+
+    def test_full_table_leaves_guidance_cell_empty_for_control_without_guidance(self, controls_with_guidance):
+        """
+        Test that a control without guidance gets an empty guidance cell, not 'nan'.
+
+        Given: Controls data where only one of two controls has guidance
+        When: FullDetailTableGenerator.generate is called
+        Then: The other control's guidance cell is the empty string
+        """
+        result = yaml_to_markdown.FullDetailTableGenerator().generate(controls_with_guidance, "controls")
+
+        header = _md_table_header(result)
+        row = _md_table_row(result, "controlPlain")
+        assert row[header.index("guidance")] == "", f"missing guidance must render empty; row={row}"
+
+    def test_full_table_has_no_guidance_column_when_no_control_has_guidance(self):
+        """
+        Test that the column is not synthesised for a corpus without guidance (table no-drift).
+
+        Given: Controls data where no entry has a guidance key
+        When: FullDetailTableGenerator.generate is called
+        Then: The header has no 'guidance' column
+        """
+        data = {
+            "controls": [
+                {
+                    "id": "controlPlain",
+                    "title": "Plain Control",
+                    "description": ["Only a description."],
+                    "category": "controlsModel",
+                    "personas": ["personaTest"],
+                    "components": ["componentModelServing"],
+                    "risks": ["riskTest"],
+                }
+            ]
+        }
+        result = yaml_to_markdown.FullDetailTableGenerator().generate(data, "controls")
+
+        assert "guidance" not in _md_table_header(result)
+
+    def test_summary_table_unchanged_by_guidance(self, controls_with_guidance):
+        """
+        Test that the summary table neither adds a column nor leaks guidance text.
+
+        Given: Controls data with guidance whose text differs from the description
+        When: SummaryTableGenerator.generate is called
+        Then: The header has no guidance column and the guidance-only text is absent
+        """
+        controls_with_guidance["controls"][0]["guidance"] = ["GUIDANCE ONLY MARKER."]
+        result = yaml_to_markdown.SummaryTableGenerator().generate(controls_with_guidance, "controls")
+
+        header = [cell.lower() for cell in _md_table_header(result)]
+        assert "guidance" not in header, f"summary table must not gain a guidance column; header={header}"
+        assert "GUIDANCE ONLY MARKER." not in result
+
+    def test_yaml_to_markdown_table_full_renders_folded_nested_guidance(self, tmp_path):
+        """
+        Test the file entry point with guidance written as a nested folded block list (``- - >``).
+
+        Given: controls.yaml whose control has guidance written as a nested folded block list
+        When: yaml_to_markdown_table(path, "controls", table_format="full") is called
+        Then: It returns without raising and the guidance cell contains both sub-items
+        """
+        yaml_file = tmp_path / "controls.yaml"
+        yaml_file.write_text(
+            "controls:\n"
+            "  - id: controlFolded\n"
+            "    title: Folded Control\n"
+            "    description:\n"
+            "      - >\n"
+            "        What the control is.\n"
+            "    category: controlsData\n"
+            "    personas: [personaTest]\n"
+            "    components: [componentDataSources]\n"
+            "    risks: [riskTest]\n"
+            "    guidance:\n"
+            "      - >\n"
+            "        Lead guidance paragraph.\n"
+            "      - - >\n"
+            "          First nested item.\n"
+            "        - >\n"
+            "          Second nested item.\n"
+        )
+
+        result = yaml_to_markdown.yaml_to_markdown_table(yaml_file, "controls", table_format="full")
+
+        header = _md_table_header(result)
+        row = _md_table_row(result, "controlFolded")
+        guidance_cell = row[header.index("guidance")]
+        assert "Lead guidance paragraph." in guidance_cell
+        assert "First nested item." in guidance_cell and "Second nested item." in guidance_cell

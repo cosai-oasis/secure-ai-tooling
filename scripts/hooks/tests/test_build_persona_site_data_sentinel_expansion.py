@@ -1328,4 +1328,111 @@ Coverage areas:
 - Schema validation of expanded output via write_site_data
 - Per-entry ref_lookup scoping (not shared across corpus entries)
 - Nested-group sentinel expansion (new: ADR-016 D5 coverage for list-of-list items)
+- Control guidance: sentinels resolved with the same rules as description
+  (TestSentinelExpansionInControlGuidance)
 """
+
+
+# ============================================================================
+# TestSentinelExpansionInControlGuidance
+# ============================================================================
+# The optional per-control ``guidance`` field (ADR-020 D9 amendment; design
+# record control-description-and-guidance.md) is resolved by every consumer
+# that resolves sentinels in ``description``. Same fixtures as the control
+# description tests above; only the field differs.
+# ============================================================================
+
+
+class TestSentinelExpansionInControlGuidance:
+    """Tests that sentinels in a control's guidance are resolved like description."""
+
+    def _guided_control(self, guidance: list, ext_refs: list | None = None) -> dict:
+        """Return _MINIMAL_CONTROL plus the given guidance (and optional externalReferences)."""
+        control = dict(_MINIMAL_CONTROL)
+        control["guidance"] = guidance
+        if ext_refs is not None:
+            control["externalReferences"] = ext_refs
+        return control
+
+    def test_control_guidance_intra_sentinel_resolved(self):
+        """
+        Test that {{riskTestFoo}} in a control's guidance is resolved to a ref item.
+
+        Given: A control with guidance ["Mitigates {{riskTestFoo}} in depth."]
+        When: build_site_data is called with a risk id="riskTestFoo"
+        Then: The emitted guidance contains a nested array with a ref item for riskTestFoo
+        """
+        _require_sentinel_module()
+        control = self._guided_control(["Mitigates {{riskTestFoo}} in depth."])
+
+        result = _build(controls_data={"controls": [control], "categories": []})
+
+        control_out = next(c for c in result["controls"] if c["id"] == "controlTestBar")
+        assert "guidance" in control_out, f"builder must emit guidance; got keys {sorted(control_out)}"
+        nested = [item for item in control_out["guidance"] if isinstance(item, list)]
+        assert nested, f"expected an expanded inline paragraph in guidance; got {control_out['guidance']!r}"
+        ref_items = [i for n in nested for i in n if isinstance(i, dict) and i.get("type") == "ref"]
+        assert any(r["id"] == "riskTestFoo" and r["title"] == "Test Foo Risk" for r in ref_items)
+
+    def test_control_guidance_ref_sentinel_resolved(self):
+        """
+        Test that {{ref:cwe-89}} in a control's guidance is resolved to a link item.
+
+        Given: A control with guidance ["Addresses {{ref:cwe-89}}."] and a matching externalReferences entry
+        When: build_site_data is called
+        Then: The emitted guidance contains a nested array with a link item titled from the entry
+        """
+        _require_sentinel_module()
+        control = self._guided_control(
+            ["Addresses {{ref:cwe-89}}."],
+            ext_refs=[
+                {
+                    "type": "cwe",
+                    "id": "cwe-89",
+                    "title": "CWE-89: SQL Injection",
+                    "url": "https://cwe.mitre.org/data/definitions/89.html",
+                }
+            ],
+        )
+
+        result = _build(controls_data={"controls": [control], "categories": []})
+
+        control_out = next(c for c in result["controls"] if c["id"] == "controlTestBar")
+        assert "guidance" in control_out, f"builder must emit guidance; got keys {sorted(control_out)}"
+        nested = [item for item in control_out["guidance"] if isinstance(item, list)]
+        assert nested, f"expected an expanded inline paragraph in guidance; got {control_out['guidance']!r}"
+        link_items = [i for n in nested for i in n if isinstance(i, dict) and i.get("type") == "link"]
+        assert any(li["title"] == "CWE-89: SQL Injection" for li in link_items)
+
+    def test_control_guidance_plain_prose_unchanged(self):
+        """
+        Test that guidance without sentinels emits only plain strings.
+
+        Given: A control with guidance ["Plain guidance."]
+        When: build_site_data is called
+        Then: The emitted guidance equals ["Plain guidance."]
+        """
+        _require_sentinel_module()
+        control = self._guided_control(["Plain guidance."])
+
+        result = _build(controls_data={"controls": [control], "categories": []})
+
+        control_out = next(c for c in result["controls"] if c["id"] == "controlTestBar")
+        assert control_out.get("guidance") == ["Plain guidance."]
+
+    def test_intra_typo_in_control_guidance_raises_with_guidance_field_path(self):
+        """
+        Test that an unresolved sentinel in guidance raises and names the guidance field.
+
+        Given: A control with guidance ["See {{riskDoesNotExist}}."]
+        When: build_site_data is called
+        Then: UnresolvedSentinelError is raised and its message contains "guidance"
+              (the field_path threads controls[<idx>].guidance)
+        """
+        _require_sentinel_module()
+        control = self._guided_control(["See {{riskDoesNotExist}}."])
+
+        with pytest.raises(UnresolvedSentinelError) as exc_info:
+            _build(controls_data={"controls": [control], "categories": []})
+
+        assert "guidance" in str(exc_info.value), f"error must name the guidance field: {exc_info.value}"

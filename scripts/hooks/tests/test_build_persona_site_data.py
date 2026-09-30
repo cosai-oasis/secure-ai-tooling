@@ -748,3 +748,93 @@ def test_parse_args_help_strings_present(monkeypatch):
         assert action.help and action.help.strip(), (
             f"{action.option_strings} has no non-whitespace help= string (REC-11)"
         )
+
+
+# ---------------------------------------------------------------------------
+# Per-control guidance (ADR-020 D9 amendment; design record
+# control-description-and-guidance.md). The builder emits `guidance` with the
+# same normalization as `description` and omits the key when the control has
+# none, so the additionalProperties: false controls item keeps validating.
+# ---------------------------------------------------------------------------
+
+_GUIDANCE_PERSONAS_DATA = {"personas": [{"id": "personaTest", "title": "Test", "identificationQuestions": []}]}
+_GUIDANCE_RISKS_DATA = {"risks": []}
+_GUIDANCE_COMPONENTS_DATA = {"components": []}
+
+
+def _build_single_control_record(control: dict) -> dict:
+    """Run build_site_data over one synthetic control and return its emitted record."""
+    site_data = build_site_data(
+        _GUIDANCE_PERSONAS_DATA,
+        _GUIDANCE_RISKS_DATA,
+        {"controls": [control], "categories": []},
+        _GUIDANCE_COMPONENTS_DATA,
+    )
+    return site_data["controls"][0]
+
+
+def _control_with(guidance=None) -> dict:
+    """Minimal synthetic control; `guidance` is attached only when not None."""
+    control = {
+        "id": "controlGuided",
+        "title": "Guided",
+        "category": "controlsTest",
+        "description": ["What the control is."],
+        "personas": ["personaTest"],
+        "risks": [],
+    }
+    if guidance is not None:
+        control["guidance"] = guidance
+    return control
+
+
+def test_build_site_data_emits_guidance_normalized_when_present():
+    """
+    Test that a control's guidance reaches site data with description-equivalent normalization.
+
+    Given: A control whose guidance is ["Lead.", "   ", ["Sub A.", "Sub B."]]
+    When: build_site_data() is called
+    Then: The emitted control has guidance == ["Lead.", ["Sub A.", "Sub B."]]
+          (nesting preserved, whitespace-only item dropped — same rules as description)
+    """
+    record = _build_single_control_record(_control_with(guidance=["Lead.", "   ", ["Sub A.", "Sub B."]]))
+
+    assert "guidance" in record, f"builder must emit guidance when the control has it; got keys {sorted(record)}"
+    assert record["guidance"] == ["Lead.", ["Sub A.", "Sub B."]]
+    assert isinstance(record["guidance"][1], list)
+
+
+def test_build_site_data_omits_guidance_key_when_absent():
+    """
+    Test that a control without guidance emits no guidance key (not an empty list).
+
+    Given: A control with a description and no guidance
+    When: build_site_data() is called
+    Then: 'guidance' is not a key of the emitted control record
+    """
+    record = _build_single_control_record(_control_with())
+
+    assert "guidance" not in record, f"guidance must be omitted, not emitted empty; got {record.get('guidance')!r}"
+
+
+def test_write_site_data_accepts_and_round_trips_control_guidance(tmp_path: Path):
+    """
+    Test that builder output carrying guidance validates against persona-site-data.schema.json.
+
+    Given: build_site_data() output for a control with guidance ["Lead.", ["Sub A."]]
+    When: write_site_data() is called (which self-validates before writing)
+    Then: No ValidationError is raised and the written JSON carries the guidance value
+    """
+    site_data = build_site_data(
+        _GUIDANCE_PERSONAS_DATA,
+        _GUIDANCE_RISKS_DATA,
+        {"controls": [_control_with(guidance=["Lead.", ["Sub A."]])], "categories": []},
+        _GUIDANCE_COMPONENTS_DATA,
+    )
+    output_path = tmp_path / "out.json"
+
+    write_site_data(site_data, output_path)
+
+    with output_path.open("r", encoding="utf-8") as handle:
+        loaded = json.load(handle)
+    assert loaded["controls"][0]["guidance"] == ["Lead.", ["Sub A."]]

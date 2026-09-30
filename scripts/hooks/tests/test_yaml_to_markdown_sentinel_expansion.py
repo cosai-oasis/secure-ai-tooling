@@ -1825,4 +1825,106 @@ Key contracts pinned:
   - SummaryTableGenerator(intra_lookup=None, ref_lookup=None)
   - ## References for {entry-id} sub-section after the markdown table
   - UnresolvedSentinelError propagates through generate(); convert_type returns False
+  - Per-control guidance is expanded in the full table with the same rules as
+    description (TestGuidanceSentinelExpansionInFullTable)
 """
+
+
+# ============================================================================
+# TestGuidanceSentinelExpansionInFullTable
+# ============================================================================
+# The optional per-control ``guidance`` field (ADR-020 D9 amendment; design
+# record control-description-and-guidance.md) is resolved by every consumer
+# that resolves sentinels in ``description``. The full-detail table therefore
+# expands guidance per row with the same lookups, and an unresolved sentinel
+# in guidance raises with a field_path naming guidance.
+# ============================================================================
+
+
+class TestGuidanceSentinelExpansionInFullTable:
+    """Sentinels in a control's guidance are expanded in the full-detail table."""
+
+    @staticmethod
+    def _controls_yaml_data(guidance: list, ext_refs: list | None = None) -> dict:
+        """Two synthetic controls so intra sentinels can resolve within the same data."""
+        guided = {
+            "id": "controlTestAlpha",
+            "title": "Alpha Control",
+            "category": "controlsTest",
+            "description": ["What alpha is."],
+            "personas": [],
+            "components": [],
+            "risks": [],
+            "guidance": guidance,
+        }
+        if ext_refs is not None:
+            guided["externalReferences"] = ext_refs
+        sibling = {
+            "id": "controlTestBeta",
+            "title": "Beta Control",
+            "category": "controlsTest",
+            "description": ["What beta is."],
+            "personas": [],
+            "components": [],
+            "risks": [],
+        }
+        return {"controls": [guided, sibling]}
+
+    def test_intra_sentinel_in_guidance_expanded_in_output(self):
+        """
+        Given: A control whose guidance contains "{{controlTestBeta}}" and an intra_lookup
+               mapping controlTestBeta -> "Beta Control"
+        When: FullDetailTableGenerator.generate is called with that lookup
+        Then: The output contains "Pair with Beta Control" and not the raw sentinel
+        """
+        _require_sentinel_module()
+        gen_cls = _get_full_detail_generator()
+        yaml_data = self._controls_yaml_data(["Pair with {{controlTestBeta}} for depth."])
+        intra = {"controlTestAlpha": "Alpha Control", "controlTestBeta": "Beta Control"}
+
+        output = gen_cls(intra_lookup=intra, ref_lookup={}).generate(yaml_data, "controls")
+
+        assert "Pair with Beta Control" in output, output
+        assert "{{controlTestBeta}}" not in output
+
+    def test_ref_sentinel_in_guidance_expanded_to_link(self):
+        """
+        Given: A control whose guidance contains "{{ref:cwe-89}}" and a matching
+               externalReferences entry on that control
+        When: FullDetailTableGenerator.generate is called with lookups
+        Then: The output contains the reference URL and not the raw sentinel
+        """
+        _require_sentinel_module()
+        gen_cls = _get_full_detail_generator()
+        yaml_data = self._controls_yaml_data(
+            ["Addresses {{ref:cwe-89}} directly."],
+            ext_refs=[
+                {
+                    "type": "cwe",
+                    "id": "cwe-89",
+                    "title": "CWE-89: SQL Injection",
+                    "url": "https://cwe.mitre.org/data/definitions/89.html",
+                }
+            ],
+        )
+
+        output = gen_cls(intra_lookup={}, ref_lookup={}).generate(yaml_data, "controls")
+
+        assert "https://cwe.mitre.org/data/definitions/89.html" in output, output
+        assert "{{ref:cwe-89}}" not in output
+
+    def test_unresolved_sentinel_in_guidance_raises_with_guidance_field_path(self):
+        """
+        Given: A control whose guidance contains "{{controlDoesNotExist}}"
+        When: FullDetailTableGenerator.generate is called with lookups
+        Then: UnresolvedSentinelError is raised and its message names "guidance"
+        """
+        _require_sentinel_module()
+        gen_cls = _get_full_detail_generator()
+        yaml_data = self._controls_yaml_data(["See {{controlDoesNotExist}}."])
+
+        gen = gen_cls(intra_lookup={"controlTestBeta": "Beta Control"}, ref_lookup={})
+        with pytest.raises(UnresolvedSentinelError) as exc_info:
+            gen.generate(yaml_data, "controls")
+
+        assert "guidance" in str(exc_info.value), f"error must name the guidance field: {exc_info.value}"

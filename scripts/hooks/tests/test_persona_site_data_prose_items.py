@@ -454,4 +454,103 @@ Coverage areas:
 - externalReferences on personas/risks/controls items (declared, optional)
 - additionalProperties: false unchanged on item objects
 - Structured item validation: missing fields rejected, non-https url rejected
+- guidance on the controls item (declared as prose, optional; controls only)
 """
+
+
+# ============================================================================
+# guidance property on the controls item object
+# ============================================================================
+
+
+class TestGuidanceOnControlsItem:
+    """
+    The per-control item object declares an optional ``guidance`` property
+    using the shared ``#/definitions/prose`` shape (ADR-020 D9 amendment;
+    design record control-description-and-guidance.md). The item object uses
+    additionalProperties: false, so the builder's emitted ``guidance`` is only
+    accepted if it is declared here.
+    """
+
+    @staticmethod
+    def _controls_item_schema(persona_site_schema: dict) -> dict:
+        return persona_site_schema.get("properties", {}).get("controls", {}).get("items", {})
+
+    def test_guidance_declared_as_prose_ref(self, persona_site_schema: dict):
+        """
+        Test that controls[].properties.guidance $refs #/definitions/prose.
+
+        Given: The controls item schema in persona-site-data.schema.json
+        When: Its properties block is inspected
+        Then: 'guidance' is present and equals {"$ref": "#/definitions/prose"}
+        """
+        props = self._controls_item_schema(persona_site_schema).get("properties", {})
+        assert "guidance" in props, (
+            "persona-site-data.schema.json controls[].properties must declare 'guidance' "
+            "(additionalProperties: false requires explicit declaration)"
+        )
+        assert props["guidance"].get("$ref") == "#/definitions/prose", (
+            f"controls[].properties.guidance must $ref '#/definitions/prose'; got {props['guidance']!r}"
+        )
+
+    def test_guidance_not_required(self, persona_site_schema: dict):
+        """
+        Test that guidance is optional on the controls item.
+
+        Given: The controls item schema
+        When: Its required array is inspected
+        Then: 'guidance' is absent (the builder omits the key when the control has none)
+        """
+        required = self._controls_item_schema(persona_site_schema).get("required", [])
+        assert "guidance" not in required, "controls[] item schema must NOT require guidance"
+
+    def test_controls_item_with_guidance_accepted_by_full_schema(
+        self, persona_site_schema: dict, registry: Registry
+    ):
+        """
+        Test that a site-data document whose control carries guidance validates end to end.
+
+        Given: A minimal site-data document with one control whose guidance mixes a
+               string, a nested string array, and an expanded ref item
+        When: It is validated against the full persona-site-data.schema.json
+        Then: No errors are raised
+        """
+        document = {
+            "personas": [],
+            "questions": [],
+            "manualFallbackPersonaIds": [],
+            "riskCategories": [],
+            "controlCategories": [],
+            "risks": [],
+            "controls": [
+                {
+                    "id": "controlGuided",
+                    "title": "Guided",
+                    "category": "controlsTest",
+                    "description": ["What the control is."],
+                    "guidance": [
+                        "Lead paragraph.",
+                        ["Sub A.", "Sub B."],
+                        ["See ", {"type": "ref", "id": "riskExample", "title": "Example"}, "."],
+                    ],
+                    "personaIds": [],
+                    "riskIds": [],
+                }
+            ],
+        }
+        validator = Draft7Validator(persona_site_schema, registry=registry)
+        errors = [e.message for e in validator.iter_errors(document)]
+        assert not errors, f"controls item with guidance must validate; got: {errors}"
+
+    @pytest.mark.parametrize("array_key", ["personas", "risks"])
+    def test_guidance_not_declared_on_other_items(self, persona_site_schema: dict, array_key: str):
+        """
+        Test that guidance is scoped to controls only.
+
+        Given: The personas and risks item schemas
+        When: Their properties blocks are inspected
+        Then: 'guidance' is absent (risks keep shortDescription/longDescription by design)
+        """
+        item_schema = persona_site_schema.get("properties", {}).get(array_key, {}).get("items", {})
+        item_props = item_schema.get("properties", {})
+        assert "guidance" not in item_props, f"{array_key}[] must not declare guidance (controls-only field)"

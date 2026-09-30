@@ -2570,3 +2570,80 @@ class TestDelimForTokenGuard:
         """An empty string is not a valid emphasis token value and must raise."""
         with pytest.raises(ValueError):
             _delim_for_token("")
+
+
+# ===========================================================================
+# TestGuidanceFieldLinted — per-control guidance is a lint-visible prose field
+# ===========================================================================
+# The optional ``guidance`` property (ADR-020 D9 amendment; design record
+# control-description-and-guidance.md) shares the description prose shape.
+# The linter discovers prose fields from the schema, so these tests run the
+# CLI against the REAL risk-map/schemas/ dir with a synthetic controls.yaml.
+# The basename is pinned to controls.yaml so schema inference resolves
+# controls.schema.json by stem rather than falling back to array-key matching.
+# ===========================================================================
+
+
+class TestGuidanceFieldLinted:
+    r"""Grammar violations inside ``guidance`` are reported with field name ``guidance``."""
+
+    _REAL_SCHEMA_DIR = _REPO_ROOT / "risk-map" / "schemas"
+
+    def _write_controls_yaml(self, tmp_path: Path, guidance: list) -> Path:
+        r"""Write ``<tmp_path>/controls.yaml`` with one clean-description control carrying guidance."""
+        entry = _make_control("controlAlpha", description=["A clean description."])
+        entry["guidance"] = guidance
+        return _write_yaml(tmp_path, "controls.yaml", {"controls": [entry]})
+
+    def _run_block(self, yaml_path: Path, capsys) -> tuple[int, list[str]]:
+        r"""Run main() in --block mode; return (exit_code, non-empty stderr lines)."""
+        with pytest.raises(SystemExit) as exc_info:
+            main([str(yaml_path), "--schema-dir", str(self._REAL_SCHEMA_DIR), "--block"])
+        err = capsys.readouterr().err
+        return exc_info.value.code, [ln for ln in err.splitlines() if ln.strip()]
+
+    def test_raw_url_in_guidance_reported_with_field_guidance(self, tmp_path, capsys):
+        r"""
+        A raw URL inside guidance produces one diagnostic naming the guidance field.
+
+        Given: controls.yaml with guidance ["See https://example.com for details."]
+               and the real schema dir
+        When: main() is called with --block
+        Then: exit code 1 and exactly one stderr line of the form
+              ``...:controlAlpha:guidance[0]: ...`` matching the diagnostic regex
+        """
+        yaml_path = self._write_controls_yaml(tmp_path, ["See https://example.com for details."])
+        code, lines = self._run_block(yaml_path, capsys)
+        assert code == 1, f"expected --block exit 1 for a URL in guidance; stderr={lines!r}"
+        assert len(lines) == 1, f"expected exactly one diagnostic; got {lines!r}"
+        assert re.search(r":controlAlpha:guidance\[0\]: ", lines[0]), lines[0]
+        assert _DIAG_PATTERN.match(lines[0]), f"diagnostic does not match committed format: {lines[0]!r}"
+
+    def test_violation_in_nested_guidance_item_reported_with_nested_index(self, tmp_path, capsys):
+        r"""
+        A violation inside an inner-list guidance item carries the nested index.
+
+        Given: guidance ["Lead.", ["Fine.", "See https://example.com for details."]]
+               (a raw URL is a single-diagnostic violation; raw HTML would emit
+               one diagnostic per tag)
+        When: main() is called with --block
+        Then: exit code 1 and the single diagnostic is located at ``guidance[1][1]``
+        """
+        yaml_path = self._write_controls_yaml(tmp_path, ["Lead.", ["Fine.", "See https://example.com now."]])
+        code, lines = self._run_block(yaml_path, capsys)
+        assert code == 1, f"expected --block exit 1 for a URL in nested guidance; stderr={lines!r}"
+        assert len(lines) == 1, f"expected exactly one diagnostic; got {lines!r}"
+        assert re.search(r":controlAlpha:guidance\[1\]\[1\]: ", lines[0]), lines[0]
+
+    def test_clean_guidance_produces_no_diagnostic(self, tmp_path, capsys):
+        r"""
+        Clean guidance prose passes silently (no false positives on the new field).
+
+        Given: guidance ["Use **strong** wording and a {{ref:spec-1}} citation."]
+        When: main() is called with --block
+        Then: exit code 0 and no stderr output
+        """
+        yaml_path = self._write_controls_yaml(tmp_path, ["Use **strong** wording and a {{ref:spec-1}} citation."])
+        code, lines = self._run_block(yaml_path, capsys)
+        assert code == 0
+        assert lines == []

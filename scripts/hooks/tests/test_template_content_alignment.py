@@ -995,4 +995,126 @@ Classes and their contracts:
 
   TestSourceTemplateStructuralValidity (8 parametrized tests, Section G)
     - ADR-026 D6: all 8 source templates parse as valid GitHub issue forms
+
+  TestControlGuidanceSolicitation (7 tests, Section H)
+    - new_control has an optional control-guidance textarea directly after control-description
+    - its helper teaches {{ref:identifier}} and carries the agreed minimal wording
+    - new_control's alignment manifest cites ADR-020
+    - update_control offers an "update guidance" change-type option
 """
+
+
+# ============================================================================
+# Section H — control templates solicit the optional guidance field
+# (ADR-026 D7 structural edits; design record control-description-and-guidance.md)
+# ============================================================================
+
+_GUIDANCE_HELPER_TEXT = (
+    "Optional. How to meet the objective, where it applies, and how it differs from sibling controls"
+)
+
+
+class TestControlGuidanceSolicitation:
+    """
+    The optional per-control ``guidance`` field needs a structural home in the
+    two control templates: a textarea on new_control and a change-type option
+    on update_control. Helper-text rewording of ``description`` is out of scope
+    here (develop-side follow-up).
+    """
+
+    def test_new_control_has_control_guidance_textarea(self, repo_root: Path) -> None:
+        """
+        Given: new_control.template.yml
+        When: body[] is searched for id 'control-guidance'
+        Then: the element exists and is a textarea
+        """
+        parsed, _ = _load_source(repo_root, "new_control")
+        field = _get_field(_body_elements(parsed), "control-guidance")
+        assert field is not None, "new_control.template.yml has no body element with id 'control-guidance'"
+        assert field.get("type") == "textarea", f"control-guidance must be a textarea; got {field.get('type')!r}"
+
+    def test_new_control_guidance_textarea_directly_follows_description(self, repo_root: Path) -> None:
+        """
+        Given: new_control.template.yml body[] elements
+        When: the indexes of 'control-description' and 'control-guidance' are compared
+        Then: control-guidance sits at index(control-description) + 1, mirroring the
+              schema property order (guidance directly after description)
+        """
+        parsed, _ = _load_source(repo_root, "new_control")
+        ids = [elem.get("id") for elem in _body_elements(parsed)]
+        assert "control-description" in ids, "new_control.template.yml is missing 'control-description'"
+        assert "control-guidance" in ids, "new_control.template.yml has no body element with id 'control-guidance'"
+        assert ids.index("control-guidance") == ids.index("control-description") + 1, (
+            f"control-guidance must directly follow control-description; body ids={ids}"
+        )
+
+    def test_new_control_manifest_cites_adr_020(self, repo_root: Path) -> None:
+        """
+        Given: the ADR-content alignment manifest comment at the top of new_control.template.yml
+        When: its leading comment lines are scanned
+        Then: an '#   - ADR-020' entry is present (the manifest lists every ADR the
+              template teaches; guidance is the ADR-020 controls-schema property)
+        """
+        _, raw = _load_source(repo_root, "new_control")
+        leading_comment: list[str] = []
+        for line in raw.splitlines():
+            if not line.startswith("#"):
+                break
+            leading_comment.append(line)
+        assert leading_comment, "new_control.template.yml must start with the ADR-content alignment manifest"
+        assert any(re.match(r"^#\s+-\s+ADR-020\b", line) for line in leading_comment), (
+            f"new_control.template.yml manifest must list ADR-020; got: {leading_comment}"
+        )
+
+    def test_new_control_guidance_textarea_is_optional(self, repo_root: Path) -> None:
+        """
+        Given: the control-guidance element of new_control.template.yml
+        When: its validations block is inspected
+        Then: required is not true (the schema field is optional)
+        """
+        parsed, _ = _load_source(repo_root, "new_control")
+        field = _get_field(_body_elements(parsed), "control-guidance")
+        assert field is not None, "new_control.template.yml has no body element with id 'control-guidance'"
+        required = (field.get("validations") or {}).get("required", False)
+        assert required is not True, "control-guidance must not be a required field"
+
+    def test_new_control_guidance_helper_teaches_ref_sentinel(self, repo_root: Path) -> None:
+        """
+        Given: the control-guidance element of new_control.template.yml
+        When: its attributes.description helper text is read
+        Then: it contains the literal '{{ref:identifier}}' sentinel example
+        """
+        parsed, _ = _load_source(repo_root, "new_control")
+        field = _get_field(_body_elements(parsed), "control-guidance")
+        assert field is not None, "new_control.template.yml has no body element with id 'control-guidance'"
+        helper = (field.get("attributes") or {}).get("description") or ""
+        assert "{{ref:identifier}}" in helper, (
+            f"control-guidance helper must teach {{{{ref:identifier}}}}; got {helper!r}"
+        )
+
+    def test_new_control_guidance_helper_carries_minimal_wording(self, repo_root: Path) -> None:
+        """
+        Given: the control-guidance element of new_control.template.yml
+        When: its helper text is read
+        Then: it contains the agreed sentence naming what guidance holds
+        """
+        parsed, _ = _load_source(repo_root, "new_control")
+        field = _get_field(_body_elements(parsed), "control-guidance")
+        assert field is not None, "new_control.template.yml has no body element with id 'control-guidance'"
+        helper = (field.get("attributes") or {}).get("description") or ""
+        assert _GUIDANCE_HELPER_TEXT in helper, (
+            f"control-guidance helper must contain {_GUIDANCE_HELPER_TEXT!r}; got {helper!r}"
+        )
+
+    def test_update_control_change_type_offers_guidance_option(self, repo_root: Path) -> None:
+        """
+        Given: update_control.template.yml
+        When: the options of the change-type dropdown are examined
+        Then: at least one option matches /update guidance/i
+        """
+        parsed, _ = _load_source(repo_root, "update_control")
+        change_type = _get_field(_body_elements(parsed), "change-type")
+        assert change_type is not None, "update_control.template.yml is missing the 'change-type' dropdown"
+        options: list[str] = (change_type.get("attributes") or {}).get("options") or []
+        matches = [opt for opt in options if re.search(r"update guidance", opt, re.IGNORECASE)]
+        assert matches, f"update_control change-type dropdown has no 'Update guidance' option; options={options}"

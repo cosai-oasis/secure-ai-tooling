@@ -4,7 +4,10 @@ Tests for Decision 4 (C1-schema-tightenings): description-field $refs in the
 four content schemas point at `riskmap.schema.json#/definitions/utils/prose-strict`
 (not `utils/text`), per ADRs 018-021 D4.
 
-Scope: 15 $ref sites in 4 content schemas (risks, controls, components, personas).
+Scope: 16 $ref sites in 4 content schemas (risks, controls, components, personas).
+The 16th site is the optional per-control ``guidance`` property (ADR-020 D9 amendment,
+design record control-description-and-guidance.md), which shares the ``description``
+prose shape.
 Supporting schemas (frameworks, actor-access, impact-type, lifecycle-stage) are
 out of scope for this PR — they remain on utils/text.
 
@@ -13,7 +16,7 @@ Supporting schemas + self-assessment.schema.json (C3 sibling PR) still
 reference it. Removal is a follow-up once all consumers migrate.
 
 Coverage:
-- Each of the 15 $ref sites references utils/prose-strict.
+- Each of the 16 $ref sites references utils/prose-strict.
 - Zero residual utils/text $refs in each of the 4 content schemas
   (JSON-walk regex assertion, robust against reformatting).
 - riskmap.schema.json#/definitions/utils/text still exists (coexistence guard).
@@ -21,7 +24,7 @@ Coverage:
   against its parent schema's prose-strict shape. Surfaces content drift
   (empty arrays / empty strings) if it ever appears.
 
-Sites under test (15 total):
+Sites under test (16 total):
   risks.schema.json (7):
     /properties/description
     /definitions/risk/properties/shortDescription
@@ -31,9 +34,10 @@ Sites under test (15 total):
     /definitions/risk/properties/tourContent/properties/mitigated
     /definitions/risk/properties/examples
 
-  controls.schema.json (2):
+  controls.schema.json (3):
     /properties/description
     /definitions/control/properties/description
+    /definitions/control/properties/guidance
 
   components.schema.json (4):
     /properties/description
@@ -68,7 +72,8 @@ UTILS_TEXT_REF_PATTERN = re.compile(r"riskmap\.schema\.json#/definitions/utils/t
 
 # Each site is (schema_filename, json_pointer_path_to_the_property).
 # The path is expressed as a list of keys for dict traversal.
-# These map to the 15 confirmed utils/text $ref sites found by JSON walk.
+# These map to the 15 confirmed utils/text $ref sites found by JSON walk, plus
+# the per-control guidance site added with the guidance property (16 total).
 MIGRATION_SITES: list[tuple[str, list[str]]] = [
     # risks.schema.json — 7 sites
     ("risks.schema.json", ["properties", "description"]),
@@ -78,9 +83,11 @@ MIGRATION_SITES: list[tuple[str, list[str]]] = [
     ("risks.schema.json", ["definitions", "risk", "properties", "tourContent", "properties", "exposed"]),
     ("risks.schema.json", ["definitions", "risk", "properties", "tourContent", "properties", "mitigated"]),
     ("risks.schema.json", ["definitions", "risk", "properties", "examples"]),
-    # controls.schema.json — 2 sites
+    # controls.schema.json — 3 sites
     ("controls.schema.json", ["properties", "description"]),
     ("controls.schema.json", ["definitions", "control", "properties", "description"]),
+    # Optional per-control guidance: same prose shape as description.
+    ("controls.schema.json", ["definitions", "control", "properties", "guidance"]),
     # components.schema.json — 4 sites
     ("components.schema.json", ["properties", "description"]),
     ("components.schema.json", ["definitions", "category", "properties", "description"]),
@@ -149,7 +156,8 @@ def schemas_dir(risk_map_schemas_dir: Path) -> Path:
 
 class TestProseMigrationRefValue:
     """
-    Each of the 15 $ref sites references utils/prose-strict per ADRs 018-021 D4.
+    Each of the 16 $ref sites references utils/prose-strict per ADRs 018-021 D4
+    (15 migrated sites plus the per-control guidance property).
     """
 
     @pytest.mark.parametrize(
@@ -379,10 +387,10 @@ class TestCorpusProseStrictCompatibility:
 """
 Test Summary
 ============
-Total test methods: 15 + 4 + 3 + 4 = 26
+Total test methods: 16 + 4 + 3 + 4 = 27
 Test classes: 4
 
-- TestProseMigrationRefValue (15 parametrized) — each site references
+- TestProseMigrationRefValue (16 parametrized) — each site references
   utils/prose-strict.
 - TestZeroResidualUtilsTextRefs (4 parametrized — one per content schema)
   — no utils/text $ref remains.
@@ -392,7 +400,7 @@ Test classes: 4
   — live YAML validates clean against its parent schema.
 
 Coverage areas:
-- Per-site $ref value assertion: all 15 sites point at prose-strict
+- Per-site $ref value assertion: all 16 sites point at prose-strict
 - Zero-residual regex walk: no utils/text remains in content schemas
 - Coexistence: utils/text retained in riskmap.schema.json (supporting schemas need it)
 - Corpus audit: YAML content is prose-strict compatible
