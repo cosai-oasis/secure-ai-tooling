@@ -84,6 +84,7 @@
         },
         "title": { "type": "string", "maxLength": 100 },
         "description": { "$ref": "riskmap.schema.json#/definitions/utils/prose-strict" },
+        "guidance": { "$ref": "riskmap.schema.json#/definitions/utils/prose-strict" },
         "category": { "$ref": "#/definitions/category/properties/id" },
         "personas": {
           "type": "array",

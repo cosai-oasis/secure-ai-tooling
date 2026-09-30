@@ -225,6 +225,7 @@
           "title": { "type": "string" },
           "category": { "type": "string" },
           "description": { "$ref": "#/definitions/prose" },
+          "guidance": { "$ref": "#/definitions/prose" },
           "personaIds": {
             "type": "array",
             "items": { "type": "string" }
