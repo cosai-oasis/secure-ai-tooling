@@ -58,7 +58,7 @@ body:
         - "Remove riskPromptInjection from risks - this control doesn't effectively mitigate prompt injection"
         - "Add MITRE ATLAS mapping AML.M0015@5.0.1 (Adversarial Input Detection)"
 
-        Cross-reference framework entities using sentinels, e.g. {{controlInputValidationAndSanitization}} or {{riskPromptInjection}}.
+        In proposed guidance prose, name related framework entities with sentinels, e.g. {{controlInputValidationAndSanitization}} or {{riskPromptInjection}}. Description text takes no control, risk, or persona sentinels (component sentinels are allowed); id lists and the +/- fields take bare ids.
         Outbound citations go in External Reference Changes below and are cited via {{ref:identifier}}.
       placeholder: |
         Current state: [what it says now]

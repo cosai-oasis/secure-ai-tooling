@@ -4,9 +4,13 @@ Tests for ADR-026 D4 post-alignment content shape of the 8 issue-template
 source files in scripts/TEMPLATES/*.template.yml.
 
 Each test class targets a specific contract from ADR-016, ADR-017, ADR-019,
-ADR-021, ADR-022 as recorded in issue #327. These tests are independent of
-each other and deterministic; they operate only on the YAML source files,
-not on the generated .github/ISSUE_TEMPLATE/ outputs.
+ADR-021, ADR-022 as recorded in issue #327, except Sections H and I, which
+target ADR-020 and the control description/guidance design record
+(risk-map/docs/design/control-description-and-guidance.md). These tests are independent of
+each other and deterministic; they operate on the YAML source files, except
+Section I (TestControlDescriptionGuidanceTeaching and
+TestGeneratedControlFormsMatchSource), which also reads the committed
+.github/ISSUE_TEMPLATE/{new,update}_control.yml outputs.
 
 Naming convention:  test_<contract>_<scenario>_<expected_outcome>
 Docstring convention: Given / When / Then
@@ -1019,8 +1023,8 @@ class TestControlGuidanceSolicitation:
     """
     The optional per-control ``guidance`` field needs a structural home in the
     two control templates: a textarea on new_control and a change-type option
-    on update_control. Helper-text rewording of ``description`` is out of scope
-    here (develop-side follow-up).
+    on update_control. The ``description`` helper and placeholder wording is
+    covered by Section I.
     """
 
     def test_new_control_has_control_guidance_textarea(self, repo_root: Path) -> None:
@@ -1263,7 +1267,9 @@ class TestControlDescriptionGuidanceTeaching:
         Given: the control-description element of new_control (source and generated)
         When: its placeholder is read
         Then: it has no word starting with 'implement' (implementation content is
-              placed in guidance by DG2 and DG5, so description may not ask for it)
+              placed in guidance by DG2 and DG5, so description may not ask for it).
+              The placeholder deliberately avoids any 'implement...' word, even a
+              pointer to guidance.
         """
         placeholder = _control_field_attr(repo_root, "control-description", "placeholder", generated=generated)
         found = re.findall(r"\bimplement\w*", placeholder, re.IGNORECASE)
