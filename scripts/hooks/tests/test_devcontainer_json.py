@@ -9,18 +9,20 @@ installation from devcontainer features to install-deps.sh with mise.
 Test Coverage:
 ==============
 Total Test Classes: 7
-Total Test Methods: 28
+Total Test Methods: 33
 
 1. TestDevcontainerJsonExists (2): file exists, parses as valid JSON
-2. TestDevcontainerJsonFeatures (8): no Python feature, no Node feature,
+2. TestDevcontainerJsonFeatures (11): no Python feature, no Node feature,
    Docker-in-Docker feature present, common-utils feature present,
    common-utils username vscode, common-utils automatic uid,
-   common-utils automatic gid, common-utils no zsh
+   common-utils automatic gid, common-utils no zsh,
+   Git feature present, Git latest version, Git PPA enabled
 3. TestDevcontainerJsonCommands (4): onCreateCommand exists,
    onCreateCommand references install-deps.sh, no direct pip/npm in
    onCreateCommand, no postCreateCommand
-4. TestDevcontainerJsonPythonConfig (3): interpreter path exists, uses mise shims,
-   does not use /usr/local/python/current
+4. TestDevcontainerJsonPythonConfig (5): interpreter path exists, uses mise
+   install path, uses absolute path, does not use mise shims, does not use
+   /usr/local/python/current
 5. TestDevcontainerJsonVscodeExtensions (2): extensions array exists,
    required extensions present (including ms-python.python)
 6. TestDevcontainerJsonBuildConfig (4): remoteUser is vscode,
@@ -125,6 +127,7 @@ class TestDevcontainerJsonFeatures:
     After refactor:
     - No Python feature (ghcr.io/devcontainers/features/python)
     - No Node feature (ghcr.io/devcontainers/features/node)
+    - Git feature is present with latest version and PPA enabled
     - Docker-in-Docker feature is still present
     """
 
@@ -170,6 +173,46 @@ class TestDevcontainerJsonFeatures:
         features = devcontainer_json.get("features", {})
         found_docker = any("docker-in-docker" in key.lower() for key in features.keys())
         assert found_docker, "devcontainer.json should include Docker-in-Docker feature"
+
+    def test_git_feature_present(self, devcontainer_json):
+        """
+        Given: The devcontainer.json config
+        When: Checking for Git devcontainer feature
+        Then: Feature key is exactly ghcr.io/devcontainers/features/git:1
+
+        Git is installed through the official devcontainer feature so the
+        container gets the current stable Git without relying on Ubuntu
+        Noble's frozen apt package.
+        """
+        features = devcontainer_json.get("features", {})
+        assert "ghcr.io/devcontainers/features/git:1" in features, (
+            "devcontainer.json should include ghcr.io/devcontainers/features/git:1"
+        )
+
+    def test_git_feature_version_latest(self, devcontainer_json):
+        """
+        Given: The devcontainer.json config
+        When: Checking Git feature options
+        Then: version is set to "latest"
+        """
+        features = devcontainer_json.get("features", {})
+        git_config = features.get("ghcr.io/devcontainers/features/git:1", {})
+        assert git_config.get("version") == "latest", (
+            f"git feature version should be 'latest', got: {git_config.get('version')}"
+        )
+
+    def test_git_feature_ppa_enabled(self, devcontainer_json):
+        """
+        Given: The devcontainer.json config
+        When: Checking Git feature options
+        Then: ppa is true
+
+        The Git feature uses the git-core PPA on Ubuntu when this option is
+        enabled, which avoids the distro-frozen Git version.
+        """
+        features = devcontainer_json.get("features", {})
+        git_config = features.get("ghcr.io/devcontainers/features/git:1", {})
+        assert git_config.get("ppa") is True, f"git feature ppa should be true, got: {git_config.get('ppa')}"
 
     def test_common_utils_feature_present(self, devcontainer_json):
         """
@@ -672,17 +715,19 @@ class TestDevcontainerJsonRemoteEnv:
 Test Summary
 ============
 Total Test Classes: 7
-Total Test Methods: 28
+Total Test Methods: 33
 
 1. TestDevcontainerJsonExists (2): file exists, parses as valid JSON
-2. TestDevcontainerJsonFeatures (8): no Python feature, no Node feature,
-   Docker-in-Docker present, common-utils present, username vscode,
-   automatic uid, automatic gid, no zsh
+2. TestDevcontainerJsonFeatures (11): no Python feature, no Node feature,
+   Docker-in-Docker present, Git feature present with latest version and PPA
+   enabled, common-utils present, username vscode, automatic uid,
+   automatic gid, no zsh
 3. TestDevcontainerJsonCommands (4): onCreateCommand exists,
    onCreateCommand references install-deps.sh, no direct pip/npm,
    no postCreateCommand
-4. TestDevcontainerJsonPythonConfig (3): interpreter path exists, uses mise shims,
-   not /usr/local/python/current
+4. TestDevcontainerJsonPythonConfig (5): interpreter path exists, uses mise
+   install path, uses absolute path, does not use mise shims, not
+   /usr/local/python/current
 5. TestDevcontainerJsonVscodeExtensions (2): extensions array exists,
    required extensions present (including ms-python.python)
 6. TestDevcontainerJsonBuildConfig (4): remoteUser is vscode,
@@ -694,9 +739,9 @@ Total Test Methods: 28
 
 Coverage Areas:
 - File existence and JSON validity
-- Feature configuration (Python/Node removed, Docker-in-Docker kept, common-utils added)
+- Feature configuration (Python/Node removed, Git added, Docker-in-Docker kept, common-utils added)
 - Lifecycle commands (onCreateCommand uses install-deps.sh, postCreateCommand absent)
-- Python interpreter configuration (mise shims path)
+- Python interpreter configuration (mise install path, not the shim)
 - VSCode extensions (ms-python.python, markdown-mermaid, ruff, yaml)
 - Build configuration (remoteUser, build.args, context, dockerfile)
 - Remote environment (hardcoded /home/vscode paths, no broken ${containerEnv:HOME})
