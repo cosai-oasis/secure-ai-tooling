@@ -658,14 +658,14 @@ class ComponentGraph(BaseGraph):
 
         if plan.broadcasts:
             port_style = port_styles.get("port")
-            if not port_style or f"classDef port {port_style}" not in text:
+            if not (port_style or "").strip() or f"classDef port {port_style}" not in text:
                 raise AssertionError(
                     f"S6 violated: {S6_MISSING_PORT_STYLE_SIGNATURES['port']}, required by drawn ports"
                 )
 
         if plan.pep_wrappers:
             pepport_style = port_styles.get("pepport")
-            if not pepport_style or f"classDef pepport {pepport_style}" not in text:
+            if not (pepport_style or "").strip() or f"classDef pepport {pepport_style}" not in text:
                 raise AssertionError(
                     f"S6 violated: {S6_MISSING_PORT_STYLE_SIGNATURES['pepport']}, required by PEP wrappers"
                 )
@@ -673,7 +673,7 @@ class ComponentGraph(BaseGraph):
             pep_wrap_outline = port_styles.get("pepWrapOutline")
             for wrapper in plan.pep_wrappers.values():
                 expected = f"style {wrapper.wrap_id} {pep_wrap_outline}" if pep_wrap_outline else None
-                if not pep_wrap_outline or expected not in text:
+                if not (pep_wrap_outline or "").strip() or expected not in text:
                     raise AssertionError(
                         f"S6 violated: {S6_MISSING_PORT_STYLE_SIGNATURES['pepWrapOutline']} "
                         f"for wrapper '{wrapper.wrap_id}'"

@@ -5011,6 +5011,89 @@ class TestDecoupledConfigMissingPortStyleIsANamedError:
         _assert_named_port_style_error(combined, exit_code, key)
 
 
+@pytest.mark.usefixtures("_fresh_mermaid_styles_singleton")
+class TestDecoupledBlankPortStyles:
+    """Whitespace-only required styles are config errors; flat output and real styles are preserved."""
+
+    @pytest.mark.parametrize("key", _DECOUPLED_REQUIRED_PORT_STYLE_KEYS)
+    @pytest.mark.parametrize(
+        "blank", [" ", "\t\r\n", "\u2003"], ids=["space", "mixed-whitespace", "unicode-space"]
+    )
+    @pytest.mark.parametrize(
+        "extra_args",
+        [(), ("-m", "--quiet"), ("--emission-mode", "decoupled")],
+        ids=["config-mode", "quiet-hook", "mode-override"],
+    )
+    def test_blank_style_gives_a_named_error_before_writing_graphs(
+        self, tmp_path, repo_root, monkeypatch, capsys, key, blank, extra_args
+    ):
+        """
+        Given: a real decoupled corpus with one required port style containing only whitespace
+        When: graph generation runs in config mode, the quiet hook, or a decoupled override
+        Then: exit 2 names only the blank key as a config error and writes no graph files
+        """
+        styles_path = _copy_real_corpus(tmp_path, repo_root)
+        _rewrite_port_styles(styles_path, lambda styles: styles.__setitem__(key, blank))
+
+        combined, exit_code = _run_to_graph(tmp_path, monkeypatch, capsys, *extra_args)
+
+        _assert_named_port_style_error(combined, exit_code, key)
+        assert not (tmp_path / "out.md").exists()
+        assert not (tmp_path / "out.mermaid").exists()
+
+    @pytest.mark.parametrize("key", _DECOUPLED_REQUIRED_PORT_STYLE_KEYS)
+    @pytest.mark.parametrize(
+        "blank", [" ", "\t\r\n", "\u2003"], ids=["space", "mixed-whitespace", "unicode-space"]
+    )
+    @pytest.mark.parametrize("extra_args", [(), ("--emission-mode", "flat")], ids=["config-mode", "mode-override"])
+    def test_flat_mode_graphs_are_unchanged_by_blank_port_styles(
+        self, tmp_path, repo_root, monkeypatch, capsys, key, blank, extra_args
+    ):
+        """
+        Given: a real corpus rendered in flat mode with valid port styles
+        When: one port style becomes whitespace-only and both graph formats are regenerated
+        Then: generation succeeds and both outputs are identical to the original flat graphs
+        """
+        styles_path = _copy_real_corpus(tmp_path, repo_root)
+        doc = yaml.safe_load(styles_path.read_text(encoding="utf-8"))
+        doc["graphTypes"]["component"]["emission"]["mode"] = "flat"
+        styles_path.write_text(yaml.dump(doc), encoding="utf-8")
+
+        combined, exit_code = _run_to_graph(tmp_path, monkeypatch, capsys, "-m", "--quiet", *extra_args)
+        assert exit_code == 0, combined
+        expected = {
+            suffix: (tmp_path / f"out.{suffix}").read_text(encoding="utf-8") for suffix in ("md", "mermaid")
+        }
+
+        _rewrite_port_styles(styles_path, lambda styles: styles.__setitem__(key, blank))
+        monkeypatch.setattr(MermaidConfigLoader, "_instances", {})
+
+        combined, exit_code = _run_to_graph(tmp_path, monkeypatch, capsys, "-m", "--quiet", *extra_args)
+
+        assert exit_code == 0, combined
+        actual = {suffix: (tmp_path / f"out.{suffix}").read_text(encoding="utf-8") for suffix in ("md", "mermaid")}
+        assert actual == expected
+
+    @pytest.mark.parametrize("key", _DECOUPLED_REQUIRED_PORT_STYLE_KEYS)
+    def test_nonblank_port_styles_keep_their_surrounding_whitespace(
+        self, tmp_path, repo_root, monkeypatch, capsys, key
+    ):
+        """
+        Given: a real decoupled corpus with whitespace surrounding one valid style body
+        When: graph generation runs
+        Then: generation succeeds and the configured style body is emitted verbatim
+        """
+        styles_path = _copy_real_corpus(tmp_path, repo_root)
+        doc = yaml.safe_load(styles_path.read_text(encoding="utf-8"))
+        padded_style = " " + doc["graphTypes"]["component"]["emission"]["portStyles"][key] + " "
+        _rewrite_port_styles(styles_path, lambda styles: styles.__setitem__(key, padded_style))
+
+        combined, exit_code = _run_to_graph(tmp_path, monkeypatch, capsys)
+
+        assert exit_code == 0, combined
+        assert padded_style in (tmp_path / "out.md").read_text(encoding="utf-8")
+
+
 def _drop_emitted_lines(monkeypatch, method_name: str, marker: str) -> None:
     """
     Wrap `ComponentGraph.<method_name>` so lines containing `marker` are

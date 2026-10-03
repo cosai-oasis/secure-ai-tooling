@@ -84,7 +84,7 @@ def _unconfigured_port_style_key(error: AssertionError, config_loader: MermaidCo
     if key is None:
         return None
     port_styles = config_loader.get_emission_config().port_styles or {}
-    return None if port_styles.get(key) else key
+    return None if (port_styles.get(key) or "").strip() else key
 
 
 def parse_args() -> argparse.Namespace:
@@ -615,7 +615,7 @@ def main() -> None:
                 print(
                     f"❌ {source} requires a populated graphTypes.component.emission block "
                     f"in mermaid-styles.yaml with a non-empty portStyles.{key} "
-                    f"(graphTypes.component.emission.portStyles); it is missing or empty, "
+                    f"(graphTypes.component.emission.portStyles); it is missing or blank, "
                     f"so the decoupled renderer cannot draw it"
                 )
                 sys.exit(2)
