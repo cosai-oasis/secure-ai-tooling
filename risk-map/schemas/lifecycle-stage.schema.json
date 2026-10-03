@@ -28,7 +28,8 @@
             "evaluation",
             "deployment",
             "runtime",
-            "maintenance"
+            "maintenance",
+            "decommissioning"
           ]
         },
         "title": {
@@ -41,9 +42,9 @@
         },
         "order": {
           "type": "integer",
-          "description": "Sequential order in the lifecycle (1-8)",
+          "description": "Sequential order in the lifecycle (1-9)",
           "minimum": 1,
-          "maximum": 8
+          "maximum": 9
         }
       },
       "required": ["id", "title", "description"],

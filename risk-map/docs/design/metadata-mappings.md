@@ -208,7 +208,7 @@ This is a **best-effort** initial population based on:
 
 **Source:** [lifecycle-stage.yaml](../yaml/lifecycle-stage.yaml)
 
-### 8-Stage AI Lifecycle Model
+### 9-Stage AI Lifecycle Model
 
 1. **planning** - Initial planning, design, and architecture definition
 2. **data-preparation** - Data collection, cleaning, labeling, and preparation
@@ -218,6 +218,7 @@ This is a **best-effort** initial population based on:
 6. **deployment** - Production deployment and initial rollout
 7. **runtime** - Active operation and serving in production
 8. **maintenance** - Ongoing monitoring, updates, and retraining
+9. **decommissioning** - Terminal retirement: authenticators revoked, identity tombstoned, delegated authority revoked across descendants, assets disposed of against a verified disposition record
 
 ### Assignment Rationale
 
