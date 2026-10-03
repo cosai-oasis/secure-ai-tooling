@@ -123,9 +123,9 @@ def prose_schema(persona_site_schema: dict) -> dict:
 
 
 @pytest.fixture(scope="module")
-def prose_validator(prose_schema: dict) -> Draft7Validator:
+def prose_validator(prose_schema: dict, registry: Registry) -> Draft7Validator:
     """Draft-07 validator over definitions/prose."""
-    return Draft7Validator(prose_schema)
+    return Draft7Validator(prose_schema, registry=registry)
 
 
 @pytest.fixture(scope="module")
