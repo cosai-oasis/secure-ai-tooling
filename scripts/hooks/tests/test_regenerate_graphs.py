@@ -109,6 +109,11 @@ def _make_subprocess_mock(returncode: int = 0) -> MagicMock:
     return mock
 
 
+def _validator_commands(mock_run: MagicMock) -> list[list[str]]:
+    """Collect every validator invocation, including unexpected argument variants."""
+    return [c.args[0] for c in mock_run.call_args_list if VALIDATOR_SCRIPT in c.args[0]]
+
+
 # ===========================================================================
 # Trigger Behaviour — Only components.yaml triggers generation
 # ===========================================================================
@@ -138,7 +143,7 @@ class TestTriggerBehaviour:
 
         subprocess_calls = [c.args[0] for c in mock_run.call_args_list]
 
-        assert CMD_RISK_MAP in subprocess_calls, "risk-map-graph generation missing"
+        assert _validator_commands(mock_run) == [CMD_RISK_MAP]
         assert GIT_ADD_RISK_MAP in subprocess_calls, "git add for risk-map-graph missing"
 
     def test_controls_change_triggers_no_generation(self):
@@ -208,9 +213,7 @@ class TestTriggerBehaviour:
 
         subprocess_calls = [c.args[0] for c in mock_run.call_args_list]
 
-        assert subprocess_calls.count(CMD_RISK_MAP) == 1, (
-            f"expected exactly one risk-map-graph generation, got: {subprocess_calls}"
-        )
+        assert _validator_commands(mock_run) == [CMD_RISK_MAP]
         assert GIT_ADD_RISK_MAP in subprocess_calls, "git add for risk-map-graph missing"
 
     def test_empty_argv_triggers_no_generation(self):
@@ -269,16 +272,16 @@ class TestMermaidStylesTrigger:
 
         subprocess_calls = [c.args[0] for c in mock_run.call_args_list]
 
-        assert CMD_RISK_MAP in subprocess_calls, "risk-map-graph generation missing"
+        assert _validator_commands(mock_run) == [CMD_RISK_MAP]
         assert GIT_ADD_RISK_MAP in subprocess_calls, "git add for risk-map-graph missing"
 
     def test_mermaid_styles_change_alone_is_not_a_silent_no_op(self):
         """
-        False-positive guard, isolated from the assertion above: proves
-        subprocess.run is actually invoked at all for a mermaid-styles.yaml-only
-        change, so a bug that satisfies the assertion above only because some
-        OTHER code path coincidentally also fires cannot mask a true no-op
-        regression here.
+        A styles-only change must invoke graph generation.
+
+        Given: Only mermaid-styles.yaml is staged
+        When: main() is called
+        Then: The expected validator command runs exactly once and main() returns 0
         """
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = _make_subprocess_mock(0)
@@ -290,12 +293,15 @@ class TestMermaidStylesTrigger:
         # stale-diagram bug this trigger exists to prevent.
         mock_run.assert_called()
 
+        assert _validator_commands(mock_run) == [CMD_RISK_MAP]
+
     def test_mermaid_styles_and_components_together_do_not_double_generate(self):
         """
-        mermaid-styles.yaml + components.yaml staged together still generates
-        the component graph exactly once (both triggers overlap on the same
-        graph; dedup must hold across the two trigger sources, not just
-        within a single source).
+        Both trigger files share one graph-generation invocation.
+
+        Given: mermaid-styles.yaml and components.yaml are staged together
+        When: main() is called
+        Then: The expected validator command runs exactly once and main() returns 0
         """
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = _make_subprocess_mock(0)
@@ -304,14 +310,15 @@ class TestMermaidStylesTrigger:
 
         assert result == 0
 
-        subprocess_calls = [c.args[0] for c in mock_run.call_args_list]
-        assert subprocess_calls.count(CMD_RISK_MAP) == 1, "risk-map-graph generated more than once"
+        assert _validator_commands(mock_run) == [CMD_RISK_MAP]
 
     def test_mermaid_styles_change_alongside_unrelated_file_only_triggers_matching(self):
         """
-        Mixed argv (mermaid-styles.yaml + an unrelated file) triggers only
-        the mermaid-styles-driven generation, mirroring
-        TestEdgeCases::test_mixed_relevant_and_unrelated_files_only_triggers_matching.
+        An unrelated staged file does not add another generation invocation.
+
+        Given: README.md and mermaid-styles.yaml are staged together
+        When: main() is called
+        Then: The expected validator command runs exactly once and main() returns 0
         """
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = _make_subprocess_mock(0)
@@ -319,8 +326,7 @@ class TestMermaidStylesTrigger:
             result = main(["README.md", MERMAID_STYLES_YAML])
 
         assert result == 0
-        subprocess_calls = [c.args[0] for c in mock_run.call_args_list]
-        assert CMD_RISK_MAP in subprocess_calls
+        assert _validator_commands(mock_run) == [CMD_RISK_MAP]
 
 
 # ===========================================================================
@@ -346,6 +352,8 @@ class TestFailureModes:
 
         assert result == 0
 
+        assert _validator_commands(mock_run) == [CMD_RISK_MAP]
+
     def test_generation_fails_returns_nonzero_and_skips_git_add(self):
         """
         If the validate command fails, git add is never attempted.
@@ -363,6 +371,8 @@ class TestFailureModes:
         git_add_calls = [c for c in mock_run.call_args_list if c.args[0][0] == "git"]
         assert len(git_add_calls) == 0, "git add must not be called when generation fails"
 
+        assert _validator_commands(mock_run) == [CMD_RISK_MAP]
+
     def test_generation_succeeds_but_git_add_fails_returns_nonzero(self):
         """
         If validate_riskmap succeeds but git add fails, exit code is non-zero.
@@ -378,10 +388,12 @@ class TestFailureModes:
                 mock.returncode = 1
             return mock
 
-        with patch("subprocess.run", side_effect=side_effect):
+        with patch("subprocess.run", side_effect=side_effect) as mock_run:
             result = main([COMPONENTS_YAML])
 
         assert result != 0
+
+        assert _validator_commands(mock_run) == [CMD_RISK_MAP]
 
     def test_generation_return_code_is_propagated(self):
         """
@@ -397,6 +409,8 @@ class TestFailureModes:
             result = main([COMPONENTS_YAML])
 
         assert result == 2
+
+        assert _validator_commands(mock_run) == [CMD_RISK_MAP]
 
 
 # ===========================================================================
@@ -421,6 +435,8 @@ class TestGitAddAlignment:
 
         subprocess_calls = [c.args[0] for c in mock_run.call_args_list]
         assert GIT_ADD_RISK_MAP in subprocess_calls
+
+        assert _validator_commands(mock_run) == [CMD_RISK_MAP]
 
     def test_git_add_not_called_for_unrelated_file(self):
         """
@@ -459,8 +475,7 @@ class TestEdgeCases:
             result = main(["risk-map/yaml/components.yaml"])
 
         assert result == 0
-        subprocess_calls = [c.args[0] for c in mock_run.call_args_list]
-        assert CMD_RISK_MAP in subprocess_calls
+        assert _validator_commands(mock_run) == [CMD_RISK_MAP]
 
     def test_absolute_path_to_components_yaml_triggers_generation(self):
         """
@@ -479,10 +494,7 @@ class TestEdgeCases:
             result = main([abs_path])
 
         assert result == 0
-        subprocess_calls = [c.args[0] for c in mock_run.call_args_list]
-        assert CMD_RISK_MAP in subprocess_calls, (
-            "Absolute path to components.yaml should trigger risk-map-graph generation"
-        )
+        assert _validator_commands(mock_run) == [CMD_RISK_MAP]
 
     def test_duplicate_argv_entries_do_not_cause_double_generation(self):
         """
@@ -499,8 +511,7 @@ class TestEdgeCases:
             result = main([COMPONENTS_YAML, COMPONENTS_YAML])
 
         assert result == 0
-        subprocess_calls = [c.args[0] for c in mock_run.call_args_list]
-        assert subprocess_calls.count(CMD_RISK_MAP) == 1
+        assert _validator_commands(mock_run) == [CMD_RISK_MAP]
 
     def test_path_with_whitespace_in_directory_is_handled_safely(self):
         """
@@ -534,6 +545,8 @@ class TestEdgeCases:
                 "to avoid shell-splitting bugs with paths containing whitespace"
             )
 
+        assert _validator_commands(mock_run) == [CMD_RISK_MAP]
+
 
 # ===========================================================================
 # Subprocess Call Ordering and Shape
@@ -560,6 +573,8 @@ class TestSubprocessCallShape:
             cmd = c.args[0]
             assert isinstance(cmd, list), f"subprocess.run must receive a list, got {type(cmd)}: {cmd!r}"
 
+        assert _validator_commands(mock_run) == [CMD_RISK_MAP]
+
     def test_git_add_command_is_called_as_list_not_shell_string(self):
         """
         git add invocation must use list form for the same safety reasons.
@@ -577,6 +592,8 @@ class TestSubprocessCallShape:
         for c in git_calls:
             cmd = c.args[0]
             assert isinstance(cmd, list), f"git add must be called with a list, got {type(cmd)}: {cmd!r}"
+
+        assert _validator_commands(mock_run) == [CMD_RISK_MAP]
 
     def test_generation_precedes_git_add(self):
         """
@@ -599,6 +616,8 @@ class TestSubprocessCallShape:
                 pytest.fail(f"Expected call {cmd!r} was not made")
 
         assert index_of(CMD_RISK_MAP) < index_of(GIT_ADD_RISK_MAP), "generation must happen before its git add"
+
+        assert _validator_commands(mock_run) == [CMD_RISK_MAP]
 
     def test_no_subprocess_calls_for_empty_argv(self):
         """

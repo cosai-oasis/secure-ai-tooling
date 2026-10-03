@@ -8,8 +8,6 @@ graph generation for the component relationship visualization.
 
 Test Coverage:
 ==============
-Total Tests: 104 across 10 test classes.
-
 Line-number annotations against validate_riskmap.py have been dropped from
 this list: they were stale by hundreds of lines and nothing kept them
 honest. The previously recorded "Coverage Target: 98%+ (achieved)" claim was

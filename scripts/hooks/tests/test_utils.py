@@ -627,17 +627,9 @@ class TestParseComponentsYAML:
 
     # Return-shape contract tests (PR #499 review; closes issue #477's second-read gap)
     #
-    # parse_components_yaml() currently returns the components mapping alone,
-    # which forces validate_riskmap.py's category/subcategory nesting check to
-    # re-open the file for the `categories:` block parse_components_yaml
-    # discards — a second read that can observe a different file state than
-    # the first (see test_main_opens_the_corpus_exactly_once_per_run and
-    # test_main_nesting_check_is_blind_to_the_corpus_changing_after_the_parse_returns
-    # in test_validate_riskmap.py). The tests below pin the return shape that
-    # closes the gap: both the raw parsed document and the components mapping
-    # from one read, so every caller that needs either can get both without
-    # opening the file again. Production does not implement this yet; these
-    # tests fail until it does.
+    # These tests pin the single-read return contract: ComponentsParseResult
+    # carries both the raw parsed document and the components mapping, so
+    # callers can inspect categories without reopening a possibly changed file.
 
     def test_parse_components_result_exposes_the_raw_document(self, temp_yaml_file, valid_components_yaml):
         """
