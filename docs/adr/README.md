@@ -18,7 +18,7 @@ If a decision is about *how the Risk Map content model is shaped*, it belongs in
 |---|---|---|---|
 | [001](001-adopt-adrs.md) | Adopt ADRs for tooling/infrastructure decisions | Accepted | 2026-04-21 |
 | [002](002-branching-strategy.md) | Branching strategy — `develop` for content, `main` for tooling | Accepted | 2026-04-21 |
-| [003](003-devcontainer-mise-architecture.md) | Devcontainer + `mise` tool-management architecture | Accepted | 2026-04-21 |
+| [003](003-devcontainer-mise-architecture.md) | Devcontainer + `mise` tool-management architecture | Accepted (lockfile readers match the lockfile writer — [addendum](003-devcontainer-mise-architecture.md#addendum-2026-10-05-lockfile-readers-match-the-lockfile-writer) Draft) | 2026-04-21 |
 | [004](004-ai-assistant-trailer.md) | Vendor-neutral `Co-authored-by` trailer for AI-assisted commits | Accepted | 2026-04-21 |
 | [005](005-pre-commit-framework.md) | Pre-commit framework adoption | Accepted (chained generators — [addendum](005-pre-commit-framework.md#addendum-2026-09-28-chained-generators) Draft) | 2026-04-21 |
 | [006](006-agent-architecture-pattern.md) | Vendor-neutral agent architecture under `scripts/agents/` | Accepted | 2026-04-21 |
@@ -27,7 +27,7 @@ If a decision is about *how the Risk Map content model is shaped*, it belongs in
 | [009](009-persona-pages-workflow-topology.md) | GitHub Pages deploy surface and persona-pages workflow topology | Accepted | 2026-04-21 |
 | [010](010-site-repo-root-module-boundary.md) | `site/` as a repo-root peer of `risk-map/` | Accepted | 2026-04-21 |
 | [011](011-persona-site-data-schema-contract.md) | `persona-site-data.schema.json` as a versioned producer/consumer contract | Accepted | 2026-04-21 |
-| [012](012-static-spa-architecture.md) | Static client-side SPA — no backend, vanilla ESM, `node --test`, progressive-enhancement a11y | Accepted | 2026-04-21 |
+| [012](012-static-spa-architecture.md) | Static client-side SPA — no backend, vanilla ESM, `node --test`, progressive-enhancement a11y | Accepted (Node pin 22 → 24 — [addendum](012-static-spa-architecture.md#addendum-2026-10-05-node-pin-moved-22--24) Draft) | 2026-04-21 |
 | [013](013-site-precommit-hooks.md) | Extend the `pre-commit` framework with `site/**` hooks | Accepted | 2026-04-21 |
 | [014](014-yaml-content-security-posture.md) | YAML content security posture for the CoSAI Risk Map | Accepted | 2026-04-24 |
 | [015](015-site-content-sanitization-invariants.md) | `/site/` render-time sanitization invariants — DOM allowlist with bounded emission + mandatory fixture tests | Accepted | 2026-04-25 |
@@ -52,7 +52,7 @@ If a decision is about *how the Risk Map content model is shaped*, it belongs in
 | [034](034-corpus-change-landing-sequence.md) | Dependency-ordered landing sequence for risk-map corpus changes | Accepted | 2026-07-09 |
 | [035](035-pinned-sources-manifest.md) | Pinned-sources manifest (`risk-map/yaml/sources.yaml`) for reproducible citation provenance — corpus-wide registry, disjoint-by-role sibling to `frameworks.yaml`, keep-and-flag fallback; implements ADR-031 D4 | Draft | 2026-07-22 |
 | [036](036-decoupled-component-graph-emission.md) | Decoupled component-graph emission — aspects, channels, and bands; a topological rewrite of the drawn graph so no edge crosses a top-level category cluster, with a flat/decoupled mode toggle as the rollback lever | Draft | 2026-07-22 |
-| [037](037-ci-validation-authority-and-block-parity.md) | CI as the enforcing gate for risk-map validation — `--block` parity between CI and pre-commit, strictness monotonicity, and the graph-generation prohibition | Draft | 2026-07-27 |
+| [037](037-ci-validation-authority-and-block-parity.md) | CI as the enforcing gate for risk-map validation — `--block` parity between CI and pre-commit, strictness monotonicity, and the graph-generation prohibition | Draft (includes the 2026-10-06 [addendum](037-ci-validation-authority-and-block-parity.md#addendum-2026-10-06-lockfile-and-toolchain-inputs-are-gate-defining-inputs)) | 2026-07-27 |
 
 ## Conventions
 

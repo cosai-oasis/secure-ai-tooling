@@ -72,3 +72,41 @@ This architecture is load-bearing enough that it is covered by **roughly 177 tes
 - [ADR-005](005-pre-commit-framework.md) captures the **pre-commit framework adoption** that landed in PRs #211, #221, #222 as its own decision. It layers on top of this one but has its own rationale (framework vs. hand-rolled hooks, the removed parity gate).
 - If the repo ever adopts an offline / airgapped build path, that is a new decision that either supersedes parts of this ADR or introduces a companion one. Out of scope here.
 - Add the `install-deps.sh --dry-run` hint to [`risk-map/docs/setup.md`](../../risk-map/docs/setup.md) so contributors can inspect what the container will do without reading the script itself. Keep `setup.md` and this ADR in sync if the architecture changes — `setup.md` documents the procedure; this ADR documents the decision.
+
+## Addendum 2026-10-05: Lockfile readers match the lockfile writer
+
+**Status:** Draft (maintainer to flip to Accepted)
+
+Authored 2026-10-05. This addendum extends the original Decision for the Node runtime and does not reset the ADR's status. The CI trigger side of the same change is [ADR-037's 2026-10-06 addendum](037-ci-validation-authority-and-block-parity.md#addendum-2026-10-06-lockfile-and-toolchain-inputs-are-gate-defining-inputs).
+
+### Principle
+
+Dependabot writes `package-lock.json` with its own npm, currently a recent npm 11, and the repository does not choose that version. Every npm that reads the lock must be at least as capable as that writer: CI through `actions/setup-node`, and the devcontainer through `mise`. Lock handling depends on the reader's npm down to the minor version, and an older reader either rejects a valid lock (`npm ci` fails with `Missing: <pkg> from lock file`) or rewrites it on `npm install`. npm comes bundled with Node, so the Node pin is how the repository chooses its readers' npm. [#574](https://github.com/cosai-oasis/secure-ai-tooling/issues/574) records an instance.
+
+### Rules
+
+- **One Node line.** `.mise.toml` pins Node `24`, and every `actions/setup-node` step uses `node-version: '24.x'`. A test keeps each workflow's `node-version` major equal to the `.mise.toml` major. The Decision section's "Currently Python `3.14` and Node.js `22`" records the pin when this ADR was written and stays as written.
+- **One threshold per script.** `install-deps.sh` and `verify-deps.sh` each declare the Node major once, as `NODE_MIN_MAJOR`, and their comparisons, messages and fallbacks read it. A test keeps it equal to the `.mise.toml` major. This corrects the Positive consequence that a version upgrade "flows through ... `install-deps.sh`, and `verify-deps.sh` uniformly". Both scripts had hard-coded their Node threshold. Only the `Dockerfile` and the `mise use -g` defaults derived it from `.mise.toml`.
+- **npm floor check.** `verify-deps.sh` requires npm ≥ 11.5. It parses the leading major.minor of `npm --version`'s stdout only (npm writes warnings to stderr), anchored at the start of the output, and ignores any suffix, so a prerelease such as `11.5.0-pre.0` passes. The comparison is numeric, and empty or unparsable output fails.
+- **Install the way CI does.** `install-deps.sh` installs project packages with `npm ci`, still non-interactively (`< /dev/null`), so the devcontainer rejects a lock it cannot read instead of rewriting it.
+
+### Floors
+
+These are requirements on any reader of an npm-11-authored lock. Both were measured; the evidence is in #574.
+
+- `npm ci` needs npm ≥ 11.5.0, which is Node ≥ 24.5.0. This is the floor `verify-deps.sh` enforces.
+- A byte-stable `npm install` needs npm ≥ 11.11.0, which is Node ≥ 24.14.1.
+
+The pins are not narrowed to the floors. `setup-node` resolves `24.x` to the newest 24 release, and `mise` resolves `"24"` at install time.
+
+### Alternatives
+
+- **Keep Node 22 and install npm 11 globally in each job and in `install-deps.sh`.** Rejected. It adds a network install per job, and it splits the Node pin and the npm version into two settings that must be kept in step.
+- **An `engines` / `engine-strict` / `packageManager` guard.** Rejected. A mismatch already fails `npm ci` on the pull request that introduces it (ADR-037's 2026-10-06 addendum), so a guard would only change the message. `engine-strict` would also turn every transitive dependency's `engines` field into a hard failure, and `packageManager` takes effect only through Corepack, which neither CI nor the devcontainer uses.
+
+### Consequences
+
+- Between the two floors, Node 24.5.0 through 24.14.0, a manual `npm install` strips the `libc` fields from an npm-11-authored lock and produces churn in the next diff. `npm ci` does not write the lock.
+- If the writer's npm moves ahead of what the newest Node 24 bundles, the next Dependabot npm pull request fails `npm ci`, and the fix is a Node-line change.
+- An existing container stays on the old global `mise` default until it is rebuilt or `install-deps.sh` is re-run. `install-deps.sh` skips `npm ci` while `node_modules` exists, so `node_modules` is refreshed by hand after a Node-line change.
+- The general principle, that every reader of a lockfile matches its writer, is an input to the devcontainer pinning policy reserved as ADR-023 ([#248](https://github.com/cosai-oasis/secure-ai-tooling/issues/248)).

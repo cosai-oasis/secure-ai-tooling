@@ -290,3 +290,46 @@ One assertion keeps it honest, in the direction that is cheap: every row must na
 - Decide the mutation class's CI obligation — a regenerate-and-diff job per entry, or an explicit statement that artefact drift is outside D1's scope. `validate_tables.yml` is the existing instance of the former; `prettier-site-assets` has no evident counterpart. This is the one clause D9 leaves open, and it is open by name rather than by omission.
 - Retire the hand-written third-party hook names in the test module once D9a's `(id, name)` enumeration covers the `check-jsonschema` pairs.
 - Remove `docs/adr/037-ci-validation-authority-and-block-parity.md` from `validate_python.yml`'s `paths:` filters and from the test module's derivation-source set once nothing derives scope from the table.
+
+## Addendum 2026-10-06: Lockfile and toolchain inputs are gate-defining inputs
+
+**Status:** Draft (maintainer to flip to Accepted)
+
+Authored 2026-10-06. This addendum adds D10. It does not renumber D1–D9, and it does not reset the ADR's status. The runtime side of the same change is [ADR-003's 2026-10-05 addendum](003-devcontainer-mise-architecture.md#addendum-2026-10-05-lockfile-readers-match-the-lockfile-writer).
+
+### D10. npm inputs and test-read toolchain files trigger the workflows that read them
+
+The trigger-coverage rule this ADR's tests enforce is that a gate workflow triggers on everything that defines the gate (`test_gate_workflow_triggers_on_everything_that_defines_the_gate` in `scripts/hooks/tests/test_ci_block_parity.py`). That test derives its required paths from Python scripts and `.pre-commit-config.yaml`. D10 extends the rule to two more input classes, enforced by separate tests in the same module.
+
+#### D10a. The npm lock, for workflows that install from it
+
+Any workflow under `.github/workflows/` whose `run:` bodies execute an npm install-family command must trigger on `package.json` and `package-lock.json` for every filtered event.
+
+- **Install-family commands:** npm 11's `install`, `ci`, `install-test` and `install-ci-test` commands and their aliases, as `npm <command> -h` lists them: `install`, `add`, `i`, `in`, `ins`, `inst`, `insta`, `instal`, `isnt`, `isnta`, `isntal`, `isntall`; `ci`, `clean-install`, `ic`, `install-clean`, `isntall-clean`; `install-test`, `it`; `install-ci-test`, `cit`, `clean-install-test`, `sit`.
+- **Excluded:** a global install, because it does not read the lock. That is a command carrying `-g` (alone or in a short-flag cluster such as `-gD`), `--global`, `--global=true`, `--location=global` or `--location global`, in any position after `npm`. `--global=false` and other `--location` values are not global.
+
+The lock decides what these jobs run. For example, the prettier that `format-validation` uses as the CI counterpart of the blocking `prettier-yaml` hook comes from the lock. A lock change that does not re-run the job merges without the gate having run against it; [#574](https://github.com/cosai-oasis/secure-ai-tooling/issues/574) records an instance. `validation.yml` gains both files in its `pull_request` and `push` filters.
+
+#### D10b. The files the test suites read, for the test workflow
+
+`validate_python.yml`, the only workflow that runs pytest, must trigger on `.mise.toml`, `scripts/tools/**` and `.devcontainer/**` for both events, because the devcontainer test suites read them. This is the workflow counterpart of [ADR-005's 2026-05-08 addendum](005-pre-commit-framework.md#addendum-2026-05-08-hook-trigger-vs-read-set-invariant): a check triggers on what it reads, not only on what it is.
+
+#### Enforcement and residual
+
+D10a and D10b are enforced by tests in `test_ci_block_parity.py`'s `TestWorkflowTriggerCoverage`, added with the trigger wiring. The D10b test covers every tracked file under `scripts/tools/` and `.devcontainer/`, not one sample per tree.
+
+The D10a tests:
+
+- read whole `run:` bodies of `.github/workflows/*.yml`, including multi-line blocks and backslash continuations, and parse them with the module's existing shell tokenizer, so leading words (`if`, `env`, `sudo`, `time`, `!`), inline assignments, `( … )` and `{ …; }` groups, quoted separators and options before the subcommand (`npm --prefix site ci`) are handled;
+- pin the install family against an independent copy of the list above, and the global-install rule with matching and non-matching cases;
+- include a separate non-vacuity test requiring `validation.yml` to be detected.
+
+D10 only adds `paths:` entries. The existing trigger tests check that required paths are a subset of the declared paths, so the additions are compatible with them.
+
+Known residuals of the D10a detector, accepted because no workflow uses these forms:
+
+- npm reached indirectly: `bash -c 'npm ci'`, `$NPM ci`, `/usr/bin/npm ci`, or behind `xargs`, `nice`, `timeout` or `command`.
+- The options that take a separate value are an allowlist (`--prefix`, `-C`, `--workspace`, `-w`, `--registry`, `--loglevel`, `--cache`, `--userconfig`, `--location`). An unlisted value-taking option placed before the subcommand hides the command.
+- Composite actions under `.github/actions/` and the `scripts/workflows/` template are not scanned.
+
+Known residual of D10b: `test_setup_docs.py` reads `risk-map/docs/setup.md` and `scripts/docs/setup.md`, which D10b's triggers do not cover. Accepted: the setup docs change rarely, and the devcontainer suites already run when the files above change.

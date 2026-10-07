@@ -85,3 +85,9 @@ The persona Pages surface is a **static, client-side-only single-page applicatio
 - **`renderStatusCard` as extract-when-needed evidence.** Commit `b5514cb` is the first instance of the renderer extracting a helper when a second caller appeared (loading + error paths). Future polish should follow the same posture — extract locally when a second caller shows up; do not pre-factor for hypothetical callers. The `NIT-07` refactor is a larger instance of the same pattern.
 - **If analytics or preview deploys are ever proposed,** they are ADR-level revisits, not silent additions. The privacy posture and the framework-free renderer are both load-bearing here; a change to either is a change to this ADR.
 - **Escalation path for a test framework is documented.** `site/tests/README.md`'s Escalation section names the procedure: concrete case not expressible under `node --test`, rejected alternatives, pinned dependency, workflow update, README update. Follow it rather than extending this ADR if that moment comes.
+
+## Addendum 2026-10-05: Node pin moved 22 → 24
+
+**Status:** Draft (maintainer to flip to Accepted)
+
+The Node pin cited above moves from 22 to 24 under [ADR-003's 2026-10-05 addendum](003-devcontainer-mise-architecture.md#addendum-2026-10-05-lockfile-readers-match-the-lockfile-writer). This decision is unchanged: `node:test` has been stable since Node 20, and the mentions of Node 22 above stay as written.
