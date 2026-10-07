@@ -13,7 +13,7 @@
 **Runtime tools** (installed automatically by `install-deps.sh`, or install manually):
 
 - Python 3.14 or higher
-- Node.js 22+ and npm
+- Node.js 24+ and npm
 - Chrome/Chromium browser (for SVG generation from Mermaid diagrams)
 
 ## Git Hooks Setup
@@ -52,7 +52,7 @@ If you prefer to install dependencies individually:
 pip install -r requirements.txt
 
 # Install Node.js dependencies (prettier, mermaid-cli, etc.)
-npm install
+npm ci
 
 # Install the pre-commit framework hook into .git/hooks/pre-commit
 pre-commit install

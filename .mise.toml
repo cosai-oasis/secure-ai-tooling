@@ -4,4 +4,4 @@
 
 [tools]
 python = "3.14"
-node = "22"
+node = "24"

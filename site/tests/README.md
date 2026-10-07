@@ -4,7 +4,7 @@ Authoritative for ES-module tests under `site/tests/`. A pointer from `risk-map/
 
 ## Tooling
 
-- **Runner:** `node --test` (Node ≥ 20; repo pins Node 22 via `.mise.toml`).
+- **Runner:** `node --test` (Node ≥ 20; repo pins Node 24 via `.mise.toml`).
 - **Assertions:** `node:assert/strict`.
 - **No `package.json` devDependencies for testing.** The frontend test suite is zero-install and zero-framework.
 
@@ -112,7 +112,7 @@ Not enforced in CI today. Available manually:
 node --test --experimental-test-coverage site/tests/*.test.mjs
 ```
 
-The flag is stable-ish in Node 22; output is verbose. Do not wire into CI without a dedicated PR that sets thresholds.
+The flag is stable-ish in Node 24; output is verbose. Do not wire into CI without a dedicated PR that sets thresholds.
 
 ## Escalation
 

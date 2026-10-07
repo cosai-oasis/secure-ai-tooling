@@ -29,6 +29,10 @@ DRY_RUN=false
 # Failure counter - no set -e, manual error checking
 FAILURES=0
 
+# Minimum Node.js major version. Must equal the node major in .mise.toml
+# (test_mise_config.py enforces this).
+NODE_MIN_MAJOR=24
+
 # Total number of install steps (for progress banners)
 TOTAL_STEPS=9
 
@@ -256,7 +260,7 @@ if [[ -f "$MISE_CONFIG" ]]; then
             _val="${_line#*\"}"
             MISE_PYTHON_VERSION="${_val%%\"*}"
         fi
-        # Match: node = "22"
+        # Match: node = "<major>"
         if [[ "$_line" == node\ =\ * ]]; then
             _val="${_line#*\"}"
             MISE_NODE_VERSION="${_val%%\"*}"
@@ -313,7 +317,9 @@ step_msg 2 "Python"
 info_msg "Checking Python..."
 PYTHON_INSTALLED=false
 if command -v python3 &>/dev/null; then
-    PYTHON_RAW=$(python3 --version 2>&1)
+    # stdout only: a failing mise shim prints its own version to stderr,
+    # which would otherwise be parsed as the Python version.
+    PYTHON_RAW=$(python3 --version 2>/dev/null)
     PYTHON_VERSION=$(extract_version "$PYTHON_RAW")
     if [[ -n "$PYTHON_VERSION" ]]; then
         PYTHON_MAJOR=$(extract_major "$PYTHON_VERSION")
@@ -344,18 +350,20 @@ if [[ "$PYTHON_INSTALLED" == "false" ]]; then
 fi
 
 # =============================================================================
-# Step 3: Node.js >= 22
+# Step 3: Node.js >= NODE_MIN_MAJOR
 # =============================================================================
 step_msg 3 "Node.js"
 info_msg "Checking Node.js..."
 NODE_INSTALLED=false
 if command -v node &>/dev/null; then
-    NODE_RAW=$(node --version 2>&1)
+    # stdout only: a failing mise shim prints its own version to stderr,
+    # which would otherwise be parsed as the Node version.
+    NODE_RAW=$(node --version 2>/dev/null)
     NODE_VERSION=$(extract_version "$NODE_RAW")
     if [[ -n "$NODE_VERSION" ]]; then
         NODE_MAJOR=$(extract_major "$NODE_VERSION")
-        if [[ "$NODE_MAJOR" -ge 22 ]]; then
-            skip_msg "Node.js $NODE_VERSION already installed (>= 22)"
+        if [[ "$NODE_MAJOR" -ge "$NODE_MIN_MAJOR" ]]; then
+            skip_msg "Node.js $NODE_VERSION already installed (>= $NODE_MIN_MAJOR)"
             NODE_INSTALLED=true
         fi
     fi
@@ -363,7 +371,7 @@ fi
 
 if [[ "$NODE_INSTALLED" == "false" ]]; then
     if command -v mise &>/dev/null; then
-        _node_ver="${MISE_NODE_VERSION:-22}"
+        _node_ver="${MISE_NODE_VERSION:-$NODE_MIN_MAJOR}"
         if [[ "$DRY_RUN" == "true" ]]; then
             dry_run_msg "Would run: mise install node@$_node_ver"
         else
@@ -375,7 +383,7 @@ if [[ "$NODE_INSTALLED" == "false" ]]; then
             fi
         fi
     else
-        fail_msg "Cannot install Node.js ${MISE_NODE_VERSION:-22}: mise is not available"
+        fail_msg "Cannot install Node.js ${MISE_NODE_VERSION:-$NODE_MIN_MAJOR}: mise is not available"
     fi
 fi
 
@@ -444,11 +452,11 @@ if command -v npm &>/dev/null && [[ -f "$REPO_ROOT/package.json" ]]; then
 
     if [[ "$NPM_NEEDS_INSTALL" == "true" ]]; then
         if [[ "$DRY_RUN" == "true" ]]; then
-            dry_run_msg "Would run: npm install (in $REPO_ROOT)"
+            dry_run_msg "Would run: npm ci (in $REPO_ROOT)"
         else
-            cd "$REPO_ROOT" && npm install --no-audit --no-fund < /dev/null
+            cd "$REPO_ROOT" && npm ci --no-audit --no-fund < /dev/null
             if [[ $? -ne 0 ]]; then
-                fail_msg "npm install failed"
+                fail_msg "npm ci failed"
             else
                 pass_msg "npm packages installed"
             fi

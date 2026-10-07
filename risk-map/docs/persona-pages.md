@@ -4,7 +4,7 @@ The **CoSAI Risk Map Explorer** is a static GitHub Pages experience for CoSAI-RM
 
 ## Prerequisites
 
-- Python 3.14+ and Node.js 22+ (matches repo CI targets per `.mise.toml`)
+- Python 3.14+ and Node.js 24+ (matches repo CI targets per `.mise.toml`)
 - Framework YAML in `risk-map/yaml/` passes existing schema validation
 
 ## Scope

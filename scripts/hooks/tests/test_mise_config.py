@@ -27,12 +27,15 @@ Coverage Target: 100% of .mise.toml configuration requirements
 
 4. TestMiseConfigNode - Node.js version specification
    - tools.node key exists
-   - Node.js version is "22"
-   - Node.js version satisfies >= 22 requirement
+   - Node.js version is "24"
+   - Node.js version satisfies >= 24 requirement
 
 5. TestMiseConfigConsistency - Cross-file version agreement
    - Python version matches verify-deps.sh threshold (>= 3.14)
-   - Node.js version matches verify-deps.sh threshold (>= 22)
+   - NODE_MIN_MAJOR in verify-deps.sh and install-deps.sh equals the
+     .mise.toml Node major (ADR-003, 2026-10-05 addendum)
+   - Node comparisons and MISE_NODE_VERSION fallbacks use $NODE_MIN_MAJOR
+     instead of a literal major
 
 6. TestMiseInterpreterResolution - Runtime mise binary validation
    (skipped when mise-installed Python is not present, e.g., CI)
@@ -60,6 +63,8 @@ import tomllib
 REPO_ROOT = Path(__file__).parent.parent.parent.parent
 MISE_CONFIG_PATH = REPO_ROOT / ".mise.toml"
 VERIFY_DEPS_PATH = REPO_ROOT / "scripts" / "tools" / "verify-deps.sh"
+INSTALL_DEPS_PATH = REPO_ROOT / "scripts" / "tools" / "install-deps.sh"
+NODE_SCRIPTS = [VERIFY_DEPS_PATH, INSTALL_DEPS_PATH]
 
 
 class TestMiseConfigExists:
@@ -210,29 +215,29 @@ class TestMiseConfigNode:
         """
         assert "node" in tools, ".mise.toml [tools] section is missing the 'node' key"
 
-    def test_node_version_is_22(self, tools):
+    def test_node_version_is_24(self, tools):
         """
-        Test that Node.js version is "22".
+        Test that Node.js version is "24".
 
         Given: A .mise.toml with tools.node defined
         When: Reading the node version value
-        Then: Value is "22"
+        Then: Value is "24"
         """
         node_version = str(tools.get("node", ""))
-        assert node_version == "22", f"Expected tools.node = '22', got '{node_version}'"
+        assert node_version == "24", f"Expected tools.node = '24', got '{node_version}'"
 
     def test_node_version_satisfies_minimum(self, tools):
         """
-        Test that Node.js version satisfies >= 22 requirement.
+        Test that Node.js version satisfies >= 24 requirement.
 
         Given: A .mise.toml with a numeric node version string
         When: Parsing the major version
-        Then: Major version is >= 22
+        Then: Major version is >= 24
         """
         node_version = str(tools.get("node", "0"))
-        # Handle dotted versions (e.g., "22.1") and plain major (e.g., "22")
+        # Handle dotted versions (e.g., "24.1") and plain major (e.g., "24")
         major = int(node_version.split(".")[0])
-        assert major >= 22, f"Node.js version {node_version} does not satisfy >= 22 requirement"
+        assert major >= 24, f"Node.js version {node_version} does not satisfy >= 24 requirement"
 
 
 class TestMiseConfigConsistency:
@@ -240,9 +245,11 @@ class TestMiseConfigConsistency:
     Test that .mise.toml versions agree with verify-deps.sh thresholds.
 
     Reads verify-deps.sh to extract the version thresholds it checks for
-    (Python >= 3.14, Node >= 22) and confirms that .mise.toml declares
-    versions that satisfy those thresholds. This catches drift between the
-    config file and the verification script.
+    (Python >= 3.14) and confirms that .mise.toml declares a version that
+    satisfies it. For Node, each script declares NODE_MIN_MAJOR once and the
+    tests require it to equal the .mise.toml major, with every comparison and
+    fallback reading the variable (ADR-003, 2026-10-05 addendum). This catches drift between
+    the config file and the scripts.
     """
 
     @pytest.fixture()
@@ -285,28 +292,86 @@ class TestMiseConfigConsistency:
             f".mise.toml Python {python_version} does not satisfy verify-deps.sh threshold >= 3.{required_minor}"
         )
 
-    def test_node_version_matches_verify_deps(self, tools, verify_deps_content):
+    @pytest.mark.parametrize("script_path", NODE_SCRIPTS, ids=lambda p: p.name)
+    def test_node_min_major_equals_mise_major(self, tools, script_path):
         """
-        Test that .mise.toml Node version satisfies verify-deps.sh threshold.
+        Test that NODE_MIN_MAJOR in each script equals the .mise.toml Node major.
 
-        Given: .mise.toml declares a Node version and verify-deps.sh checks >= 22
-        When: Comparing the mise Node version against the verify-deps threshold
-        Then: The mise version satisfies the verify-deps minimum
+        Given: .mise.toml declares a Node version and a script declares NODE_MIN_MAJOR
+        When: Comparing the script's value with the .mise.toml major
+        Then: The script declares NODE_MIN_MAJOR exactly once and it equals the major
 
-        verify-deps.sh checks: NODE_MAJOR -ge <number>
+        Majors only: the npm >= 11.5 floor is enforced separately by verify-deps.sh.
+        A trailing comment is tolerated; quoted and `readonly` forms are not (the ADR
+        spells the plain `NODE_MIN_MAJOR=<major>` form).
+        Mutation caught: bumping .mise.toml without bumping one script (or the reverse).
         """
-        # Extract the major version threshold from verify-deps.sh
-        # Pattern: NODE_MAJOR -ge <number>
-        match = re.search(r"NODE_MAJOR.*-ge\s+(\d+)", verify_deps_content)
-        assert match is not None, "Could not find Node major version threshold in verify-deps.sh"
-        required_major = int(match.group(1))
-
-        node_version = str(tools.get("node", "0"))
-        mise_major = int(node_version.split(".")[0])
-
-        assert mise_major >= required_major, (
-            f".mise.toml Node {node_version} does not satisfy verify-deps.sh threshold >= {required_major}"
+        content = script_path.read_text()
+        matches = re.findall(r"^\s*NODE_MIN_MAJOR=(\d+)\s*(?:#.*)?$", content, re.MULTILINE)
+        assert len(matches) == 1, (
+            f"{script_path.name} must declare NODE_MIN_MAJOR=<major> exactly once, found {matches}"
         )
+
+        mise_major = int(str(tools.get("node", "0")).split(".")[0])
+        assert int(matches[0]) == mise_major, (
+            f"{script_path.name} NODE_MIN_MAJOR={matches[0]} does not equal .mise.toml Node major {mise_major}"
+        )
+
+    @pytest.mark.parametrize("script_path", NODE_SCRIPTS, ids=lambda p: p.name)
+    def test_node_major_comparisons_use_variable(self, script_path):
+        """
+        Test that every NODE_MAJOR -ge comparison references NODE_MIN_MAJOR.
+
+        Given: A script that compares NODE_MAJOR against a threshold
+        When: Collecting every line with a NODE_MAJOR ... -ge comparison
+        Then: At least one exists and each references $NODE_MIN_MAJOR or ${NODE_MIN_MAJOR}
+
+        Mutation caught: a literal threshold (e.g. -ge 22 or -ge 24) left in one comparison.
+        """
+        lines = [line for line in script_path.read_text().splitlines() if re.search(r"NODE_MAJOR.*-ge\b", line)]
+        assert lines, f"No NODE_MAJOR -ge comparison found in {script_path.name}"
+        for line in lines:
+            assert re.search(r"\$\{?NODE_MIN_MAJOR\}?", line), (
+                f"{script_path.name} compares NODE_MAJOR against a literal: {line.strip()}"
+            )
+
+    def test_install_deps_fallbacks_use_variable(self):
+        """
+        Test that both MISE_NODE_VERSION fallbacks in install-deps.sh use NODE_MIN_MAJOR.
+
+        Given: install-deps.sh falls back to a default when MISE_NODE_VERSION is empty
+        When: Collecting every ${MISE_NODE_VERSION:-...} expansion
+        Then: There are at least two and each default is $NODE_MIN_MAJOR
+
+        Mutation caught: leaving one ':-22' (or ':-24') fallback while the other is converted.
+        """
+        content = INSTALL_DEPS_PATH.read_text()
+        defaults = re.findall(r"\$\{MISE_NODE_VERSION:-([^}]*)\}", content)
+        assert len(defaults) >= 2, f"Expected at least two MISE_NODE_VERSION fallbacks, found {defaults}"
+        for default in defaults:
+            assert default in ("$NODE_MIN_MAJOR", "${NODE_MIN_MAJOR}"), (
+                f"MISE_NODE_VERSION fallback is not NODE_MIN_MAJOR: {default!r}"
+            )
+
+    @pytest.mark.parametrize("script_path", NODE_SCRIPTS, ids=lambda p: p.name)
+    def test_no_literal_node_major_in_node_lines(self, script_path):
+        """
+        Test that no line mentioning Node carries a literal two-digit major.
+
+        Given: A script whose Node threshold lives in NODE_MIN_MAJOR
+        When: Scanning every line that mentions node (comments, messages, comparisons)
+        Then: No such line other than the NODE_MIN_MAJOR declaration has a standalone
+              number of 18 or more
+
+        Mutation caught: a stale '>= 22' left in a skip/pass/fail message or header comment.
+        """
+        offenders = []
+        for line in script_path.read_text().splitlines():
+            if not re.search(r"node", line, re.IGNORECASE) or re.match(r"^\s*NODE_MIN_MAJOR=", line):
+                continue
+            if re.search(r"(?<![\d.])(1[89]|[2-9]\d)(?![\d])(?!\.\d)", line):
+                offenders.append(line.strip())
+        assert not offenders, f"{script_path.name} has literal Node majors: {offenders}"
 
 
 # Skip the entire class when mise-installed Python is not present (e.g., GitHub Actions

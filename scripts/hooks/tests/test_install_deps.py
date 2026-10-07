@@ -23,7 +23,7 @@ Group 2 -- Dry-Run Output (7):
 6.  TestDryRunPythonInstall - python missing -> shows mise install python
 7.  TestDryRunNodeInstall - node missing -> shows mise install node
 8.  TestDryRunPipInstall - pip packages missing -> shows pip install
-9.  TestDryRunNpmInstall - npm packages missing -> shows npm install
+9.  TestDryRunNpmInstall - npm packages missing -> shows npm ci
 10. TestDryRunActInstall - act missing -> shows dry-run act install
 
 Group 3 -- Skip/Idempotency (5):
@@ -39,7 +39,7 @@ Group 3c -- mise install from config (1):
 Group 4 -- Error Handling (4):
 17. TestMiseInstallFailure - mise install fails -> [FAIL], continues
 18. TestPipInstallFailure - pip install fails -> [FAIL], continues
-19. TestNpmInstallFailure - npm install fails -> [FAIL], continues
+19. TestNpmInstallFailure - npm ci fails -> [FAIL], continues
 20. TestVerificationFailure - verify-deps.sh fails -> exit non-zero
 
 Group 4b -- mise reshim after pip (1):
@@ -71,9 +71,9 @@ Installation Order Tested:
 ==========================
 1. mise (curl https://mise.run | sh)
 2. Python >= 3.14 (mise install python@<version from .mise.toml>)
-3. Node.js >= 22 (mise install node@<version from .mise.toml>)
+3. Node.js >= 24 (mise install node@<version from .mise.toml>)
 4. pip packages (pip install -r requirements.txt)
-5. npm packages (npm install)
+5. npm packages (npm ci)
 6. act (curl nektos/act install script)
 7. Playwright Chromium (npx playwright install chromium)
 8. Pre-commit hooks (python3 -m pre_commit install --overwrite)
@@ -89,9 +89,12 @@ environment for integration-style tests.
 """
 
 import os
+import re
 import stat
 import subprocess
 from pathlib import Path
+
+import pytest
 
 # Path to the script under test (relative to repo root)
 REPO_ROOT = Path(__file__).parent.parent.parent.parent
@@ -135,7 +138,7 @@ def create_full_stub_env(tmp_path, overrides=None):
     # Create node_modules to simulate npm packages already installed.
     # Tests that need to trigger npm install should remove this directory.
     (repo_root / "node_modules").mkdir()
-    (repo_root / ".mise.toml").write_text('[tools]\npython = "3.14"\nnode = "22"\n')
+    (repo_root / ".mise.toml").write_text('[tools]\npython = "3.14"\nnode = "24"\n')
 
     # Create fake verify-deps.sh in the repo structure
     tools_dir = repo_root / "scripts" / "tools"
@@ -185,7 +188,7 @@ def create_full_stub_env(tmp_path, overrides=None):
         "node": (
             "#!/bin/bash\n"
             'if [[ "$1" == "--version" || "$1" == "-v" ]]; then\n'
-            '    echo "v22.0.0"\n'
+            '    echo "v24.0.0"\n'
             "else\n"
             "    exit 0\n"
             "fi\n"
@@ -679,16 +682,19 @@ class TestDryRunNpmInstall:
     Test dry-run output when npm packages are missing.
 
     When npm packages (prettier, mermaid-cli) are not installed, the script
-    should output a [DRY-RUN] message about npm install.
+    should output a [DRY-RUN] message about npm ci (ADR-003 (2026-10-05 addendum)).
     """
 
     def test_npm_packages_missing_shows_dry_run_install(self, tmp_path):
         """
-        Test that missing npm packages trigger dry-run npm install message.
+        Test that missing npm packages trigger dry-run npm ci message.
 
         Given: An environment where node_modules does not exist
         When: Running install-deps.sh --dry-run
-        Then: Output contains [DRY-RUN] referencing npm install
+        Then: Output contains a [DRY-RUN] line saying "Would run: npm ci"
+        And: No dry-run line says "npm install"
+
+        Mutation caught: Step 5 dry-run text left as "npm install".
         """
         env_info = create_full_stub_env(tmp_path)
         # Remove node_modules to simulate missing npm packages
@@ -706,8 +712,14 @@ class TestDryRunNpmInstall:
         assert "DRY-RUN" in combined_output, (
             f"Output should contain [DRY-RUN] when npm packages are missing.\nOutput:\n{combined_output}"
         )
-        assert "npm" in combined_output.lower(), (
-            f"Dry-run output should reference npm install.\nOutput:\n{combined_output}"
+        dry_run_npm_lines = [
+            line for line in combined_output.splitlines() if "DRY-RUN" in line and "npm" in line.lower()
+        ]
+        assert any("Would run: npm ci" in line for line in dry_run_npm_lines), (
+            f"Dry-run output should say 'Would run: npm ci'.\nOutput:\n{combined_output}"
+        )
+        assert not any("npm install" in line for line in dry_run_npm_lines), (
+            f"Dry-run output should not mention 'npm install'.\nOutput:\n{combined_output}"
         )
 
 
@@ -815,19 +827,240 @@ class TestSkipPythonWhenPresent:
             f"Output should have [SKIP] line for python when correct version present.\nOutput:\n{combined_output}"
         )
 
+    @pytest.mark.parametrize("shim_name", ["python3", "python"])
+    def test_python_shim_error_on_stderr_is_not_skipped(self, tmp_path, shim_name):
+        """
+        Test that a mise shim error on stderr is not read as an installed Python.
+
+        Given: A python3 stub with empty stdout that prints a mise shim error (including
+               "Version: 2026.9.12") on stderr for --version and exits 1; the error names
+               the shim as "python3" or "python"
+        When: Running install-deps.sh --dry-run
+        Then: No [SKIP] line reports a Python version, and none reports 2026.9.12
+        And: Output contains "Would run: mise install python@3.14"
+
+        extract_version stops at the first digit run, so the "python3" wording is parsed
+        as "3" and happens to be rejected; the "python" wording reaches the mise version
+        and is accepted today.
+        Mutation caught: `python3 --version 2>&1` feeding stderr into the version parse.
+        """
+        python_shim_error = (
+            "#!/bin/bash\n"
+            'if [[ "$1" == "--version" ]]; then\n'
+            f"    echo 'mise ERROR {shim_name} is not a valid shim. Tool is not installed.' >&2\n"
+            "    echo 'mise ERROR Version: 2026.9.12 linux-arm64 (2026-09-20)' >&2\n"
+            "    exit 1\n"
+            "fi\n"
+            "exit 0\n"
+        )
+        env_info = create_full_stub_env(tmp_path, overrides={"python3": python_shim_error})
+        result = subprocess.run(
+            [str(SCRIPT_PATH), "--dry-run"],
+            capture_output=True,
+            text=True,
+            env=env_info["env"],
+            timeout=30,
+        )
+        combined_output = result.stdout + result.stderr
+        python_skip_lines = [
+            line for line in combined_output.splitlines() if "SKIP" in line and re.search(r"Python \d", line)
+        ]
+        assert not python_skip_lines, f"Shim error must not be skipped as installed Python.\n{combined_output}"
+        assert "2026.9.12" not in combined_output, f"mise version must not be reported.\n{combined_output}"
+        assert "Would run: mise install python@3.14" in combined_output, (
+            f"Dry-run should plan 'mise install python@3.14'.\nOutput:\n{combined_output}"
+        )
+
+    def test_python_stderr_warning_does_not_prevent_skip(self, tmp_path):
+        """
+        Test that a stderr warning alongside "Python 3.14.7" on stdout still gives [SKIP].
+
+        Given: A python3 stub that writes a warning to stderr and "Python 3.14.7" to stdout
+        When: Running install-deps.sh --dry-run
+        Then: A [SKIP] line reports Python 3.14.7
+        And: No "mise install python" is planned
+        """
+        python_warn = (
+            "#!/bin/bash\n"
+            'if [[ "$1" == "--version" ]]; then\n'
+            "    echo 'python warn something harmless' >&2\n"
+            '    echo "Python 3.14.7"\n'
+            "fi\n"
+            "exit 0\n"
+        )
+        env_info = create_full_stub_env(tmp_path, overrides={"python3": python_warn})
+        result = subprocess.run(
+            [str(SCRIPT_PATH), "--dry-run"],
+            capture_output=True,
+            text=True,
+            env=env_info["env"],
+            timeout=30,
+        )
+        combined_output = result.stdout + result.stderr
+        python_skip_lines = [
+            line for line in combined_output.splitlines() if "SKIP" in line and re.search(r"Python \d", line)
+        ]
+        assert any("3.14.7" in line for line in python_skip_lines), (
+            f"Expected [SKIP] for Python 3.14.7.\nOutput:\n{combined_output}"
+        )
+        assert "mise install python" not in combined_output, f"No python install planned.\n{combined_output}"
+
 
 class TestSkipNodeWhenPresent:
     """
     Test that Node.js installation is skipped when correct version is present.
 
-    When node >= 22 is already available, the script should emit [SKIP].
+    When node >= 24 is already available, the script should emit [SKIP].
+    A node below 24 is not skipped and mise installs node@24 (from .mise.toml).
     """
+
+    def test_node_old_major_is_not_skipped(self, tmp_path):
+        """
+        Test that a Node.js 22 install is not accepted and node@24 is installed.
+
+        Given: An environment where node reports v22.23.3 and .mise.toml says node = "24"
+        When: Running install-deps.sh --dry-run
+        Then: No [SKIP] line mentions Node.js
+        And: Output contains "Would run: mise install node@24"
+
+        Mutation caught: threshold left at 22 in the Step 3 comparison, or a
+        literal 22 left in the ${MISE_NODE_VERSION:-...} fallback path.
+        """
+        node_v22 = (
+            "#!/bin/bash\n"
+            'if [[ "$1" == "--version" || "$1" == "-v" ]]; then\n'
+            '    echo "v22.23.3"\n'
+            "else\n"
+            "    exit 0\n"
+            "fi\n"
+        )
+        env_info = create_full_stub_env(tmp_path, overrides={"node": node_v22})
+        result = subprocess.run(
+            [str(SCRIPT_PATH), "--dry-run"],
+            capture_output=True,
+            text=True,
+            env=env_info["env"],
+            timeout=30,
+        )
+        combined_output = result.stdout + result.stderr
+        node_skip_lines = [
+            line for line in combined_output.splitlines() if "SKIP" in line and "node" in line.lower()
+        ]
+        assert not node_skip_lines, f"Node 22 must not be skipped.\nOutput:\n{combined_output}"
+        assert "Would run: mise install node@24" in combined_output, (
+            f"Dry-run should plan 'mise install node@24'.\nOutput:\n{combined_output}"
+        )
+
+    def test_node_shim_error_on_stderr_is_not_skipped(self, tmp_path):
+        """
+        Test that a mise shim error on stderr is not read as an installed Node.
+
+        Given: A node stub with empty stdout that prints a mise shim error (including
+               "Version: 2026.9.12") on stderr and exits 1
+        When: Running install-deps.sh --dry-run
+        Then: No [SKIP] line mentions Node.js, and none reports 2026.9.12
+        And: Output contains "Would run: mise install node@24"
+
+        Mutation caught: `node --version 2>&1` feeding stderr into the version parse.
+        """
+        node_shim_error = (
+            "#!/bin/bash\n"
+            'if [[ "$1" == "--version" || "$1" == "-v" ]]; then\n'
+            "    echo 'mise ERROR node is not a valid shim. This likely means you uninstalled the tool.' >&2\n"
+            "    echo 'mise ERROR Version: 2026.9.12 linux-arm64 (2026-09-20)' >&2\n"
+            "    exit 1\n"
+            "fi\n"
+            "exit 0\n"
+        )
+        env_info = create_full_stub_env(tmp_path, overrides={"node": node_shim_error})
+        result = subprocess.run(
+            [str(SCRIPT_PATH), "--dry-run"],
+            capture_output=True,
+            text=True,
+            env=env_info["env"],
+            timeout=30,
+        )
+        combined_output = result.stdout + result.stderr
+        node_skip_lines = [
+            line for line in combined_output.splitlines() if "SKIP" in line and "node" in line.lower()
+        ]
+        assert not node_skip_lines, f"Shim error must not be skipped as installed Node.\n{combined_output}"
+        assert "2026.9.12" not in combined_output, f"mise version must not be reported.\n{combined_output}"
+        assert "Would run: mise install node@24" in combined_output, (
+            f"Dry-run should plan 'mise install node@24'.\nOutput:\n{combined_output}"
+        )
+
+    def test_node_stderr_warning_does_not_prevent_skip(self, tmp_path):
+        """
+        Test that a stderr warning alongside v24.21.0 on stdout still gives [SKIP].
+
+        Given: A node stub that writes a warning to stderr and v24.21.0 to stdout
+        When: Running install-deps.sh --dry-run
+        Then: A [SKIP] line mentions Node.js and 24.21.0
+        And: No "mise install node" is planned
+        """
+        node_warn = (
+            "#!/bin/bash\n"
+            'if [[ "$1" == "--version" || "$1" == "-v" ]]; then\n'
+            "    echo 'node warn experimental feature enabled' >&2\n"
+            '    echo "v24.21.0"\n'
+            "fi\n"
+            "exit 0\n"
+        )
+        env_info = create_full_stub_env(tmp_path, overrides={"node": node_warn})
+        result = subprocess.run(
+            [str(SCRIPT_PATH), "--dry-run"],
+            capture_output=True,
+            text=True,
+            env=env_info["env"],
+            timeout=30,
+        )
+        combined_output = result.stdout + result.stderr
+        node_skip_lines = [
+            line for line in combined_output.splitlines() if "SKIP" in line and "node" in line.lower()
+        ]
+        assert any("24.21.0" in line for line in node_skip_lines), (
+            f"Expected [SKIP] for Node.js 24.21.0.\nOutput:\n{combined_output}"
+        )
+        assert "mise install node" not in combined_output, f"No node install should be planned.\n{combined_output}"
+
+    def test_node_fallback_version_is_threshold_without_mise_config(self, tmp_path):
+        """
+        Test that the node@ fallback is 24 when .mise.toml declares no node version.
+
+        Given: A node reporting v22.23.3 and a .mise.toml with no node entry
+        When: Running install-deps.sh --dry-run
+        Then: Output contains "Would run: mise install node@24"
+
+        Mutation caught: a literal ':-22' left in the ${MISE_NODE_VERSION:-...} fallback.
+        """
+        node_v22 = (
+            "#!/bin/bash\n"
+            'if [[ "$1" == "--version" || "$1" == "-v" ]]; then\n'
+            '    echo "v22.23.3"\n'
+            "else\n"
+            "    exit 0\n"
+            "fi\n"
+        )
+        env_info = create_full_stub_env(tmp_path, overrides={"node": node_v22})
+        (env_info["repo_root"] / ".mise.toml").write_text('[tools]\npython = "3.14"\n')
+        result = subprocess.run(
+            [str(SCRIPT_PATH), "--dry-run"],
+            capture_output=True,
+            text=True,
+            env=env_info["env"],
+            timeout=30,
+        )
+        combined_output = result.stdout + result.stderr
+        assert "Would run: mise install node@24" in combined_output, (
+            f"Fallback should be node@24 when .mise.toml has no node.\nOutput:\n{combined_output}"
+        )
 
     def test_node_correct_version_emits_skip(self, tmp_path):
         """
-        Test that Node.js >= 22 results in [SKIP] output.
+        Test that Node.js >= 24 results in [SKIP] output.
 
-        Given: An environment where node reports version v22.0.0
+        Given: An environment where node reports version v24.0.0
         When: Running install-deps.sh --dry-run
         Then: Output contains [SKIP] for Node.js
         """
@@ -1219,27 +1452,30 @@ class TestPipInstallFailure:
 
 class TestNpmInstallFailure:
     """
-    Test behavior when npm install fails.
+    Test behavior when npm ci fails.
 
-    When npm install fails, the script should emit [FAIL] and continue
-    with remaining installations.
+    When npm ci fails, the script should emit [FAIL] saying "npm ci failed"
+    and continue with remaining installations.
     """
 
     def test_npm_install_failure_shows_fail_and_continues(self, tmp_path):
         """
-        Test that failing npm install emits [FAIL] and continues.
+        Test that failing npm ci emits [FAIL] and continues.
 
-        Given: An environment where node_modules is missing and npm install fails
+        Given: An environment where node_modules is missing and npm ci fails
         When: Running install-deps.sh
-        Then: Output contains [FAIL] for npm packages
+        Then: A [FAIL] line says "npm ci failed"
         And: Script continues to subsequent installation steps
+
+        Mutation caught: Step 5 still running `npm install` (the stub then
+        succeeds and no FAIL line appears) or a stale "npm install failed" text.
         """
-        # npm stub that fails on install
+        # npm stub that fails on ci
         npm_fail = (
             "#!/bin/bash\n"
             'if [[ "$1" == "--version" ]]; then\n'
-            '    echo "10.0.0"\n'
-            'elif [[ "$1" == "install" ]]; then\n'
+            '    echo "11.5.1"\n'
+            'elif [[ "$1" == "ci" ]]; then\n'
             "    exit 1\n"
             "else\n"
             "    exit 0\n"
@@ -1258,14 +1494,62 @@ class TestNpmInstallFailure:
             timeout=30,
         )
         combined_output = result.stdout + result.stderr
-        assert "FAIL" in combined_output, (
-            f"Output should contain [FAIL] when npm install fails.\nOutput:\n{combined_output}"
+        fail_lines = [line for line in combined_output.splitlines() if "FAIL" in line and "npm" in line.lower()]
+        assert any("npm ci failed" in line for line in fail_lines), (
+            f"Output should contain a [FAIL] line saying 'npm ci failed'.\nOutput:\n{combined_output}"
         )
         # Script should continue past npm failure to act/chromium/verification
         lower_output = combined_output.lower()
         assert "act" in lower_output or "chromium" in lower_output or "verif" in lower_output, (
             f"Script should continue after npm failure and mention subsequent steps.\nOutput:\n{combined_output}"
         )
+
+    def test_npm_ci_is_invoked_with_non_interactive_flags(self, tmp_path):
+        """
+        Test that Step 5 runs `npm ci --no-audit --no-fund` and never `npm install`.
+
+        Given: An environment where node_modules is missing and npm records its arguments
+        When: Running install-deps.sh
+        Then: npm is called with `ci` plus --no-audit and --no-fund (either order)
+        And: that call runs with the fixture repo root as its working directory
+        And: npm is never called with `install`
+
+        Mutation caught: Step 5 reverting to `npm install`, dropping --no-audit or
+        --no-fund, or dropping the `cd "$REPO_ROOT" &&` before the call.
+        """
+        # Log "<cwd>\t<args>" per call so the working directory can be asserted.
+        npm_logging = (
+            "#!/bin/bash\n"
+            'printf "%s\\t%s\\n" "$PWD" "$*" >> "$HOME/npm-invocations.log"\n'
+            'if [[ "$1" == "--version" ]]; then\n'
+            '    echo "11.5.1"\n'
+            "fi\n"
+            "exit 0\n"
+        )
+        env_info = create_full_stub_env(tmp_path, overrides={"npm": npm_logging})
+        node_modules = env_info["repo_root"] / "node_modules"
+        if node_modules.exists():
+            node_modules.rmdir()
+        subprocess.run(
+            [str(SCRIPT_PATH)],
+            capture_output=True,
+            text=True,
+            env=env_info["env"],
+            timeout=30,
+        )
+        log = tmp_path / "home" / "npm-invocations.log"
+        assert log.exists(), "npm was never invoked"
+        records = [line.split("\t", 1) for line in log.read_text().splitlines()]
+        calls = [(cwd, args.split()) for cwd, args in records]
+        ci_calls = [(cwd, args) for cwd, args in calls if args[:1] == ["ci"]]
+        assert any(set(args[1:]) == {"--no-audit", "--no-fund"} for _, args in ci_calls), (
+            f"Expected 'npm ci' with --no-audit and --no-fund, got {calls}"
+        )
+        repo_root = env_info["repo_root"].resolve()
+        assert all(Path(cwd).resolve() == repo_root for cwd, _ in ci_calls), (
+            f"npm ci must run in {repo_root}, got {[cwd for cwd, _ in ci_calls]}"
+        )
+        assert not any(args[:1] == ["install"] for _, args in calls), f"npm install must not run: {calls}"
 
 
 class TestVerificationFailure:
@@ -1813,23 +2097,27 @@ class TestNonInteractiveCommands:
 
     def test_npm_install_uses_non_interactive_flags(self):
         """
-        The npm install command in install-deps.sh must use --no-audit.
+        The npm ci command in install-deps.sh must use --no-audit and read stdin from /dev/null.
 
         Given: The install-deps.sh source code
-        When: Examining npm install lines
-        Then: The line contains '--no-audit'
+        When: Examining npm ci lines
+        Then: One line contains '--no-audit' and '< /dev/null'
+
+        This is the only static guard on ADR-003's non-interactive contract for npm.
+        Mutation caught: dropping --no-audit, dropping the `< /dev/null` redirect,
+        or reverting to `npm install` (no `npm ci` line is found).
         """
         content = SCRIPT_PATH.read_text()
-        # Find lines containing 'npm install' (the actual install, not dry-run/fail messages)
-        npm_install_lines = [
+        # Find lines containing 'npm ci' (the actual install, not dry-run/fail messages)
+        npm_ci_lines = [
             line.strip()
             for line in content.splitlines()
-            if "npm install" in line and "dry_run_msg" not in line and "fail_msg" not in line
+            if "npm ci" in line and "dry_run_msg" not in line and "fail_msg" not in line
         ]
-        assert len(npm_install_lines) > 0, "Script should contain at least one 'npm install' command line."
-        has_no_audit = any("--no-audit" in line for line in npm_install_lines)
-        assert has_no_audit, (
-            f"npm install command should include '--no-audit' flag.\nFound npm install lines: {npm_install_lines}"
+        assert len(npm_ci_lines) > 0, "Script should contain at least one 'npm ci' command line."
+        compliant = [line for line in npm_ci_lines if "--no-audit" in line and "< /dev/null" in line]
+        assert compliant, (
+            f"npm ci command should include '--no-audit' and '< /dev/null'.\nFound npm ci lines: {npm_ci_lines}"
         )
 
 
@@ -2041,7 +2329,7 @@ Group 2 -- Dry-Run Output (7 classes, 7 methods):
 - TestDryRunPythonInstall (1): python missing -> DRY-RUN mise install python
 - TestDryRunNodeInstall (1): node missing -> DRY-RUN mise install node
 - TestDryRunPipInstall (1): pip packages missing -> DRY-RUN pip install
-- TestDryRunNpmInstall (1): npm packages missing -> DRY-RUN npm install
+- TestDryRunNpmInstall (1): npm packages missing -> DRY-RUN npm ci
 - TestDryRunActInstall (1): act missing -> DRY-RUN act install
 
 Group 3 -- Skip/Idempotency (5 classes, 5 methods):
@@ -2060,7 +2348,7 @@ Group 3c -- mise install from config (1 class, 2 methods):
 Group 4 -- Error Handling (4 classes, 4 methods):
 - TestMiseInstallFailure (1): curl fails -> FAIL, continues
 - TestPipInstallFailure (1): pip install fails -> FAIL, continues
-- TestNpmInstallFailure (1): npm install fails -> FAIL, continues
+- TestNpmInstallFailure (1): npm ci fails -> FAIL, continues
 - TestVerificationFailure (1): verify-deps.sh fails -> exit non-zero
 
 Group 4b -- mise reshim after pip (1 class, 1 method):

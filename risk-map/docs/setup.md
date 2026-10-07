@@ -26,7 +26,7 @@ The repository includes a VS Code Dev Container configuration that provides a pr
 The Dev Container automatically provides:
 
 - Python 3.14 with all requirements.txt dependencies (via mise)
-- Node.js 22 with npm packages (prettier, mermaid-cli) (via mise)
+- Node.js 24 with npm packages (prettier, mermaid-cli) (via mise)
 - Playwright Chromium browser for SVG generation
 - act tool for local GitHub Actions testing
 - VS Code extensions: Mermaid preview, YAML validation, Ruff linting
@@ -40,7 +40,7 @@ If you prefer not to use the Dev Container or need to set up your environment ma
 **Prerequisites:**
 
 - Python 3.14 or higher
-- Node.js 22+ and npm
+- Node.js 24+ and npm
 - Chrome/Chromium browser (for SVG generation from Mermaid diagrams)
 
 1. **Install all dependencies (one-time setup)**:

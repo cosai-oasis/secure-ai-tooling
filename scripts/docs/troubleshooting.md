@@ -75,13 +75,26 @@ git commit --no-verify -m "emergency commit"
 ❌ Prettier formatting failed for risk-map/yaml/components.yaml
 ```
 
-**Fix**: Check that prettier is installed (`npm install`) and the YAML file syntax is valid
+**Fix**: Check that prettier is installed (`npm ci`) and the YAML file syntax is valid
 
 ```
 ⚠️ Warning: Could not stage formatted file risk-map/yaml/components.yaml
 ```
 
 **Fix**: Check file permissions and git repository status
+
+## Common npm dependency errors
+
+```
+npm error Missing: <pkg> from lock file
+```
+
+**Fix**: `npm ci` rejected `package-lock.json`. There are two possible causes; check `npm --version` first.
+
+- If npm is older than 11.5, the local npm cannot read a lock file written by a newer npm 11. Rebuild the devcontainer, or re-run `scripts/tools/install-deps.sh` from the repository root to install and activate the Node.js version pinned in `.mise.toml`.
+- If npm is already 11.5 or newer, `package.json` and `package-lock.json` are out of sync, for example because `package.json` was edited without updating the lock. Re-run the lock update with npm 11.11 or newer (for example via the Dependabot PR or `npm i --package-lock-only`) so that its `libc` fields are not stripped, and commit both files.
+
+See [ADR-003's 2026-10-05 addendum](../../docs/adr/003-devcontainer-mise-architecture.md#addendum-2026-10-05-lockfile-readers-match-the-lockfile-writer)
 
 ## Common ruff linting errors
 
@@ -109,13 +122,13 @@ git commit --no-verify -m "emergency commit"
 ⚠️ npx command not found - skipping SVG generation
 ```
 
-**Fix**: Install Node.js 22+ and npm, then verify with `npx --version`
+**Fix**: Install Node.js 24+ and npm, then verify with `npx --version`
 
 ```
 ⚠️ Mermaid CLI not available - skipping SVG generation
 ```
 
-**Fix**: Install mermaid-cli: `npm install` (installs all npm dependencies from package.json)
+**Fix**: Install mermaid-cli: `npm ci` (installs all npm dependencies from package.json)
 
 ```
 ❌ Failed to convert diagram.mmd

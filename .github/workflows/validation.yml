@@ -97,7 +97,7 @@ jobs:
     - name: Setup Node
       uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
       with:
-        node-version: '22.x'
+        node-version: '24.x'
         cache: 'npm'
 
     - name: Copy validation scripts to working directory
@@ -139,7 +139,7 @@ jobs:
     - name: Setup Node
       uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
       with:
-        node-version: '22.x'
+        node-version: '24.x'
         cache: 'npm'
 
     - name: Install dependencies
@@ -204,7 +204,7 @@ jobs:
     - name: Setup Node
       uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
       with:
-        node-version: '22.x'
+        node-version: '24.x'
         cache: 'npm'
 
     - name: Install dependencies

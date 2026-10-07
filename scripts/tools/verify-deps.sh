@@ -17,6 +17,10 @@ fi
 # Failure counter
 FAILURES=0
 
+# Minimum Node.js major version. Must equal the node major in .mise.toml
+# (test_mise_config.py enforces this).
+NODE_MIN_MAJOR=24
+
 # Output functions
 pass_msg() {
     if [[ "$QUIET" == "false" ]]; then
@@ -37,7 +41,9 @@ warn_msg() {
 
 # Check 1: Python >= 3.14
 if command -v python3 &>/dev/null; then
-    PYTHON_VERSION=$(python3 --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    # stdout only: a failing mise shim prints its own version to stderr,
+    # which would otherwise be parsed as the Python version.
+    PYTHON_VERSION=$(python3 --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
     if [[ -n "$PYTHON_VERSION" ]]; then
         PYTHON_MAJOR=$(echo "$PYTHON_VERSION" | cut -d. -f1)
         PYTHON_MINOR=$(echo "$PYTHON_VERSION" | cut -d. -f2)
@@ -53,15 +59,17 @@ else
     fail_msg "python3 not found"
 fi
 
-# Check 2: Node.js >= 22
+# Check 2: Node.js >= NODE_MIN_MAJOR
 if command -v node &>/dev/null; then
-    NODE_VERSION=$(node --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    # stdout only: a failing mise shim prints its own version to stderr,
+    # which would otherwise be parsed as the Node version.
+    NODE_VERSION=$(node --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
     if [[ -n "$NODE_VERSION" ]]; then
         NODE_MAJOR=$(echo "$NODE_VERSION" | cut -d. -f1)
-        if [[ "$NODE_MAJOR" -ge 22 ]]; then
-            pass_msg "Node.js $NODE_VERSION (>= 22 required)"
+        if [[ "$NODE_MAJOR" -ge "$NODE_MIN_MAJOR" ]]; then
+            pass_msg "Node.js $NODE_VERSION (>= $NODE_MIN_MAJOR required)"
         else
-            fail_msg "Node.js $NODE_VERSION (>= 22 required)"
+            fail_msg "Node.js $NODE_VERSION (>= $NODE_MIN_MAJOR required)"
         fi
     else
         fail_msg "Node.js version detection failed"
@@ -70,9 +78,26 @@ else
     fail_msg "node not found"
 fi
 
-# Check 3: npm
+# Check 3: npm >= 11.5 (ADR-003, 2026-10-05 addendum). Older npm cannot install from the
+# lockfile written by npm 11.5+ ("Missing: <pkg> from lock file").
+# The regex is anchored and ignores any suffix, so "11.5.0-pre.0" passes
+# while a "v"-prefixed string is treated as a detection failure.
 if command -v npm &>/dev/null; then
-    pass_msg "npm found"
+    # stdout only: npm writes "npm warn ..." lines to stderr (e.g. legacy
+    # .npmrc keys), which would break the anchored parse below.
+    NPM_OUT=$(npm --version 2>/dev/null)
+    if [[ "$NPM_OUT" =~ ^([0-9]+)\.([0-9]+) ]]; then
+        NPM_MAJOR="${BASH_REMATCH[1]}"
+        NPM_MINOR="${BASH_REMATCH[2]}"
+        # 10# forces base 10 so leading zeros are not read as octal
+        if (( 10#$NPM_MAJOR > 11 || (10#$NPM_MAJOR == 11 && 10#$NPM_MINOR >= 5) )); then
+            pass_msg "npm $NPM_MAJOR.$NPM_MINOR (>= 11.5 required, ADR-003)"
+        else
+            fail_msg "npm $NPM_MAJOR.$NPM_MINOR (>= 11.5 required, ADR-003)"
+        fi
+    else
+        fail_msg "npm version detection failed"
+    fi
 else
     fail_msg "npm not found"
 fi
