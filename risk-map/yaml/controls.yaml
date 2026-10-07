@@ -190,6 +190,7 @@ controls:
       - >
         Ensure that all data, models, and code used to produce AI models are verifiably
         integrity-protected during development and deployment.
+    guidance:
       - >
         Implement repository trust policies, cryptographic signatures, attestation
         frameworks, and offline verification capabilities to ensure integrity
@@ -244,6 +245,7 @@ controls:
         Ensure that the code and model results from training and development are of known
         provenance and lineage and not modified from known-good sources in unexpected ways
         at inference time.
+    guidance:
       - >
         Examples include:
       - - >
@@ -729,6 +731,13 @@ controls:
         Implement signed route manifests, configuration integrity verification,
         and response provenance tracking to prevent routing manipulation and
         ensure request routing to authorized models.
+    guidance:
+      - >
+        This control is distinct from {{controlInterComponentTransportSecurity}},
+        which establishes authenticated, encrypted, and integrity-protected
+        channels between components. Route integrity relies on that channel
+        protection; a verified route does not itself make the channel carrying
+        it authenticated, encrypted, or integrity-protected.
     category: controlsInfrastructure
     personas:
       - personaPlatformProvider
@@ -907,6 +916,7 @@ controls:
         channels for all inter-component connections in AI systems, including
         agent-to-tool, model serving, orchestration, and application API
         channels.
+    guidance:
       - >
         Implement the following transport-layer controls across all component
         communication paths:
