@@ -9,11 +9,20 @@ The `mermaid-styles.yaml` file has four required top-level keys: `version`, `fou
 string (e.g. `1.0.0`) and does not need its own section. The other three are described
 below.
 
+Each example declares its scope in the first YAML comment. A
+`# schema-example: fragment` shows partial edits to merge into the existing
+configuration. A `# schema-example: complete <dot.path>` supplies an entire
+section to replace as a unit; the documentation tests check that it supplies
+all required fields within that section. A `# schema-example: complete`
+without a path denotes a standalone configuration. These comments do not
+change how YAML is loaded.
+
 ### Foundation Design Tokens
 
 Define semantic colors, stroke widths, and patterns used throughout the system:
 
 ```yaml
+# schema-example: complete foundation
 foundation:
   colors:
     primary: '#4285f4' # Google Blue - primary/brand color token
@@ -47,6 +56,7 @@ or `foundation.strokeWidths` has no visible effect on the generated graph.
 Elements used by the component graph:
 
 ```yaml
+# schema-example: complete sharedElements
 sharedElements:
   componentCategories:
     componentsInfrastructure:
@@ -75,6 +85,7 @@ schema validation.
 Specific settings for the component graph:
 
 ```yaml
+# schema-example: fragment
 graphTypes:
   component:
     direction: 'TD' # Top-down layout for component relationships
@@ -90,6 +101,7 @@ graphTypes:
 To modify the color scheme for component categories:
 
 ```yaml
+# schema-example: fragment
 sharedElements:
   componentCategories:
     componentsInfrastructure:
@@ -107,6 +119,7 @@ sharedElements:
 To change graph orientation and spacing:
 
 ```yaml
+# schema-example: fragment
 graphTypes:
   component:
     direction: 'LR' # Change to left-right layout
