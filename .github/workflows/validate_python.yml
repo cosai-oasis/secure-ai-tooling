@@ -2,6 +2,10 @@ name: Python Validation
 on:
   push:
     paths:
+      # ADR-037 D10b: the devcontainer test suites read these files.
+      - '.mise.toml'
+      - 'scripts/tools/**'
+      - '.devcontainer/**'
       - '**.py'
       - '.pre-commit-config.yaml'
       - 'requirements*.txt'
@@ -14,6 +18,10 @@ on:
       - 'docs/adr/037-ci-validation-authority-and-block-parity.md'
   pull_request:
     paths:
+      # ADR-037 D10b: the devcontainer test suites read these files.
+      - '.mise.toml'
+      - 'scripts/tools/**'
+      - '.devcontainer/**'
       - '**.py'
       - '.pre-commit-config.yaml'
       - 'requirements*.txt'

@@ -310,9 +310,11 @@ Any workflow under `.github/workflows/` whose `run:` bodies execute an npm insta
 
 The lock decides what these jobs run. For example, the prettier that `format-validation` uses as the CI counterpart of the blocking `prettier-yaml` hook comes from the lock. A lock change that does not re-run the job merges without the gate having run against it; [#574](https://github.com/cosai-oasis/secure-ai-tooling/issues/574) records an instance. `validation.yml` gains both files in its `pull_request` and `push` filters.
 
-#### D10b. The files the test suites read, for the test workflow
+#### D10b. The toolchain files the devcontainer test suites read, for the test workflow
 
-`validate_python.yml`, the only workflow that runs pytest, must trigger on `.mise.toml`, `scripts/tools/**` and `.devcontainer/**` for both events, because the devcontainer test suites read them. This is the workflow counterpart of [ADR-005's 2026-05-08 addendum](005-pre-commit-framework.md#addendum-2026-05-08-hook-trigger-vs-read-set-invariant): a check triggers on what it reads, not only on what it is.
+D10b covers the suites that read toolchain files, which are the devcontainer suites, not every test suite. Other suites' reads of content or docs files (`risk-map/**`, `docs/**`) are outside D10's scope.
+
+`validate_python.yml`, the only workflow whose pytest run collects these suites, must trigger on `.mise.toml`, `scripts/tools/**` and `.devcontainer/**` for both events, because the devcontainer test suites read them. This is the workflow counterpart of [ADR-005's 2026-05-08 addendum](005-pre-commit-framework.md#addendum-2026-05-08-hook-trigger-vs-read-set-invariant): a check triggers on what it reads, not only on what it is.
 
 #### Enforcement and residual
 
@@ -320,7 +322,7 @@ D10a and D10b are enforced by tests in `test_ci_block_parity.py`'s `TestWorkflow
 
 The D10a tests:
 
-- read whole `run:` bodies of `.github/workflows/*.yml`, including multi-line blocks and backslash continuations, and parse them with the module's existing shell tokenizer, so leading words (`if`, `env`, `sudo`, `time`, `!`), inline assignments, `( … )` and `{ …; }` groups, quoted separators and options before the subcommand (`npm --prefix site ci`) are handled;
+- read whole `run:` bodies of `.github/workflows/*.yml`, including multi-line blocks and backslash continuations, and parse them with the module's shared quote-aware shell tokenizer, so leading words (`if`, `env`, `sudo`, `time`, `!`), inline assignments, `( … )` and `{ …; }` groups, options before the subcommand (`npm --prefix site ci`) and separators inside quotes (`echo 'a&&npm' ci` is not an install; `npm --prefix 'a;b' ci` is) are handled;
 - pin the install family against an independent copy of the list above, and the global-install rule with matching and non-matching cases;
 - include a separate non-vacuity test requiring `validation.yml` to be detected.
 
@@ -330,6 +332,9 @@ Known residuals of the D10a detector, accepted because no workflow uses these fo
 
 - npm reached indirectly: `bash -c 'npm ci'`, `$NPM ci`, `/usr/bin/npm ci`, or behind `xargs`, `nice`, `timeout` or `command`.
 - The options that take a separate value are an allowlist (`--prefix`, `-C`, `--workspace`, `-w`, `--registry`, `--loglevel`, `--cache`, `--userconfig`, `--location`). An unlisted value-taking option placed before the subcommand hides the command.
-- Composite actions under `.github/actions/` and the `scripts/workflows/` template are not scanned.
+- Composite actions under `.github/actions/` are not scanned.
+- Over-match, not a miss: heredoc bodies are scanned as commands, so `cat <<EOF` followed by an `npm ci` line and `EOF` is detected as an install. A false requirement of the lock triggers, which is the safe direction.
 
-Known residual of D10b: `test_setup_docs.py` reads `risk-map/docs/setup.md` and `scripts/docs/setup.md`, which D10b's triggers do not cover. Accepted: the setup docs change rarely, and the devcontainer suites already run when the files above change.
+Assumption, not a residual: D10a requires the root `package.json` and `package-lock.json`. The detector also recognises forms that read another directory's lock (`cd site && npm ci`, `npm --prefix site ci`, `npm -C site ci`) and requires the root lock for them. The repository has a single lock, at the root. A workflow installing from a nested lock would need its own `paths:` entries.
+
+Known residual of D10b: `test_setup_docs.py` reads `risk-map/docs/setup.md`, `scripts/docs/setup.md` and `scripts/docs/troubleshooting.md`, which D10b's triggers do not cover. Accepted: the setup docs change rarely, and the devcontainer suites already run when the files above change.

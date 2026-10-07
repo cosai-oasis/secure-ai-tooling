@@ -305,8 +305,20 @@ _TOKEN_ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 _VAR_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?:\[[^\]]*\])?\}|\$([A-Za-z_][A-Za-z0-9_]*)")
 _INTERPRETER_RE = re.compile(r"^python[0-9.]*$")
 
-# Tokens that terminate one simple command and begin another.
-_OPERATORS = frozenset({";", "&&", "||", "|", "&"})
+# Unquoted control operators: each terminates one simple command and begins
+# another. `;;` (case-clause terminator) and `|&` (pipe both streams) are single
+# operators, not two.
+_OPERATORS = frozenset({";", ";;", "&&", "||", "|", "|&", "&"})
+
+# Unquoted redirection operators. With their target word they are removed from
+# the simple command; they never end it. An fd prefix (`2>`, `10>`) is folded
+# into the token by the tokenizer.
+_REDIRECTIONS = frozenset({">", ">>", "<", "<<", "<<<", ">|", ">&", "<&", "&>", "&>>"})
+
+# Longest first, so `&&` is not read as `&` twice and `&>>` not as `&>` then `>`.
+_SHELL_OPERATORS = sorted(_OPERATORS | _REDIRECTIONS, key=len, reverse=True)
+
+_FD_RE = re.compile(r"[0-9]+")
 
 # Shell keywords and command prefixes that precede the real command word.
 _LEADING_WORDS = frozenset(
@@ -362,18 +374,156 @@ class CopyCommand(NamedTuple):
     line: str
 
 
-def _safe_split(text: str) -> list[str]:
-    """Tokenize a shell fragment, degrading to whitespace splitting on failure.
+class _ShellSyntax(str):
+    """Base class for the unquoted shell syntax `_safe_split` emits as typed tokens.
 
-    `shlex` raises on unbalanced quotes, which occurs in hand-written workflow
-    shell. Falling back to whitespace splitting keeps such a line visible to
-    the scan. Silently dropping it is the failure mode this suite exists to
+    A typed token compares equal to its text, so callers that test word
+    membership (`hook_id in _safe_split(command)`) are unaffected. The segment
+    helpers dispatch on the type, never on the value: that is what keeps a
+    quoted `';'` an ordinary word while an unquoted `;` ends a command.
+    """
+
+
+class _ControlOperator(_ShellSyntax):
+    """An unquoted control operator (`_OPERATORS`)."""
+
+
+class _Redirection(_ShellSyntax):
+    """An unquoted redirection operator, including any fd prefix (`2>&`, `10>`)."""
+
+
+class _SubstitutionOpen(_ShellSyntax):
+    """The `<(` or `>(` opening a process substitution."""
+
+
+class _SubstitutionClose(_ShellSyntax):
+    """The `)` closing a process substitution."""
+
+
+def _scan_shell(text: str, quoting: bool) -> list[str] | None:
+    """Tokenize one shell fragment into words and typed `_ShellSyntax` tokens.
+
+    Word values follow `shlex.split(text, comments=True)` in POSIX mode: quotes
+    are removed, a backslash outside quotes escapes the next character, and
+    inside double quotes only `"` and `\\` are escaped. Two deliberate
+    differences from `shlex`, both matching the shell: a `#` starts a comment
+    only at the start of a word, and unquoted operator characters end a word.
+
+    `(` and `)` are word characters (the `case` pattern `"skipped")` stays one
+    word) except inside a process substitution, where unquoted `(` nesting is
+    counted so that the `)` closing the substitution is recognized.
+
+    Contract limits, pinned in `TestKnownScanLimits`. Only `<(` and `>(`
+    nesting is tracked, so an operator inside an unquoted `$(...)`, backticks or
+    `${...}` splits the command. `(` and `{` grouping is not unwrapped, so a
+    grouped command's head word is `(` or `{` (the pin covers `(`).
+
+    With `quoting` False, quotes and backslashes are ordinary characters; that
+    mode never fails. With `quoting` True, an unbalanced quote or a trailing
+    backslash returns None.
+    """
+    tokens: list[str] = []
+    word: list[str] = []
+    in_word = False  # a word has started, possibly empty (`""`)
+    quoted = False  # some part of the current word was quoted or escaped
+    depths: list[int] = []  # per open process substitution: unquoted `(` nesting
+
+    def end_word() -> None:
+        nonlocal in_word, quoted
+        if in_word:
+            tokens.append("".join(word))
+        word.clear()
+        in_word = quoted = False
+
+    i, n = 0, len(text)
+    while i < n:
+        ch = text[i]
+        if quoting and ch == "'":
+            end = text.find("'", i + 1)
+            if end < 0:
+                return None
+            word.append(text[i + 1 : end])
+            in_word = quoted = True
+            i = end + 1
+        elif quoting and ch == '"':
+            in_word = quoted = True
+            i += 1
+            while True:
+                if i >= n:
+                    return None
+                if text[i] == '"':
+                    i += 1
+                    break
+                if text[i] == "\\" and i + 1 < n and text[i + 1] in '"\\':
+                    i += 1
+                word.append(text[i])
+                i += 1
+        elif quoting and ch == "\\":
+            if i + 1 >= n:
+                return None
+            word.append(text[i + 1])
+            in_word = quoted = True
+            i += 2
+        elif ch in " \t\r\n":
+            end_word()
+            i += 1
+        elif ch == "#" and not in_word:
+            break
+        elif ch in "<>" and text.startswith("(", i + 1):
+            end_word()
+            tokens.append(_SubstitutionOpen(text[i : i + 2]))
+            depths.append(0)
+            i += 2
+        elif depths and ch == ")" and not depths[-1]:
+            end_word()
+            tokens.append(_SubstitutionClose(ch))
+            depths.pop()
+            i += 1
+        else:
+            op = next((o for o in _SHELL_OPERATORS if text.startswith(o, i)), None)
+            if op is None:
+                if depths and ch in "()":
+                    depths[-1] += 1 if ch == "(" else -1
+                word.append(ch)
+                in_word = True
+                i += 1
+                continue
+            fd = ""
+            # Digits are an fd only when they are the whole unquoted word
+            # glued to the redirection: `2>&1`, but not `a2>f` or `echo 2 > f`.
+            if op[0] in "<>" and in_word and not quoted and _FD_RE.fullmatch("".join(word)):
+                fd = "".join(word)
+                word.clear()
+                in_word = False
+            end_word()
+            kind = _Redirection if op in _REDIRECTIONS else _ControlOperator
+            tokens.append(kind(fd + op))
+            i += len(op)
+    end_word()
+    return tokens
+
+
+def _safe_split(text: str) -> list[str]:
+    """Tokenize a shell fragment, keeping quoting decisions as token types.
+
+    Plain words are `str` with quotes removed; a line with no unquoted
+    operator, redirection or mid-word `#` yields the same list as
+    `shlex.split(text, comments=True)`. Unquoted control
+    operators, redirections and process-substitution brackets are typed
+    `_ShellSyntax` tokens, so the segment helpers never re-split a word and a
+    quoted separator stays text.
+
+    A line `shlex` would reject (unbalanced quote, trailing backslash) occurs
+    in hand-written workflow shell, and in every line ending in a backslash
+    continuation when a body is read line by line. It is tokenized with every
+    character unquoted, so its operators still split and its commands stay
+    visible. Silently dropping it is the failure mode this suite exists to
     prevent: an unparsed line is an unpoliced line.
     """
-    try:
-        return shlex.split(text, comments=True)
-    except ValueError:
-        return [t for t in re.split(r"\s+", text.strip()) if t]
+    tokens = _scan_shell(text, quoting=True)
+    if tokens is None:
+        tokens = _scan_shell(text, quoting=False) or []
+    return tokens
 
 
 def _expand(token: str, env: dict[str, Any]) -> str:
@@ -410,30 +560,15 @@ def _lookup(env: dict[str, Any], name: str) -> str:
 
 
 def _split_simple_commands(tokens: list[str]) -> list[list[str]]:
-    """Split a token stream into simple commands on shell control operators.
+    """Split a `_safe_split` token stream into simple commands.
 
-    Redirections start a new (discarded) segment so that `>> $GITHUB_OUTPUT`
-    tails are not mistaken for arguments.
+    The segments of `_segments_with_operators`, without the operators.
     """
-    segments: list[list[str]] = []
-    current: list[str] = []
-    for token in tokens:
-        # Operators are not whitespace-separated in shell, so split them out of
-        # adjoining tokens (`--force;` -> `--force`, `;`).
-        for part in (p for p in re.split(r"(;|&&|\|\||\||&)", token) if p):
-            if part in _OPERATORS or part.startswith(">") or part.startswith("<"):
-                if current:
-                    segments.append(current)
-                current = []
-            else:
-                current.append(part)
-    if current:
-        segments.append(current)
-    return segments
+    return [segment for segment, _ in _segments_with_operators(tokens)]
 
 
 def _segments_with_operators(tokens: list[str]) -> list[tuple[list[str], str | None]]:
-    """Split a token stream into (simple command, following operator) pairs.
+    """Split a `_safe_split` token stream into (simple command, following operator) pairs.
 
     `_split_simple_commands` discards the operators, which is right for asking
     *what ran* and wrong for asking *what happens when it fails*. `cmd || true`
@@ -441,34 +576,135 @@ def _segments_with_operators(tokens: list[str]) -> list[tuple[list[str], str | N
     between a step that fails the job and one that does not.
 
     The operator returned with a segment is the one that immediately follows it,
-    or None at the end of the line.
+    or None at the end of the line or of a process substitution. An operator
+    that follows no command (a lone `;;`) has no pair. Only typed tokens are
+    syntax; a plain `str` equal to `;` is a word.
+
+    A redirection and its target word are dropped without ending the command,
+    so `cmd > out || true` pairs `||` with `cmd`. The target is the next plain
+    word only: an operator or a process substitution is never consumed.
+
+    A process substitution suspends the enclosing command, and its inner
+    command is a segment of its own. Segments are listed in the order they end,
+    so the inner command comes first and the enclosing one keeps the words and
+    operator after `)`. A substitution still open at the end of the stream
+    ends there.
     """
     pairs: list[tuple[list[str], str | None]] = []
     current: list[str] = []
+    enclosing: list[list[str]] = []
+    drop_target = False
     for token in tokens:
-        for part in (p for p in re.split(r"(;|&&|\|\||\||&)", token) if p):
-            if part in _OPERATORS or part.startswith(">") or part.startswith("<"):
-                if current:
-                    pairs.append((current, part if part in _OPERATORS else None))
-                current = []
-            else:
-                current.append(part)
-    if current:
-        pairs.append((current, None))
+        if isinstance(token, _ControlOperator):
+            if current:
+                pairs.append((current, token))
+            current = []
+        elif isinstance(token, _SubstitutionOpen):
+            enclosing.append(current)
+            current = []
+        elif isinstance(token, _SubstitutionClose):
+            if current:
+                pairs.append((current, None))
+            current = enclosing.pop()
+        elif not isinstance(token, _Redirection) and not drop_target:
+            current.append(token)
+        drop_target = isinstance(token, _Redirection)
+    for segment in [current, *reversed(enclosing)]:
+        if segment:
+            pairs.append((segment, None))
     return pairs
 
 
 def _shell_operators(text: str) -> list[str]:
-    """Return the control operators present in a shell fragment.
+    """Return the unquoted control operators in a shell fragment, in order.
 
     Used to assert that a file-list command substitution is a single simple
     command: `$(resolver || true)` neutralizes the resolver's exit-1-on-empty
-    contract, and the only visible trace is the operator.
+    contract, and the only visible trace is the operator. Unlike
+    `_segments_with_operators`, it also reports an operator that follows no
+    command, the conservative direction for a check that refuses any operator.
     """
-    found: list[str] = []
-    for token in _safe_split(text):
-        found.extend(part for part in re.split(r"(;|&&|\|\||\||&)", token) if part in _OPERATORS)
-    return found
+    return [token for token in _safe_split(text) if isinstance(token, _ControlOperator)]
+
+
+def _expand_tokens(tokens: list[str], env: dict[str, Any]) -> list[str]:
+    """Expand variables in the plain words of a `_safe_split` stream.
+
+    Shared by the re-expanding consumers (`_python_invocations`,
+    `_copy_commands`, `_third_party_invocations`). A plain word is re-split on
+    whitespace after expansion, so an expanded array reference carries each
+    element as its own argv entry; the pieces are plain words, so a quoted
+    `'x ; y'` never yields an operator. Typed `_ShellSyntax` tokens bypass
+    `_expand`, so they are never expanded or re-split and their type survives
+    whatever `_expand` returns. A redirection target is expanded but not
+    re-split, so the whole target is dropped (`> 'r e.txt'` does not leave
+    `e.txt` in argv) and a target that expands to nothing still occupies the
+    target position.
+    """
+    expanded: list[str] = []
+    after_redirection = False
+    for token in tokens:
+        if isinstance(token, _ShellSyntax):
+            expanded.append(token)
+        elif after_redirection:
+            expanded.append(_expand(token, env))
+        else:
+            expanded.extend(_expand(token, env).split())
+        after_redirection = isinstance(token, _Redirection)
+    return expanded
+
+
+def _record_assignment(name: str, value: str, env: dict[str, Any], substitutions: dict[str, str] | None) -> None:
+    """Record one `_ASSIGN_RE` assignment in `env`, as the re-expanding consumers read it.
+
+    Shared by `_python_invocations`, `_copy_commands` and
+    `_third_party_invocations`. An array `X=( ... )` stores its expanded
+    elements as a list; a scalar stores its expanded first word.
+
+    A command substitution is not statically resolvable. With `substitutions`
+    None, the name is recorded as known-but-empty, so downstream references
+    expand away rather than being left as literal `${VAR}` text. With a dict,
+    the command is recorded there and the reference is preserved so a caller
+    can run the command. The recognised spelling is the bare `$(...)` or
+    backtick value; a quoted (`"$(cmd)"`) or trailing-comment spelling records
+    an empty command (`_substitution_command`).
+
+    Typed tokens inside an array literal pass through `_expand` unchanged and
+    reach argv as plain `str` through `_lookup`'s `" ".join`; the redirection
+    pin in `TestAssignmentHandlingContract` relies on this.
+    """
+    if "$(" in value or "`" in value:
+        if substitutions is None:
+            env[name] = ""
+        else:
+            substitutions[name] = _substitution_command(value)
+            # Expanding to itself is a fixed point, so `_expand`'s bounded loop
+            # terminates on the first pass and the placeholder survives into argv.
+            env[name] = f"${{{name}}}"
+    elif value.startswith("(") and value.endswith(")"):
+        env[name] = [_expand(element, env) for element in _safe_split(value[1:-1])]
+    else:
+        parts = _safe_split(value)
+        env[name] = _expand(parts[0], env) if parts else ""
+
+
+def _strip_leading_words(segment: list[str]) -> list[str]:
+    """Drop shell keywords and variable assignments from the front of a simple command.
+
+    `if check-jsonschema ...; then` and `FOO=bar check-jsonschema ...` both put
+    a non-command token in `segment[0]`; the scans use this to reach the actual
+    command word instead of matching the keyword in front of it.
+
+    The assignment clause is live only for the segment-level scans (`_set_options`,
+    the guard checks, the `cd` and `pytest` scans). `_python_invocations`,
+    `_copy_commands` and `_third_party_invocations` skip any line starting with an
+    assignment (the `_ASSIGN_RE` line pre-check) before it reaches here, so
+    `FOO=bar check-jsonschema ...` is not found by them (`TestKnownScanLimits`).
+    """
+    trimmed = list(segment)
+    while trimmed and (trimmed[0] in _LEADING_WORDS or _TOKEN_ASSIGN_RE.match(trimmed[0])):
+        trimmed = trimmed[1:]
+    return trimmed
 
 
 def _set_options(run_block: str, sign: str) -> list[str]:
@@ -484,8 +720,7 @@ def _set_options(run_block: str, sign: str) -> list[str]:
         if not stripped or stripped.startswith("#"):
             continue
         for segment in _split_simple_commands(_safe_split(stripped)):
-            while segment and (segment[0] in _LEADING_WORDS or _TOKEN_ASSIGN_RE.match(segment[0])):
-                segment = segment[1:]
+            segment = _strip_leading_words(segment)
             if segment and segment[0] == "set":
                 options.extend(word for word in segment[1:] if word.startswith(sign))
     return options
@@ -555,37 +790,16 @@ def _python_invocations(script_text: str, source: str, keep_substitutions: bool 
 
         assignment = _ASSIGN_RE.match(raw_line)
         if assignment:
-            name, value = assignment.group(1), assignment.group(2).strip()
-            if "$(" in value or "`" in value:
-                # Command substitution is not statically resolvable. Either
-                # record the name as known-but-empty so downstream references
-                # expand away rather than being left as literal `${VAR}` text,
-                # or preserve the reference so a caller can run the command.
-                if keep_substitutions:
-                    substitutions[name] = _substitution_command(value)
-                    # Expanding to itself is a fixed point, so `_expand`'s
-                    # bounded loop terminates on the first pass and the
-                    # placeholder survives into argv.
-                    env[name] = f"${{{name}}}"
-                else:
-                    env[name] = ""
-            elif value.startswith("(") and value.endswith(")"):
-                env[name] = [_expand(element, env) for element in _safe_split(value[1:-1])]
-            else:
-                parts = _safe_split(value)
-                env[name] = _expand(parts[0], env) if parts else ""
+            _record_assignment(
+                assignment.group(1),
+                assignment.group(2).strip(),
+                env,
+                substitutions if keep_substitutions else None,
+            )
             continue
 
-        tokens: list[str] = []
-        for token in _safe_split(stripped):
-            expansion = _expand(token, env)
-            # An expanded array reference carries several arguments in one
-            # token; re-split so each becomes its own argv entry.
-            tokens.extend(expansion.split())
-
-        for segment in _split_simple_commands(tokens):
-            while segment and (segment[0] in _LEADING_WORDS or _TOKEN_ASSIGN_RE.match(segment[0])):
-                segment = segment[1:]
+        for segment in _split_simple_commands(_expand_tokens(_safe_split(stripped), env)):
+            segment = _strip_leading_words(segment)
             if not segment:
                 continue
 
@@ -623,7 +837,8 @@ _RELOCATING_COMMANDS = frozenset({"cp", "mv", "install", "ln", "rsync"})
 def _copy_commands(script_text: str, source: str) -> list[CopyCommand]:
     """Return every file-relocating command in a shell script, variables expanded.
 
-    Shares `_python_invocations`'s assignment tracking so a copy whose source or
+    Shares `_python_invocations`'s assignment tracking (`_record_assignment`,
+    never keeping substitutions) so a copy whose source or
     destination is built from a shell variable is still seen. An implementer
     extending the copy-to-root pattern would plausibly write
     `cp ${PRECOMMIT_DIR}/validate_prose_references.py .`, and a scan that only
@@ -646,24 +861,12 @@ def _copy_commands(script_text: str, source: str) -> list[CopyCommand]:
 
         assignment = _ASSIGN_RE.match(raw_line)
         if assignment:
-            name, value = assignment.group(1), assignment.group(2).strip()
-            if "$(" in value or "`" in value:
-                env[name] = ""
-            elif value.startswith("(") and value.endswith(")"):
-                env[name] = [_expand(element, env) for element in _safe_split(value[1:-1])]
-            else:
-                parts = _safe_split(value)
-                env[name] = _expand(parts[0], env) if parts else ""
+            # Never keeps substitutions: a copy operand built from one expands away.
+            _record_assignment(assignment.group(1), assignment.group(2).strip(), env, None)
             continue
 
-        tokens: list[str] = []
-        for token in _safe_split(stripped):
-            expansion = _expand(token, env)
-            tokens.extend(expansion.split())
-
-        for segment in _split_simple_commands(tokens):
-            while segment and (segment[0] in _LEADING_WORDS or _TOKEN_ASSIGN_RE.match(segment[0])):
-                segment = segment[1:]
+        for segment in _split_simple_commands(_expand_tokens(_safe_split(stripped), env)):
+            segment = _strip_leading_words(segment)
             if not segment or Path(segment[0]).name not in _RELOCATING_COMMANDS:
                 continue
 
@@ -963,6 +1166,1000 @@ class TestParserFidelity:
             f"GRAPH_EMISSION_FLAGS names flags validate_riskmap.py does not accept: {missing}. "
             "D3 would prohibit a pairing that can no longer occur."
         )
+
+
+# Tokenizer contract cases: (shell line, expected (simple command, following
+# operator) pairs). The expected segments and operators of the other two
+# helpers are derived from the pairs, because their agreement is itself part
+# of the contract (TestShellTokenizerHonoursQuoting).
+
+# Clause 1: separators, redirection characters and `#` inside quotes, or
+# escaped with a backslash, are literal text.
+_TOKENIZER_QUOTED_CASES = [
+    pytest.param("echo 'a;b'", [(["echo", "a;b"], None)], id="single-quoted-semicolon"),
+    pytest.param('echo "x && y"', [(["echo", "x && y"], None)], id="double-quoted-and"),
+    pytest.param("echo 'a|b'", [(["echo", "a|b"], None)], id="single-quoted-pipe"),
+    pytest.param('echo "a || b & c"', [(["echo", "a || b & c"], None)], id="double-quoted-or-and-background"),
+    pytest.param("npm --prefix 'a;b' ci", [(["npm", "--prefix", "a;b", "ci"], None)], id="quoted-option-value"),
+    pytest.param("echo 'a&&npm' ci", [(["echo", "a&&npm", "ci"], None)], id="quoted-and-joined-to-word"),
+    pytest.param("echo ';' '&&' \"|\"", [(["echo", ";", "&&", "|"], None)], id="lone-quoted-operators"),
+    pytest.param("echo '> note' \"<in\"", [(["echo", "> note", "<in"], None)], id="quoted-redirection-characters"),
+    pytest.param("echo 'x ; y'", [(["echo", "x ; y"], None)], id="quoted-spaced-separator"),
+    pytest.param("npm --prefix=x';'y ci", [(["npm", "--prefix=x;y", "ci"], None)], id="quote-inside-word"),
+    pytest.param(r"echo a\;b a\&\&b", [(["echo", "a;b", "a&&b"], None)], id="backslash-escaped-operators"),
+    pytest.param(r'echo "a\"; npm ci"', [(["echo", 'a"; npm ci'], None)], id="escaped-quote-inside-double-quotes"),
+    # Inside double quotes `\\` is an escaped backslash: one `\` in the word.
+    pytest.param(r'echo "a\\b"', [(["echo", "a\\b"], None)], id="escaped-backslash-inside-double-quotes"),
+    # A quoted digit glued to a redirection is an argument, not an fd prefix.
+    pytest.param('echo "2">f', [(["echo", "2"], None)], id="quoted-digit-before-redirection-is-an-argument"),
+    pytest.param(
+        'echo "x && y" && npm ci',
+        [(["echo", "x && y"], "&&"), (["npm", "ci"], None)],
+        id="quoted-then-unquoted-operator",
+    ),
+    pytest.param(
+        "echo 'a|b'|grep a",
+        [(["echo", "a|b"], "|"), (["grep", "a"], None)],
+        id="quoted-word-glued-to-operator",
+    ),
+    pytest.param(
+        'echo "# a;b" && npm ci',
+        [(["echo", "# a;b"], "&&"), (["npm", "ci"], None)],
+        id="quoted-hash-is-not-a-comment",
+    ),
+]
+
+# Clause 2: unquoted control operators split, whether or not whitespace
+# surrounds them. The five single-token `_OPERATORS` are the baseline;
+# `case-terminator` and `pipe-both-streams` pin the two-character operators.
+_TOKENIZER_UNQUOTED_CASES = [
+    pytest.param("a;b", [(["a"], ";"), (["b"], None)], id="glued-semicolon"),
+    pytest.param("a ; b", [(["a"], ";"), (["b"], None)], id="spaced-semicolon"),
+    pytest.param("npm ci --force;", [(["npm", "ci", "--force"], ";")], id="trailing-semicolon-on-option"),
+    pytest.param("x&&y", [(["x"], "&&"), (["y"], None)], id="glued-and"),
+    pytest.param("a||b", [(["a"], "||"), (["b"], None)], id="glued-or"),
+    pytest.param("a|b", [(["a"], "|"), (["b"], None)], id="glued-pipe"),
+    pytest.param("a &", [(["a"], "&")], id="trailing-background"),
+    pytest.param("a& b", [(["a"], "&"), (["b"], None)], id="glued-background"),
+    pytest.param(
+        "a && b || c; d | e & f",
+        [(["a"], "&&"), (["b"], "||"), (["c"], ";"), (["d"], "|"), (["e"], "&"), (["f"], None)],
+        id="every-operator-in-order",
+    ),
+    # `;;` (case-clause terminator) is one operator token, not two `;`.
+    pytest.param('"skipped") echo skip ;;', [(["skipped)", "echo", "skip"], ";;")], id="case-terminator"),
+    # `|&` (pipe stdout and stderr) is one operator token, not `|` then `&`.
+    pytest.param("a |& b", [(["a"], "|&"), (["b"], None)], id="pipe-both-streams"),
+]
+
+# Clause 4: an unquoted `#` at the start of a word begins a comment; a `#`
+# inside a word is literal (shell semantics; `shlex` differs and truncates the
+# line there). The two mid-word cases are where the two rules differ.
+_TOKENIZER_COMMENT_CASES = [
+    pytest.param("cmd # a;b", [(["cmd"], None)], id="separator-inside-comment"),
+    pytest.param("cmd; # x && y", [(["cmd"], ";")], id="comment-after-operator"),
+    pytest.param("a;#c", [(["a"], ";")], id="comment-glued-after-operator"),
+    pytest.param("echo '#' x", [(["echo", "#", "x"], None)], id="quoted-hash-word"),
+    pytest.param("echo a#b c", [(["echo", "a#b", "c"], None)], id="mid-word-hash-is-literal"),
+    pytest.param(
+        "if [ ${#mermaid_files[@]} -eq 0 ]; then",
+        [(["if", "[", "${#mermaid_files[@]}", "-eq", "0", "]"], ";"), (["then"], None)],
+        id="array-length-expansion",
+    ),
+]
+
+# Clause 3: a redirection operator (optionally fd-prefixed: `2>`, `10>`, `>>`,
+# `<`, `<<`, `<<<`, `>|`, `>&`, `&>`, `&>>`) and its target word are removed
+# from the stream. They neither end the simple command nor appear in it, and
+# they are never control operators.
+_TOKENIZER_REDIRECTION_CASES = [
+    pytest.param("cmd 2>&1 | tee x", [(["cmd"], "|"), (["tee", "x"], None)], id="stderr-to-stdout-then-pipe"),
+    pytest.param("cmd >&2", [(["cmd"], None)], id="stdout-to-stderr"),
+    pytest.param("cmd 1>&2 && next", [(["cmd"], "&&"), (["next"], None)], id="fd-dup-then-and"),
+    pytest.param("cmd &>file", [(["cmd"], None)], id="both-streams-glued-target"),
+    pytest.param("cmd &>> file; next", [(["cmd"], ";"), (["next"], None)], id="both-streams-append"),
+    pytest.param('cmd >> "$GITHUB_OUTPUT"', [(["cmd"], None)], id="append-to-github-output"),
+    pytest.param(
+        'echo "status=success" >> $GITHUB_OUTPUT',
+        [(["echo", "status=success"], None)],
+        id="workflow-status-line",
+    ),
+    pytest.param("cmd > out", [(["cmd"], None)], id="spaced-target"),
+    pytest.param("cmd >out", [(["cmd"], None)], id="glued-target"),
+    pytest.param("cmd < in", [(["cmd"], None)], id="input-redirection"),
+    pytest.param("cat <<EOF", [(["cat"], None)], id="heredoc-marker"),
+    pytest.param('cmd > "a b"', [(["cmd"], None)], id="quoted-target"),
+    pytest.param("cmd > 'a;b'", [(["cmd"], None)], id="quoted-target-holding-separator"),
+    pytest.param("cmd 2> err; next", [(["cmd"], ";"), (["next"], None)], id="stderr-to-file-then-semicolon"),
+    pytest.param("cmd 2>/dev/null || true", [(["cmd"], "||"), (["true"], None)], id="stderr-discarded-then-or"),
+    pytest.param("cmd > out || true", [(["cmd"], "||"), (["true"], None)], id="redirect-then-or-guard"),
+    pytest.param("cmd > out arg", [(["cmd", "arg"], None)], id="word-after-target-is-an-argument"),
+    pytest.param("echo 2 > f", [(["echo", "2"], None)], id="spaced-digit-is-an-argument"),
+    pytest.param("echo a2>f", [(["echo", "a2"], None)], id="digit-ending-a-word-is-not-an-fd"),
+    pytest.param("cmd 10>f", [(["cmd"], None)], id="multi-digit-fd"),
+    pytest.param('cmd <<< "$x" && next', [(["cmd"], "&&"), (["next"], None)], id="here-string"),
+    pytest.param("cmd >| f; next", [(["cmd"], ";"), (["next"], None)], id="clobber-redirection"),
+    pytest.param("cmd <&3 && next", [(["cmd"], "&&"), (["next"], None)], id="input-fd-duplication"),
+]
+
+# Clause 3a: process substitution `<(...)` / `>(...)` is not a redirection. Its
+# inner command is a simple command of its own (so a psub-wrapped validator
+# makes its step a gate step, whose body TestGateStepFailsTheJob executes;
+# bash discards the substitution's exit status, so the structural scans alone
+# are not safe on that shape), and words after the closing
+# `)` still belong to the enclosing command. Segments are listed in the order
+# they END, so an inner command precedes the command that encloses it, and an
+# operator after `)` is reported with the enclosing command. A `<` whose target
+# is a process substitution consumes nothing: the substitution still surfaces.
+_TOKENIZER_PROCESS_SUBSTITUTION_CASES = [
+    pytest.param(
+        "diff <(python3 scripts/hooks/x.py --block) y",
+        [(["python3", "scripts/hooks/x.py", "--block"], None), (["diff", "y"], None)],
+        id="input-substitution",
+    ),
+    pytest.param(
+        "tee >(grep err) out",
+        [(["grep", "err"], None), (["tee", "out"], None)],
+        id="output-substitution",
+    ),
+    pytest.param(
+        "cmd <(a && b) || true",
+        [(["a"], "&&"), (["b"], None), (["cmd"], "||"), (["true"], None)],
+        id="operators-inside-and-after",
+    ),
+    pytest.param(
+        "mapfile -t f < <(find x -type f) extra",
+        [(["find", "x", "-type", "f"], None), (["mapfile", "-t", "f", "extra"], None)],
+        id="redirected-from-substitution",
+    ),
+    pytest.param("echo '<(x)'", [(["echo", "<(x)"], None)], id="quoted-substitution-is-text"),
+    # Parentheses nested inside the substitution are counted, so the `)` that
+    # closes `$(g x)` is a word character and only the last `)` closes `<(`.
+    pytest.param(
+        "diff <(f $(g x) --block) h",
+        [(["f", "$(g", "x)", "--block"], None), (["diff", "h"], None)],
+        id="nested-command-substitution-inside",
+    ),
+    pytest.param(
+        "diff <(f $((1 + 2)) --block) h",
+        [(["f", "$((1", "+", "2))", "--block"], None), (["diff", "h"], None)],
+        id="nested-arithmetic-inside",
+    ),
+]
+
+# Clause 5: lines `shlex` cannot parse: an unbalanced quote, or a trailing
+# backslash (`shlex` raises "No escaped character"; reachable because every
+# scan except the D10a detector reads a `run:` body line by line, without
+# joining continuations). No quoting information survives, so the whole line
+# is treated as unquoted text. Each entry: (line, exact operators).
+_TOKENIZER_UNBALANCED_LINES = [
+    pytest.param('echo "oops; npm ci', [";"], id="glued-semicolon"),
+    pytest.param('echo "oops && npm ci', ["&&"], id="spaced-and"),
+    pytest.param("echo it's && npm ci", ["&&"], id="apostrophe"),
+    pytest.param("npm ci && echo \\", ["&&"], id="trailing-backslash"),
+]
+
+# The real validate_mermaid.yml line: a process substitution left open by a
+# backslash continuation, read line by line. It reaches the clause 5 fallback
+# (trailing backslash), where the backslash is a literal word; the open
+# substitution's inner command ends at the end of the line, before the
+# enclosing `mapfile`.
+_MAPFILE_CONTINUATION_LINE = "mapfile -t mermaid_files < <(find ${MERMAID_PATH} \\"
+_MAPFILE_CONTINUATION_PAIRS = [
+    (["find", "${MERMAID_PATH}", "\\"], None),
+    (["mapfile", "-t", "mermaid_files"], None),
+]
+
+
+def _tokenizer_case_texts() -> list[str]:
+    """Return every shell line from the tokenizer case tables above."""
+    tables = (
+        _TOKENIZER_QUOTED_CASES,
+        _TOKENIZER_UNQUOTED_CASES,
+        _TOKENIZER_COMMENT_CASES,
+        _TOKENIZER_REDIRECTION_CASES,
+        _TOKENIZER_PROCESS_SUBSTITUTION_CASES,
+        _TOKENIZER_UNBALANCED_LINES,
+    )
+    return [case.values[0] for table in tables for case in table] + [_MAPFILE_CONTINUATION_LINE]
+
+
+def _workflow_run_lines() -> list[str]:
+    """Return every stripped, non-blank line of every workflow `run:` body."""
+    lines: list[str] = []
+    for step in _iter_workflow_steps():
+        lines.extend(line.strip() for line in step.run.splitlines() if line.strip())
+    return lines
+
+
+class TestShellTokenizerHonoursQuoting:
+    """Contract for the shell tokenization shared by every `run:`-body scan.
+
+    Defects guarded against: a tokenizer that discards quoting, or helpers
+    that re-split each token on `;`, `&&`, `||`, `|`, `&`. Separators inside
+    quotes would then read as operators (`echo 'a&&npm' ci` would produce an
+    `npm ci` command; `npm --prefix 'a;b' ci` would sever `ci` from `npm`),
+    and `2>&1` would split on its `&` into an `&` operator and a spurious `1`
+    command. The operator splitting lives once, in the shared tokenization.
+
+    Contract: one quote-aware tokenization emits each unquoted control operator
+    (`;`, `&&`, `||`, `|`, `&`, `;;`, `|&`) and each redirection as its own
+    token and keeps quoted text intact as one word with the quotes removed, as
+    `shlex` does. The three helpers consume that
+    tokenization instead of re-splitting words. Pinned through the public
+    composition the scans use, `_split_simple_commands(_safe_split(line))`,
+    `_segments_with_operators(_safe_split(line))` and `_shell_operators(line)`:
+
+      1. Quoted or backslash-escaped text is never an operator or a
+         redirection, including a word that is only `;` or `>`.
+      2. Unquoted operators split, glued to words or not, and are reported in
+         order with the segment they follow. `;;` and `|&` are one operator.
+      3. A redirection (`>`, `>>`, `<`, `<<`, `<<<`, `>|`, `>&`, `<&`, `&>`,
+         `&>>`, optionally fd-prefixed) and its target word are removed: they
+         do not end the simple command, do not appear in it, and are not
+         operators. Digits are an fd only when they are the whole word glued
+         to the redirection (`2>&1`, `10>f`); `echo 2 > f` and `echo a2>f`
+         keep `2` and `a2` as arguments. The target is the next word only: an
+         operator is never consumed as a target, so `cmd > ; next` (a bash
+         syntax error) yields `['cmd']`, `;`, `['next']` (stated, not tested).
+      3a. Process substitution `<(...)` / `>(...)` is not a redirection: its
+         inner command is a segment of its own, so the scans see that it
+         runs. This is NOT safe for the structural scans on its own: bash
+         discards a substitution's exit status, so a psub-wrapped `--block`
+         validator satisfies D1 coverage and shows no `|| true` guard while
+         the step exits 0 on a failing validator. What makes it safe is that
+         surfacing the inner command makes the step a gate step
+         (`_gate_steps`), and `TestGateStepFailsTheJob` then executes the body
+         and fails it. Segments are listed in the order they end, so the inner
+         command precedes its enclosing command, which keeps the words after
+         `)` and the operator after them.
+      4. An unquoted word-initial `#` starts a comment. A quoted `#`, or a `#`
+         inside a word (`a#b`, `${#arr[@]}`), is literal, as in the shell.
+      5. A line `shlex` cannot parse (unbalanced quote, trailing backslash) is
+         still tokenized, with every character treated as unquoted, so its
+         commands stay visible to the scans.
+      6. The three helpers agree on every input, except that an operator
+         following no command is reported by `_shell_operators` only.
+      7. The re-expanding consumers (`_python_invocations`, `_copy_commands`,
+         `_third_party_invocations`) keep the tokenizer's quoting decisions:
+         re-splitting an expanded word on whitespace never creates an
+         operator.
+
+    Regression net: every other test in this module exercises these helpers
+    against the real workflows, so no golden snapshot of tokenized workflow
+    lines is kept here. Operator-free lines are additionally pinned to
+    tokenize exactly as `shlex.split` does. One real-line verdict follows
+    from the quoting rule: validate_tables.yml's
+    `echo "::error::... mkdir -p risk-map/tables && python3
+    scripts/hooks/yaml_to_markdown.py ..."` is not a Python invocation,
+    because the quoted text is one `echo` argument (pinned in
+    `test_the_validate_tables_error_hint_is_not_an_invocation`).
+    """
+
+    @staticmethod
+    def _assert_tokenizes_to(text: str, pairs: list[tuple[list[str], str | None]]) -> None:
+        """Assert all three helpers produce the pairs, segments and operators expected."""
+        segments = [segment for segment, _ in pairs]
+        operators = [operator for _, operator in pairs if operator is not None]
+        assert _segments_with_operators(_safe_split(text)) == pairs, f"(segment, operator) pairs of {text!r}"
+        assert _split_simple_commands(_safe_split(text)) == segments, f"segments of {text!r}"
+        assert _shell_operators(text) == operators, f"operators of {text!r}"
+
+    @pytest.mark.parametrize("text, pairs", _TOKENIZER_QUOTED_CASES)
+    def test_quoted_text_is_never_split_or_read_as_an_operator(self, text, pairs):
+        """
+        Given: a line whose separators, redirection characters or `#` sit
+               inside single or double quotes, or behind a backslash
+        When: it is tokenized and split into simple commands
+        Then: each quoted word is one argument with its quotes removed, and
+              only the unquoted operators split or are reported
+
+        Clause 1. A tokenizer that re-splits the quote-stripped word on
+        separators, or reads a quoted word starting with `>` or `<` as a
+        redirection, fails these cases.
+        Mutation caught: any word-level re-split of `_safe_split` output; a
+        tokenizer that recognizes operators by string value instead of by
+        quoting, so `echo ';'` loses its argument.
+        """
+        self._assert_tokenizes_to(text, pairs)
+
+    @pytest.mark.parametrize("text, pairs", _TOKENIZER_UNQUOTED_CASES)
+    def test_unquoted_operators_split_with_or_without_whitespace(self, text, pairs):
+        """
+        Given: a line with unquoted control operators, glued to words or spaced
+        When: it is tokenized and split into simple commands
+        Then: each operator ends a simple command, is reported with the
+              segment it follows, and appears in `_shell_operators` in order
+
+        Clause 2. These cases are the control that keeps quote handling from
+        dropping operator splitting. `case-terminator` needs `;;` as one token
+        for the helpers to agree on the validate_mermaid.yml `case` body
+        (clause 6); `pipe-both-streams` needs `|&` as one operator, not `|`
+        then `&`.
+        Mutation caught: a quote-aware tokenizer that splits operators only
+        when whitespace surrounds them, so `--force;` or `x&&y` stays one word;
+        `;;` read as two `;`; `|&` read as a pipe plus a background `&`.
+        """
+        self._assert_tokenizes_to(text, pairs)
+
+    @pytest.mark.parametrize("text, pairs", _TOKENIZER_COMMENT_CASES)
+    def test_unquoted_comments_are_stripped(self, text, pairs):
+        """
+        Given: a line with a trailing comment containing operators, a quoted
+               `#` word, or a `#` inside a word (`a#b`, the
+               `${#mermaid_files[@]}` array length in validate_mermaid.yml)
+        When: it is tokenized and split into simple commands
+        Then: the comment contributes no word and no operator; the quoted and
+              mid-word `#` are literal argument text
+
+        Clause 4. `shlex.split(comments=True)` agrees on every case except the
+        two mid-word ones: `shlex` starts a comment at any `#`, truncating
+        `if [ ${#mermaid_files[@]} -eq 0 ]; then` to `['if', '[', '$']`. The
+        quoted `#` followed by a separator is in the quoted table.
+        Mutation caught: a replacement tokenizer that drops comment handling,
+        so `cmd # a;b` reports `;`; one that keeps shlex's mid-word comment
+        rule.
+        """
+        self._assert_tokenizes_to(text, pairs)
+
+    @pytest.mark.parametrize("text, pairs", _TOKENIZER_REDIRECTION_CASES)
+    def test_redirections_are_removed_and_never_operators(self, text, pairs):
+        """
+        Given: a line with a redirection: an fd duplication (`2>&1`, `>&2`),
+               both-stream (`&>`, `&>>`), file, input, heredoc, here-string
+               (`<<<`), clobber (`>|`), fd-prefixed (`2>`, `10>`), or a quoted
+               target
+        When: it is tokenized and split into simple commands
+        Then: the redirection and its target word vanish, the command keeps
+              its own words (including words after the target), and the
+              operator after the redirection is reported with that command
+
+        Clause 3. Shapes at risk: the `&`-bearing forms (an `&` operator plus
+        a `1`/`2` segment if split), the fd-glued forms `2>`, `10>f`, `a2>f`
+        (kept whole as an argument if not recognized), `>|` (a `|` operator if
+        misread), and every spaced target (a target that starts a new segment
+        makes `cmd > out || true` attribute `||` to `out`, not `cmd`). The
+        bare glued `cmd >out` is the baseline.
+        Mutation caught: splitting `2>&1` on `&`; treating the redirection as
+        a segment boundary, which hides a `|| true` guard on a redirected
+        validator from `_or_guarded_validator_lines`; absorbing a spaced digit,
+        or the digit ending a longer word, as an fd number; reading `>|` as a
+        pipe.
+        """
+        self._assert_tokenizes_to(text, pairs)
+
+    @pytest.mark.parametrize("text, pairs", _TOKENIZER_PROCESS_SUBSTITUTION_CASES)
+    def test_process_substitution_surfaces_its_inner_command(self, text, pairs):
+        """
+        Given: a line with `<(...)` or `>(...)`, alone or as the target of `<`
+        When: it is tokenized and split into simple commands
+        Then: the inner command is its own segment, listed before the
+              enclosing command, which keeps its words after `)` and the
+              operator that follows them
+
+        Clause 3a (prime ruling). A process substitution runs a command, so
+        the scans must see it; reading `<(` as a redirection would drop the
+        inner command word. Seeing it does not make the structural scans
+        correct on a psub-wrapped validator (bash discards its exit status);
+        it makes the step a gate step, so the behavioural arm runs it (see
+        `test_a_process_substituted_validator_does_not_fail_its_step`).
+        Order is "segments in the order they end" so that
+        `cmd <(a && b) || true` still reports `||` with `cmd`, as the
+        `|| true` guard detector requires. A tokenizer that discards `<(python3`
+        as a redirection folds the rest into one segment. The quoted case is
+        a control: `'<(x)'` is text.
+        Mutation caught: treating `<(` as a redirection whose target is
+        dropped; emitting the inner command after the outer one with the
+        outer's post-`)` words in a separate segment, which detaches `||`
+        from `cmd`.
+        """
+        self._assert_tokenizes_to(text, pairs)
+
+    def test_the_open_mapfile_substitution_line_still_shows_both_commands(self):
+        """
+        Given: the real validate_mermaid.yml line
+               `mapfile -t mermaid_files < <(find ${MERMAID_PATH} \\`, whose
+               substitution closes on a later line
+        When: it is tokenized line by line, as the per-line scans read it
+        Then: it does not raise, and yields the `find` segment (ending at end
+              of line, backslash kept as a literal word in the fallback) then
+              the `mapfile` segment, with no operators
+
+        Clauses 3a and 5 together. The trailing backslash sends the line to
+        the unquoted fallback; an unclosed substitution ends at end of line.
+        Dropping `<(find` as a redirection would leave no segment starting
+        with `find`.
+        Mutation caught: a fallback that skips substitution handling, or a
+        scanner that raises on an unclosed `(`.
+        """
+        self._assert_tokenizes_to(_MAPFILE_CONTINUATION_LINE, _MAPFILE_CONTINUATION_PAIRS)
+
+    @pytest.mark.parametrize("text, operators", _TOKENIZER_UNBALANCED_LINES)
+    def test_unparseable_lines_degrade_without_hiding_commands(self, text, operators):
+        """
+        Given: a line `shlex` rejects: an unbalanced quote, or a trailing
+               backslash
+        When: it is tokenized, split, and scanned by the D10a detector
+        Then: the tokens are non-empty, `npm ci` is a simple command of its
+              own, `_shell_operators` returns exactly the line's operators,
+              and the detector matches
+
+        Clause 5, the existing `_safe_split` contract: an unparsed line is an
+        unpoliced line. Without quoting information the line is read as
+        unquoted, so operators glued to words still split (`"oops;`). The
+        words of the other segments (which keep stray quote characters) are
+        not pinned. This is the control that keeps the fallback from dropping
+        operator splitting on the whitespace path.
+        Mutation caught: a fallback that only splits on whitespace, leaving
+        `"oops;` as one word so `npm` is no longer a command word; a fallback
+        that reports an operator twice or not at all.
+        """
+        assert _safe_split(text), f"{text!r} tokenized to nothing"
+        assert ["npm", "ci"] in _split_simple_commands(_safe_split(text))
+        assert _shell_operators(text) == operators
+        assert _runs_npm_install_family(text)
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "python3 scripts/hooks/validate_riskmap.py --block ${FILES}",
+            "echo 'a b' \"c d\" plain",
+            "npm --prefix 'a;b' ci",
+            'echo "#x" y # trailing',
+            r'echo "a\"b" c\ d',
+            'echo "" x',
+        ],
+        ids=["plain-words", "quoted-words", "quoted-separator", "comment", "escapes", "empty-quoted-word"],
+    )
+    def test_operator_free_lines_tokenize_as_shlex_does(self, text):
+        """
+        Given: a line with no unquoted operator, redirection, or mid-word `#`
+        When: `_safe_split` tokenizes it
+        Then: the tokens equal `shlex.split(text, comments=True)`
+
+        `_safe_split` has callers that use its tokens directly
+        (`hook_id in _safe_split(command)`, `_hook_script`, variable
+        assignments), so the quote-aware tokenizer must keep shlex's word
+        values: quotes removed, escapes resolved, comments dropped, and an
+        empty quoted word kept as `''`. Mid-word `#` is excluded because
+        `shlex` is non-conforming there: it starts a comment at `a#b`, where
+        the shell keeps a literal word (clause 4 pins the shell behaviour).
+        Mutation caught: a tokenizer that keeps quote characters in words,
+        stops resolving backslash escapes, or drops empty quoted words.
+        """
+        assert _safe_split(text) == shlex.split(text, comments=True)
+
+    @pytest.mark.parametrize("text", _tokenizer_case_texts())
+    def test_the_three_helpers_agree_on_every_case(self, text):
+        """
+        Given: every line in the tokenizer case tables, including the
+               unbalanced-quote lines
+        When: `_split_simple_commands`, `_segments_with_operators` and
+              `_shell_operators` read it
+        Then: the segments equal the segment halves of the pairs, and the
+              pairs' operators equal `_shell_operators`
+
+        Clause 6. Its job is to stop the three helpers drifting, since one
+        tokenization feeds all three. Helpers with private re-splits diverge
+        wherever an operator follows no word (`echo ';' '&&' "|"` re-split
+        into bare operators, `cmd >&2` split into `>`, `&`, `2`, the second
+        `;` of a `;;` terminator, the `&` of `|&`, the `|` of `>|`, the `&&`
+        inside a `<(a && b)` whose `<(a` was discarded): `_shell_operators`
+        reports the operator but it has no pair.
+        Mutation caught: one helper keeping a private re-split, or
+        `_shell_operators` tokenizing differently from the other two.
+        """
+        pairs = _segments_with_operators(_safe_split(text))
+        assert _split_simple_commands(_safe_split(text)) == [segment for segment, _ in pairs]
+        assert _shell_operators(text) == [operator for _, operator in pairs if operator is not None]
+
+    def test_an_operator_after_no_command_is_reported_without_a_pair(self):
+        """
+        Given: a line that is only `;;`, the case-clause terminator shape in
+               validate_mermaid.yml
+        When: the three helpers read it
+        Then: there are no segments and no pairs, and `_shell_operators`
+              reports the single operator `;;`
+
+        Decided edge: a pair needs a simple command for the operator to
+        follow, so an operator after no command appears only in
+        `_shell_operators`. Reporting it there is the conservative direction
+        for the file-list check, which refuses any operator. This is the one
+        exception to strict operator agreement (clause 6).
+        Mutation caught: `;;` split into two `;`; an empty segment emitted to
+        carry the operator.
+        """
+        assert _split_simple_commands(_safe_split(";;")) == []
+        assert _segments_with_operators(_safe_split(";;")) == []
+        assert _shell_operators(";;") == [";;"]
+
+    def test_the_three_helpers_agree_on_every_workflow_run_line(self):
+        """
+        Given: every non-blank line of every real workflow `run:` body
+        When: the three helpers read it
+        Then: the segments agree on every line; the pairs' operators equal
+              `_shell_operators` on every line that does not begin with an
+              operator or a redirection, and are an in-order subsequence of it
+              on the lines that do
+
+        Clause 6 over production input, with its stated exception. Assumption,
+        made explicit: the only place an operator can follow no command in a
+        real workflow line is the line start (a `;;` case terminator, or a
+        continuation line such as `2>/dev/null || true)` whose command sits on
+        the previous line). Those lines, recognized by a leading `;`, `&`,
+        `|`, `<`, `>` or fd-glued redirection, get the weaker subsequence
+        check instead of equality. An operator after no command in mid-line
+        would make the equality check fail, which surfaces the assumption
+        rather than hiding it.
+        Mutation caught: a helper that diverges only on a shape the case
+        tables do not list but a workflow uses (`$(...)`, `2>&1)`, heredocs).
+        """
+        lines = _workflow_run_lines()
+        assert lines, "No workflow run lines found; the agreement check would be vacuous."
+        disagreements = []
+        for text in lines:
+            pairs = _segments_with_operators(_safe_split(text))
+            pair_operators = [op for _, op in pairs if op is not None]
+            reported = _shell_operators(text)
+            if _split_simple_commands(_safe_split(text)) != [segment for segment, _ in pairs]:
+                disagreements.append(text)
+            elif re.match(r"[;&|<>]|\d+[<>]", text):
+                # In-order subsequence: each pair operator is found in
+                # `reported` after the previous one.
+                remaining = iter(reported)
+                if not all(op in remaining for op in pair_operators):
+                    disagreements.append(text)
+            elif reported != pair_operators:
+                disagreements.append(text)
+        assert not disagreements, f"Helpers disagree on: {disagreements}"
+
+    @pytest.mark.parametrize(
+        "consumer, line",
+        [
+            pytest.param(
+                "python",
+                "echo ';' 'python3 scripts/hooks/validate_riskmap.py --block'",
+                id="python-lone-quoted-semicolon",
+            ),
+            pytest.param(
+                "python",
+                "echo 'x ; python3 scripts/hooks/validate_riskmap.py --block'",
+                id="python-spaced-semicolon-in-quotes",
+            ),
+            pytest.param(
+                "python",
+                "echo 'x && python3 scripts/hooks/validate_riskmap.py --block'",
+                id="python-spaced-and-in-quotes",
+            ),
+            pytest.param("copy", "echo ';' 'cp src dst'", id="copy-lone-quoted-semicolon"),
+            pytest.param("copy", "echo 'a ; cp src dst'", id="copy-spaced-semicolon-in-quotes"),
+            pytest.param("copy", "echo 'a; cp src dst'", id="copy-glued-semicolon-in-quotes"),
+            pytest.param("third-party", "echo ';' 'check-jsonschema f'", id="third-party-lone-quoted-semicolon"),
+            pytest.param(
+                "third-party", "echo 'x ; check-jsonschema f'", id="third-party-spaced-semicolon-in-quotes"
+            ),
+            pytest.param(
+                "third-party", "echo 'x; check-jsonschema f'", id="third-party-glued-semicolon-in-quotes"
+            ),
+        ],
+    )
+    def test_quoted_commands_are_not_seen_by_the_re_expanding_consumers(self, consumer, line):
+        """
+        Given: a line that echoes a command inside quotes, with a separator
+               that survives whitespace re-splitting as an exact operator
+               string (`';'` as its own quoted word, or ` ; ` / ` && ` inside
+               the quotes)
+        When: `_python_invocations`, `_copy_commands` or
+              `_third_party_invocations` scans it
+        Then: nothing is found
+
+        Clause 7. These consumers expand each `_safe_split` word and re-split
+        the result on whitespace, so a quoted `';'` or `'x ; python3 ...'`
+        produces the bare string `;` again. A correct tokenizer is not enough:
+        the consumer must not let that string act as an operator. This is the
+        unsafe direction for D1 and D8: a quoted string counted as a
+        `--block` or `check-jsonschema` invocation satisfies coverage while CI
+        runs nothing. The glued `'a; cp ...'` cases are the
+        glued-separator shape.
+        Mutation caught (shared with the three `test_unquoted_*` controls
+        below; which one fires depends on how the tokenizer marks operators):
+        the tokenizer fixed while one consumer still re-splits expanded words
+        into plain strings. If the helpers recognize operators by value, the
+        plain `;` acts as an operator and this test fails. If operators are a
+        marked `str` subclass, the plain strings lose the mark, unquoted
+        operators stop separating commands, and the controls fail instead.
+        """
+        scan = {
+            "python": _python_invocations,
+            "copy": _copy_commands,
+            "third-party": _third_party_invocations,
+        }[consumer]
+        assert scan(line, "synthetic") == []
+
+    @pytest.mark.parametrize(
+        "line, expected",
+        [
+            pytest.param(
+                "a && python3 scripts/hooks/x.py --block",
+                [("scripts/hooks/x.py", ("--block",))],
+                id="after-and",
+            ),
+            pytest.param(
+                "echo ok;python3 scripts/hooks/validate_riskmap.py --block",
+                [("scripts/hooks/validate_riskmap.py", ("--block",))],
+                id="after-glued-semicolon",
+            ),
+            pytest.param(
+                "diff <(python3 scripts/hooks/x.py --block) y",
+                [("scripts/hooks/x.py", ("--block",))],
+                id="inside-process-substitution",
+            ),
+            pytest.param(
+                "python3 scripts/hooks/x.py --block > 'r e.txt'",
+                [("scripts/hooks/x.py", ("--block",))],
+                id="redirected-to-a-quoted-target-with-a-space",
+            ),
+        ],
+    )
+    def test_unquoted_python_commands_are_still_invocations(self, line, expected):
+        """
+        Given: a Python validator run after an unquoted `&&` or glued `;`,
+               inside a process substitution, or redirected to a quoted
+               target containing a space
+        When: `_python_invocations` scans it
+        Then: exactly that invocation is found, with its argv
+
+        Control for clause 7 (and consumer of clauses 3 and 3a): keeping
+        quoting decisions must not stop unquoted operators from separating
+        commands. The `&&`, `;` and redirected cases are plain controls; the
+        process substitution case fails if `<(python3` is discarded as a
+        redirection. The
+        `inside-process-substitution` case pins visibility only; it does not
+        make the structural scans safe on that shape (clause 3a). The
+        redirected case catches a consumer that whitespace-splits the
+        quoted target `r e.txt`, so that only `r` is dropped as the target and
+        `e.txt` lands in argv.
+        Mutation caught: a consumer that drops operator tokens when
+        re-splitting, folding `python3` into the previous command's argv; a
+        tokenizer that drops a substitution's inner command; a consumer that
+        re-splits a redirection target.
+        """
+        found = [(invocation.path, invocation.argv) for invocation in _python_invocations(line, "synthetic")]
+        assert found == expected
+
+    @pytest.mark.parametrize(
+        "line, expected",
+        [
+            pytest.param(
+                "mkdir -p stage && cp scripts/hooks/validate_riskmap.py .",
+                [("scripts/hooks/validate_riskmap.py", ".")],
+                id="after-and",
+            ),
+            pytest.param("cp a b 2>&1", [("a", "b")], id="fd-duplication-is-not-an-argument"),
+            pytest.param("cp a b > out", [("a", "b")], id="redirection-target-is-not-an-argument"),
+        ],
+    )
+    def test_unquoted_copy_commands_are_still_found(self, line, expected):
+        """
+        Given: a `cp` after an unquoted `&&`, or a `cp` with `2>&1` or `> out`
+        When: `_copy_commands` scans it
+        Then: exactly the expected (source, destination) pairs are found
+
+        Control for clause 7 and a consumer of clause 3. `after-and` and
+        `> out` are plain controls; `2>&1` fails if `2>` becomes the
+        destination, giving two copies `a -> 2>` and `b -> 2>`.
+        Mutation caught: operator tokens lost in the consumer's re-split; a
+        redirection left in the argument list.
+        """
+        found = [(copy.source_path, copy.destination) for copy in _copy_commands(line, "synthetic")]
+        assert found == expected
+
+    def test_unquoted_third_party_commands_are_still_found(self):
+        """
+        Given: `mkdir -p x && check-jsonschema --schemafile s.json f.yaml`
+        When: `_third_party_invocations` scans it
+        Then: exactly one `check-jsonschema` invocation is found, with its argv
+
+        Control for clause 7.
+        Mutation caught: operator tokens lost in the consumer's re-split, so
+        `check-jsonschema` becomes an argument of `mkdir`.
+        """
+        line = "mkdir -p x && check-jsonschema --schemafile s.json f.yaml"
+        found = [
+            (invocation.script, invocation.argv) for invocation in _third_party_invocations(line, "synthetic")
+        ]
+        assert found == [("check-jsonschema", ("--schemafile", "s.json", "f.yaml"))]
+
+    def test_a_redirected_validator_behind_or_true_is_reported_as_guarded(self):
+        """
+        Given: a step body `python3 scripts/hooks/validate_riskmap.py --block > report.txt || true`
+        When: `_or_guarded_validator_lines` scans it
+        Then: the line is reported
+
+        A consumer of clause 3. The redirection must not end the validator's
+        simple command; otherwise `||` is attributed to the target word and
+        the guard that turns the gate warn-only goes unreported.
+        Mutation caught: a redirection treated as a segment boundary.
+        """
+        line = "python3 scripts/hooks/validate_riskmap.py --block > report.txt || true"
+        step = WorkflowStep(
+            workflow="synthetic.yml",
+            job="j",
+            label="s",
+            run=line,
+            shell=None,
+            working_directory=None,
+            source="synthetic",
+        )
+        assert _or_guarded_validator_lines(step) == [line]
+
+    def test_the_validate_tables_error_hint_is_not_an_invocation(self):
+        """
+        Given: the real validate_tables.yml line that prints a remediation hint,
+               `echo "::error::... Run: mkdir -p risk-map/tables && python3
+               scripts/hooks/yaml_to_markdown.py --all --all-formats"`
+        When: `_python_invocations` scans it
+        Then: the line is still in the workflow, and no invocation is found
+
+        The quoted `&&` is not an operator: the whole hint is one `echo`
+        argument, so no CI run of yaml_to_markdown.py is reported.
+        Mutation caught: quoted text re-split by `_python_invocations`, or the
+        hint line edited so this pin silently stops covering it.
+        """
+        line = next(
+            (text for text in _workflow_run_lines() if "::error::" in text and "yaml_to_markdown.py" in text),
+            None,
+        )
+        assert line is not None, "validate_tables.yml no longer carries the yaml_to_markdown.py error hint."
+        assert line.startswith('echo "') and " && python3 scripts/hooks/yaml_to_markdown.py" in line
+        assert _python_invocations(line, "validate_tables.yml") == []
+
+    def test_a_process_substituted_validator_does_not_fail_its_step(self, tmp_path):
+        """
+        Given: a step body `diff <(python3 scripts/hooks/validate_riskmap.py --block) /dev/null`
+               with the validator stubbed to exit 1
+        When: the body runs under `bash -e` (`_run_step_body`)
+        Then: it exits 0
+
+        Documents why clause 3a's visibility is not a structural safety
+        property: bash discards a process substitution's exit status, so the
+        structural scans (D1 coverage, the `|| true` guard) are satisfied by a
+        step that cannot fail. Only the behavioural arm,
+        `TestGateStepFailsTheJob`, which executes every gate step's body,
+        rejects this shape, and it reaches the step only because the
+        tokenizer surfaces the inner command. This is a fact about bash,
+        independent of the tokenizer.
+        Mutation caught: none in the code under test; this pins the premise
+        that the behavioural arm is load-bearing for psub-wrapped validators.
+        """
+        step = WorkflowStep(
+            workflow="synthetic.yml",
+            job="j",
+            label="s",
+            run="diff <(python3 scripts/hooks/validate_riskmap.py --block) /dev/null",
+            shell=None,
+            working_directory=None,
+            source="synthetic",
+        )
+        result = _run_step_body(step, tmp_path, validator_exit=1, resolver_exit=0)
+        assert result.returncode == 0, f"stdout: {result.stdout}\nstderr: {result.stderr}"
+
+
+def _words_via_python_invocations(assignment: str, expansion: str) -> list[tuple[str, ...]]:
+    """argv of each `_python_invocations` record for `assignment` then a validator call taking `expansion`."""
+    script = f"{assignment}\npython3 scripts/hooks/validate_riskmap.py {expansion}"
+    return [inv.argv for inv in _python_invocations(script, "synthetic")]
+
+
+def _words_via_third_party_invocations(assignment: str, expansion: str) -> list[tuple[str, ...]]:
+    """argv of each `_third_party_invocations` record for `assignment` then a check-jsonschema call."""
+    script = f"{assignment}\ncheck-jsonschema {expansion}"
+    return [inv.argv for inv in _third_party_invocations(script, "synthetic")]
+
+
+def _words_via_copy_commands(assignment: str, expansion: str) -> list[tuple[str, ...]]:
+    """One tuple per `_copy_commands` record: (source operand, destination) for `cp <expansion> dest`."""
+    script = f"{assignment}\ncp {expansion} dest"
+    return [(copy.source_path, copy.destination) for copy in _copy_commands(script, "synthetic")]
+
+
+class TestAssignmentHandlingContract:
+    """How the three line-by-line parsers treat shell assignments (current behaviour).
+
+    `_python_invocations`, `_copy_commands` and `_third_party_invocations`
+    share one `_ASSIGN_RE` handler, `_record_assignment` (command substitution,
+    `X=( ... )` array, scalar). These pins describe the current behaviour for
+    cases no other test covers: an unquoted `;` in an array literal, a
+    redirection operator in an array literal, an unquoted `;` in a scalar
+    value, and a backtick substitution, each through the parsers its test names.
+    """
+
+    # The copy cases use dash-free values: `_copy_commands` drops dash-prefixed
+    # words as flags.
+    @pytest.mark.parametrize(
+        "consumer, assignment, expected",
+        [
+            pytest.param(
+                _words_via_python_invocations,
+                "X=(--block; --force)",
+                [("--block", ";", "--force")],
+                id="python_invocations",
+            ),
+            pytest.param(
+                _words_via_third_party_invocations,
+                "X=(--block; --force)",
+                [("--block", ";", "--force")],
+                id="third_party_invocations",
+            ),
+            pytest.param(
+                _words_via_copy_commands,
+                "X=(a; b)",
+                [("a", "dest"), (";", "dest"), ("b", "dest")],
+                id="copy_commands",
+            ),
+        ],
+    )
+    def test_unquoted_semicolon_in_array_literal_does_not_split_the_command(self, consumer, assignment, expected):
+        """
+        Given: an array literal containing an unquoted `;`, then a command
+               expanding it as `"${X[@]}"`
+        When: the script is parsed
+        Then: no command is split at the `;`; it is an ordinary operand
+        """
+        assert consumer(assignment, '"${X[@]}"') == expected
+
+    @pytest.mark.parametrize(
+        "consumer",
+        [
+            pytest.param(_words_via_python_invocations, id="python_invocations"),
+            pytest.param(_words_via_third_party_invocations, id="third_party_invocations"),
+        ],
+    )
+    def test_redirection_operator_in_array_literal_expands_to_plain_str_words(self, consumer):
+        """
+        Given: `ARGS=(--block > out)` followed by a command expanding `"${ARGS[@]}"`
+        When: the script is parsed
+        Then: argv is ('--block', '>', 'out') and every element is a plain
+              `str`, not a typed `_ShellSyntax` token (those compare equal to
+              `str`, so the type is asserted explicitly)
+        """
+        (argv,) = consumer("ARGS=(--block > out)", '"${ARGS[@]}"')
+        assert argv == ("--block", ">", "out")
+        assert all(type(word) is str for word in argv), [type(word) for word in argv]
+
+    @pytest.mark.parametrize(
+        "consumer, assignment, expected",
+        [
+            pytest.param(_words_via_python_invocations, "S=--block;rest", [("--block",)], id="python_invocations"),
+            pytest.param(
+                _words_via_third_party_invocations, "S=--block;rest", [("--block",)], id="third_party_invocations"
+            ),
+            pytest.param(_words_via_copy_commands, "S=src;rest", [("src", "dest")], id="copy_commands"),
+        ],
+    )
+    def test_scalar_assignment_with_unquoted_separator_keeps_the_first_word(self, consumer, assignment, expected):
+        """
+        Given: a scalar assignment with an unquoted `;` (`S=--block;rest`),
+               then a command expanding `$S`
+        When: the script is parsed
+        Then: `S` holds the text before the `;` only (bash assigns, then runs
+              `rest`), so the expansion contributes exactly that one word
+        """
+        assert consumer(assignment, "$S") == expected
+
+    def test_backtick_assignment_is_a_command_substitution(self):
+        """
+        Given: ``FILES=`git ls-files` `` then a validator call taking `$FILES`
+        When: `_python_invocations` runs with `keep_substitutions=True`
+        Then: argv carries the `${FILES}` placeholder and the substitution
+              command `git ls-files` is recorded, as for `$(...)`
+
+        Mutation caught: `_record_assignment` testing only for `$(`, so a
+        backtick value is expanded as a scalar and the placeholder is lost.
+        """
+        script = "FILES=`git ls-files`\npython3 scripts/hooks/validate_riskmap.py --block $FILES"
+        (invocation,) = _python_invocations(script, "synthetic", keep_substitutions=True)
+        assert invocation.argv == ("--block", "${FILES}")
+        assert invocation.substitutions == (("FILES", "git ls-files"),)
+
+
+class TestKnownScanLimits:
+    """Known limits of the line-by-line shell scans.
+
+    Each test pins the current result, so a change to it is a visible
+    decision; a follow-up issue tracks fixing them. A scan that returns nothing
+    here is blind to the line: a prohibited invocation in that spelling goes
+    unreported, while a required validator in that spelling fails its
+    requirement check (the safe direction).
+    """
+
+    _VALIDATOR = "scripts/hooks/validate_riskmap.py"
+
+    @pytest.mark.parametrize(
+        "scan, line",
+        [
+            pytest.param(
+                _python_invocations,
+                f"FOO=bar python3 {_VALIDATOR} --block --to-graph",
+                id="python-after-env-prefix",
+            ),
+            pytest.param(_python_invocations, f"X=1; python3 {_VALIDATOR} --block", id="python-after-assignment"),
+            pytest.param(_copy_commands, f"X=1; cp {_VALIDATOR} .", id="copy-after-assignment"),
+            # Late-bound: `_third_party_invocations` is defined further down the module.
+            pytest.param(
+                lambda text, source: _third_party_invocations(text, source),
+                "FOO=bar check-jsonschema s.json y.yaml",
+                id="third-party-after-env-prefix",
+            ),
+        ],
+    )
+    def test_a_line_starting_with_an_assignment_is_not_scanned(self, scan, line):
+        """
+        Given: a line whose text starts with `NAME=value`, followed by a
+               command on the same line
+        When: the line is scanned
+        Then: nothing is found, because the `_ASSIGN_RE` line pre-check treats
+              the whole line as an assignment and skips it
+        """
+        assert scan(line, "synthetic") == []
+
+    @pytest.mark.parametrize(
+        "scan, line",
+        [
+            pytest.param(_python_invocations, f"( python3 {_VALIDATOR} --block )", id="python-in-subshell"),
+            pytest.param(_copy_commands, f"( cp {_VALIDATOR} . )", id="copy-in-subshell"),
+        ],
+    )
+    def test_a_command_in_a_parenthesised_subshell_is_not_found(self, scan, line):
+        """
+        Given: a command wrapped in a `( ... )` subshell
+        When: the line is scanned
+        Then: nothing is found, because `(` is a word character, so the
+              segment starts with `(` rather than the command
+        """
+        assert scan(line, "synthetic") == []
+
+    def test_a_command_substitution_is_split_at_its_inner_operators(self):
+        """
+        Given: `cmd $(a; b) | python3 x.py`
+        When: it is tokenized and split into (segment, operator) pairs
+        Then: the `;` inside `$(...)` splits the line, leaving `$(a` and `b)`
+              as fragments of different segments
+
+        Only process substitution is bracket-aware; `$(` is not.
+        """
+        assert _segments_with_operators(_safe_split("cmd $(a; b) | python3 x.py")) == [
+            (["cmd", "$(a"], ";"),
+            (["b)"], "|"),
+            (["python3", "x.py"], None),
+        ]
+
+    def test_a_validator_with_a_pipe_inside_a_substitution_is_not_reported_as_guarded(self):
+        """
+        Given: `python3 scripts/hooks/validate_riskmap.py --block $(a | b) || true`
+        When: `_or_guarded_validator_lines` scans it
+        Then: nothing is reported, because the `|` inside `$(...)` splits the
+              command, so the `||` follows a fragment without the validator
+        """
+        step = WorkflowStep(
+            workflow="synthetic.yml",
+            job="j",
+            label="s",
+            run=f"python3 {self._VALIDATOR} --block $(a | b) || true",
+            shell=None,
+            working_directory=None,
+            source="synthetic",
+        )
+        assert _or_guarded_validator_lines(step) == []
+
+    def test_a_quoted_command_substitution_has_no_recoverable_command(self):
+        """
+        Given: the value `"$(cmd a b)"`, quotes included
+        When: `_substitution_command` extracts the command
+        Then: the result is the empty string, because the trailing `"` stops
+              `_SUBSTITUTION_RE` from matching
+        """
+        assert _substitution_command('"$(cmd a b)"') == ""
 
 
 # ===========================================================================
@@ -3099,20 +4296,6 @@ def _ci_schema_yaml_pairs() -> set[tuple[str, str]]:
 THIRD_PARTY_BLOCKING_COMMANDS = frozenset({"check-jsonschema"})
 
 
-def _strip_leading_words(segment: list[str]) -> list[str]:
-    """Drop shell keywords and variable assignments from the front of a simple command.
-
-    `if check-jsonschema ...; then` and `FOO=bar check-jsonschema ...` both put
-    a non-command token in `segment[0]`; this is what every caller below uses
-    to reach the actual command word instead of matching the keyword in front
-    of it.
-    """
-    trimmed = list(segment)
-    while trimmed and (trimmed[0] in _LEADING_WORDS or _TOKEN_ASSIGN_RE.match(trimmed[0])):
-        trimmed = trimmed[1:]
-    return trimmed
-
-
 def _segment_invokes_third_party_command(segment: list[str]) -> bool:
     """True when a simple command's head, once leading words are stripped, is a
     THIRD_PARTY_BLOCKING_COMMANDS member.
@@ -3161,26 +4344,15 @@ def _third_party_invocations(script_text: str, source: str, keep_substitutions: 
 
         assignment = _ASSIGN_RE.match(raw_line)
         if assignment:
-            name, value = assignment.group(1), assignment.group(2).strip()
-            if "$(" in value or "`" in value:
-                if keep_substitutions:
-                    substitutions[name] = _substitution_command(value)
-                    env[name] = f"${{{name}}}"
-                else:
-                    env[name] = ""
-            elif value.startswith("(") and value.endswith(")"):
-                env[name] = [_expand(element, env) for element in _safe_split(value[1:-1])]
-            else:
-                parts = _safe_split(value)
-                env[name] = _expand(parts[0], env) if parts else ""
+            _record_assignment(
+                assignment.group(1),
+                assignment.group(2).strip(),
+                env,
+                substitutions if keep_substitutions else None,
+            )
             continue
 
-        tokens: list[str] = []
-        for token in _safe_split(stripped):
-            expansion = _expand(token, env)
-            tokens.extend(expansion.split())
-
-        for segment in _split_simple_commands(tokens):
+        for segment in _split_simple_commands(_expand_tokens(_safe_split(stripped), env)):
             trimmed = _strip_leading_words(segment)
             if not trimmed or Path(trimmed[0]).name not in THIRD_PARTY_BLOCKING_COMMANDS:
                 continue
@@ -3779,8 +4951,7 @@ class TestGateStepsRunFromRepositoryRoot:
                 if not stripped or stripped.startswith("#"):
                     continue
                 for segment in _split_simple_commands(_safe_split(stripped)):
-                    while segment and (segment[0] in _LEADING_WORDS or _TOKEN_ASSIGN_RE.match(segment[0])):
-                        segment = segment[1:]
+                    segment = _strip_leading_words(segment)
                     if segment and segment[0] == "cd":
                         violations.append((step.source, stripped))
         assert not violations, (
@@ -4153,6 +5324,185 @@ def _covered_by_every_event(workflow_name: str, path: str) -> list[str]:
         if not selected:
             uncovered.append(declared.event)
     return sorted(uncovered)
+
+
+# ADR-037 D10a: npm subcommands that install from, or resolve against, the lock.
+NPM_INSTALL_FAMILY = frozenset(
+    {
+        # install and its aliases
+        "install", "add", "i", "in", "ins", "inst", "insta", "instal", "isnt", "isnta", "isntal", "isntall",
+        # ci and its aliases
+        "ci", "clean-install", "ic", "install-clean", "isntall-clean",
+        # install-test and its aliases
+        "install-test", "it",
+        # install-ci-test and its aliases
+        "install-ci-test", "cit", "clean-install-test", "sit",
+    }
+)  # fmt: skip
+# npm options that take a separate value word (`npm --prefix site ci`). Without
+# this, the value would be read as the subcommand. `--opt=value` and boolean
+# options (`-s`, `--silent`) need no entry.
+#
+# This list is a fail-open allowlist: a value-taking option that is not listed,
+# placed before the subcommand, leaves its value as the apparent subcommand and
+# hides the install from the detector. Extend it when a workflow uses another.
+NPM_VALUE_OPTIONS = frozenset(
+    {"--prefix", "-C", "--workspace", "-w", "--registry", "--loglevel", "--cache", "--userconfig", "--location"}
+)
+
+
+def _npm_command_is_global(words: list[str]) -> bool:
+    """True when an npm command's options make it a global install.
+
+    Global: `-g`, `--global`, `--global=true`, a clustered short flag containing
+    `g` (`-gD`), and npm's modern spelling `--location=global` or
+    `--location global`. `--global=false` and other `--location` values are not.
+    """
+    for index, word in enumerate(words):
+        if word in ("--global", "--global=true", "--location=global"):
+            return True
+        if word == "--location" and words[index + 1 : index + 2] == ["global"]:
+            return True
+        if re.fullmatch(r"-[A-Za-z]*g[A-Za-z]*", word):
+            return True
+    return False
+
+
+def _strip_command_prefixes(segment: list[str]) -> list[str]:
+    """Return a simple command with shell prefixes and group punctuation removed.
+
+    Strips what `_pytest_workflows` strips (`_LEADING_WORDS`, inline
+    assignments) and additionally a leading `(` or `{` from the first word
+    (`(cd site && npm ci)`, `{ npm ci; }`) and a trailing `)` or `}` from the
+    last. Kept local to the npm detector: `_LEADING_WORDS` is shared with other
+    scans and is not widened here.
+    """
+    while segment:
+        first = segment[0]
+        if first in _LEADING_WORDS or _TOKEN_ASSIGN_RE.match(first):
+            segment = segment[1:]
+        elif first[0] in "({":
+            segment = [w for w in [first.lstrip("({")] if w] + segment[1:]
+        else:
+            break
+    if segment:
+        segment = segment[:-1] + [w for w in [segment[-1].rstrip(")}")] if w]
+    return segment
+
+
+def _npm_subcommand(words: list[str]) -> str | None:
+    """Return the first non-option word after `npm`, skipping value-taking options."""
+    index = 1
+    while index < len(words):
+        word = words[index]
+        if word.startswith("-"):
+            index += 2 if word in NPM_VALUE_OPTIONS else 1
+            continue
+        return word
+    return None
+
+
+def _run_bodies(data: dict[str, Any]) -> list[str]:
+    """Return every step's `run:` body in a parsed workflow, whole and multi-line.
+
+    Only `run:` is read. A github-script step carries shell-looking text in
+    `with.script:` (validate_mermaid.yml prints an `npm install -g` hint there),
+    which no shell ever executes.
+
+    Scope: the callers (`_npm_install_workflows`) scan only the workflows under
+    `.github/workflows/`, via `_workflow_files()`. Composite actions under
+    `.github/actions/` are out of scope, matching ADR-037 D10a's "workflow".
+    """
+    bodies: list[str] = []
+    for job in (data.get("jobs") or {}).values():
+        for step in (job or {}).get("steps") or []:
+            run = step.get("run") if isinstance(step, dict) else None
+            if isinstance(run, str):
+                bodies.append(run)
+    return bodies
+
+
+def _runs_npm_install_family(run_body: str) -> bool:
+    """True when any command in a `run:` body is a non-global npm install-family command.
+
+    Reuses this module's shell handling (`_safe_split`, `_split_simple_commands`,
+    `_LEADING_WORDS`, `_TOKEN_ASSIGN_RE`), the way `_pytest_workflows` does.
+    Backslash continuations are joined first; every line is then scanned, so an
+    `npm ci` on a later line of a `run: |` block counts. Quoted text is one word
+    and never an operator (TestShellTokenizerHonoursQuoting), so
+    `echo 'a&&npm' ci` is one `echo` command and `npm --prefix 'a;b' ci` is one
+    `npm ci`. Per simple command, shell keywords and
+    inline assignments (`if`, `!`, `sudo`, `time`, `env`, `FOO=1`) are stripped,
+    `npm` must be the command word, and the first non-option word after it
+    (skipping value-taking options such as `--prefix site`) is the subcommand.
+    `npx mmdc`, `npm --version` and `npm config get prefix` therefore do not
+    match. All leading `(` and `{` characters of the first word and all trailing
+    `)` and `}` characters of the last word are stripped
+    (`_strip_command_prefixes`). A global install (`-g`, `--global`,
+    `--global=true`, clustered `-gD`, `--location=global`, `--location global`)
+    is excluded because it does not read the lock.
+
+    Known over-match: heredoc bodies are scanned as commands, so an `npm ci`
+    line inside a `cat <<EOF` body matches (ADR-037 D10a residuals).
+    """
+    joined = re.sub(r"\\\r?\n", " ", run_body)
+    for line in joined.splitlines():
+        for segment in _split_simple_commands(_safe_split(line.strip())):
+            segment = _strip_command_prefixes(segment)
+            if not segment or segment[0] != "npm":
+                continue
+            if _npm_subcommand(segment) in NPM_INSTALL_FAMILY and not _npm_command_is_global(segment[1:]):
+                return True
+    return False
+
+
+def _workflow_runs_npm_install(data: dict[str, Any]) -> bool:
+    """True when any `run:` body of a parsed workflow runs an npm install-family command."""
+    return any(_runs_npm_install_family(body) for body in _run_bodies(data))
+
+
+def _npm_install_workflows() -> list[str]:
+    """Return the workflow filenames whose `run:` bodies run an npm install-family command."""
+    return [path.name for path in _workflow_files() if _workflow_runs_npm_install(_workflow_data(path.name))]
+
+
+NPM_INSTALL_WORKFLOWS = _npm_install_workflows()
+
+# ADR-037 D10b: the files the devcontainer test suites read. Derived
+# from the tracked tree so a renamed or added file is a requirement without an
+# edit here, and a rename cannot leave a phantom path behind.
+TOOLCHAIN_READ_TREES = ("scripts/tools/", ".devcontainer/")
+TOOLCHAIN_READ_SET = [".mise.toml", *(p for p in TRACKED_FILES if p.startswith(TOOLCHAIN_READ_TREES))]
+
+# npm 11's install, ci, install-test and install-ci-test commands and their
+# aliases (measured with `npm <cmd> -h` on npm 11.19.0), spelled independently
+# of NPM_INSTALL_FAMILY so that dropping a member from the detector's set is a
+# test failure.
+ADR_NPM_INSTALL_FAMILY = (
+    # install
+    "install", "add", "i", "in", "ins", "inst", "insta", "instal", "isnt", "isnta", "isntal", "isntall",
+    # ci
+    "ci", "clean-install", "ic", "install-clean", "isntall-clean",
+    # install-test
+    "install-test", "it",
+    # install-ci-test
+    "install-ci-test", "cit", "clean-install-test", "sit",
+)  # fmt: skip
+
+# The npm options that take a separate value word, as ADR-037 D10a lists them,
+# spelled independently of NPM_VALUE_OPTIONS so that dropping an entry from the
+# detector's set is a test failure rather than a vanished test case.
+ADR_NPM_VALUE_OPTIONS = (
+    "--prefix",
+    "-C",
+    "--workspace",
+    "-w",
+    "--registry",
+    "--loglevel",
+    "--cache",
+    "--userconfig",
+    "--location",
+)
 
 
 class ScriptResolution(NamedTuple):
@@ -4846,8 +6196,7 @@ def _pytest_workflows() -> list[str]:
         for raw_line in step.run.splitlines():
             tokens = _safe_split(raw_line.strip())
             for segment in _split_simple_commands(tokens):
-                while segment and (segment[0] in _LEADING_WORDS or _TOKEN_ASSIGN_RE.match(segment[0])):
-                    segment = segment[1:]
+                segment = _strip_leading_words(segment)
                 arguments = _pytest_command_arguments(segment)
                 if arguments is None:
                     continue
@@ -5311,6 +6660,352 @@ class TestWorkflowTriggerCoverage:
             + "\nA pull request touching only those files runs no tests, so every "
             "standing guard on the CI gate is silent on precisely the change that "
             "disables it."
+        )
+
+    def test_npm_install_workflows_are_found(self):
+        """
+        Given: every `run:` body in every workflow
+        When: workflows running a non-global npm install-family command are collected
+        Then: at least one is found, and validation.yml is among them
+
+        Non-vacuity guard for
+        test_npm_install_workflow_triggers_on_package_json_and_lock: an empty
+        parametrization is reported as a skip, not a failure. validation.yml
+        runs `npm ci` in three jobs, including a single-line `run: npm ci`, so
+        this guard does not pin multi-line or single-line handling; the fidelity
+        and parsed-workflow tests below do.
+        Mutation caught: a detector or workflow loader that mis-parses a plain
+        `npm ci` or finds no workflow, emptying the set.
+        """
+        assert NPM_INSTALL_WORKFLOWS, "No workflow runs an npm install-family command; D10a would check nothing."
+        assert "validation.yml" in NPM_INSTALL_WORKFLOWS, (
+            f"validation.yml runs `npm ci` but was not detected (found: {NPM_INSTALL_WORKFLOWS})."
+        )
+
+    @pytest.mark.parametrize("lock_input", ["package.json", "package-lock.json"])
+    @pytest.mark.parametrize("workflow_name", NPM_INSTALL_WORKFLOWS)
+    def test_npm_install_workflow_triggers_on_package_json_and_lock(self, workflow_name, lock_input):
+        """
+        Given: a workflow whose `run:` bodies install from the npm lock (ADR-037 D10a)
+        When: its `paths:` / `paths-ignore:` filters are checked for package.json
+              and package-lock.json
+        Then: both are selected for every filtered event
+
+        The lock decides what these jobs run (the prettier version behind
+        format-validation comes from it), so a lock-only change that does not
+        re-run the job merges ungated.
+        Mutation caught: package.json or package-lock.json missing from
+        validation.yml's `pull_request` or `push` paths (the case today), or a
+        new `npm ci` workflow added without the two files.
+        """
+        uncovered = _covered_by_every_event(workflow_name, lock_input)
+        filters = [(f.event, f.kind, f.patterns) for f in _trigger_filters(_workflow_data(workflow_name))]
+        assert not uncovered, (
+            f"{workflow_name} installs from the npm lock but its filter does not select "
+            f"{lock_input} for: {', '.join(uncovered)}. Declared filters: {filters}"
+        )
+
+    def test_npm_install_family_is_the_adr_family(self):
+        """
+        Given: npm 11's install, ci, install-test and install-ci-test commands and
+               their aliases (23 names), spelled in this module
+        When: compared with the detector's NPM_INSTALL_FAMILY
+        Then: they are equal, with no duplicates
+
+        Mutation caught: a member added to or dropped from the detector's set
+        without this list changing (the per-member match test below catches drops
+        too; this catches additions).
+        """
+        assert len(ADR_NPM_INSTALL_FAMILY) == len(set(ADR_NPM_INSTALL_FAMILY)) == 23
+        assert NPM_INSTALL_FAMILY == frozenset(ADR_NPM_INSTALL_FAMILY)
+
+    @pytest.mark.parametrize("subcommand", ADR_NPM_INSTALL_FAMILY)
+    def test_npm_detector_matches_every_family_member(self, subcommand):
+        """
+        Given: `npm <subcommand>` for each member of npm 11's install, ci,
+               install-test and install-ci-test commands and their aliases
+        When: the D10a detector scans it
+        Then: it matches
+
+        Mutation caught: any one member dropped from `NPM_INSTALL_FAMILY`.
+        """
+        assert _runs_npm_install_family(f"npm {subcommand}"), f"Detector missed `npm {subcommand}`"
+
+    def test_npm_value_options_are_the_adr_list(self):
+        """
+        Given: the nine value-taking npm options ADR-037 D10a lists, spelled in this module
+        When: compared with the detector's NPM_VALUE_OPTIONS
+        Then: they are equal, with no duplicates
+
+        Mutation caught: an option added to or dropped from the detector's set
+        without this list changing (the per-option skip test below catches drops
+        too; this catches additions).
+        """
+        assert len(ADR_NPM_VALUE_OPTIONS) == len(set(ADR_NPM_VALUE_OPTIONS)) == 9
+        assert NPM_VALUE_OPTIONS == frozenset(ADR_NPM_VALUE_OPTIONS)
+
+    @pytest.mark.parametrize("option", ADR_NPM_VALUE_OPTIONS)
+    def test_npm_detector_skips_every_listed_value_option(self, option):
+        """
+        Given: `npm <option> x ci` for each option the ADR lists (separate-word form)
+        When: the D10a detector scans it
+        Then: it matches, so the option's value `x` is not read as the subcommand
+
+        Parametrized over the independent ADR tuple, so removing an option from
+        NPM_VALUE_OPTIONS fails its case instead of removing it. The list is a
+        fail-open allowlist: an unknown value-taking option placed before the
+        subcommand hides the command from the detector.
+        Mutation caught: any option dropped from NPM_VALUE_OPTIONS, or the
+        value-skipping logic removed.
+        """
+        assert _runs_npm_install_family(f"npm {option} x ci"), f"Detector missed `npm {option} x ci`"
+
+    def test_npm_install_on_a_later_line_of_a_multi_line_run_is_detected_end_to_end(self):
+        """
+        Given: a parsed workflow whose only npm install is on a later line of a
+               `run: |` body (the first lines are other commands)
+        When: `_run_bodies` and the workflow-level detection read it
+        Then: the whole multi-line body is returned and the workflow is detected
+
+        validation.yml's own `run: npm ci` is single-line, so the real workflows
+        do not pin multi-line handling at the workflow level.
+        Mutation caught: `_run_bodies` or the workflow-level scan looking only at
+        the first line of a body.
+        """
+        body = "set -e\necho preparing\nnpm ci\n"
+        data = {"jobs": {"j": {"steps": [{"name": "x", "run": body}]}}}
+        assert _run_bodies(data) == [body]
+        assert _workflow_runs_npm_install(data)
+
+    @pytest.mark.parametrize(
+        "run_body",
+        [
+            "npm ci --no-audit --no-fund",
+            "cd site && npm ci",
+            "echo start\nnpm ci\necho done",
+            "set -e\n# comment\necho a\n  npm isntall",
+            "if npm ci; then\n  echo OK\nelse\n  exit 1\nfi",
+            "FOO=1 npm ci",
+            "env FOO=1 npm ci",
+            "sudo npm ci",
+            "time npm ci",
+            "! npm ci",
+            "npm --prefix site ci",
+            "npm -C site ci",
+            "npm --workspace x ci",
+            "npm -w x ci",
+            "npm --registry https://registry.example.test ci",
+            "npm -s ci",
+            "npm --loglevel=warn install",
+            "npm --prefix=x ci",
+            "npm \\\n  ci",
+            "npm --global=false ci",
+            "npm --location=project ci",
+            "npm --location project ci",
+            "(cd site && npm ci)",
+            "{ npm ci; }",
+            "npm --prefix 'a;b' ci",
+        ],
+        ids=[
+            "flags",
+            "after-cd",
+            "later-line",
+            "typo-subcommand",
+            "if-gate-idiom",
+            "inline-assignment",
+            "env-prefix",
+            "sudo-prefix",
+            "time-prefix",
+            "negation",
+            "prefix-option",
+            "C-option",
+            "workspace-option",
+            "w-option",
+            "registry-option",
+            "silent-flag",
+            "loglevel-equals",
+            "prefix-equals",
+            "line-continuation",
+            "global-false",
+            "location-project-equals",
+            "location-project-word",
+            "subshell-group",
+            "brace-group",
+            "quoted-separator-in-option-value",
+        ],
+    )
+    def test_npm_detector_matches_install_commands_in_real_shell_shapes(self, run_body):
+        """
+        Given: `run:` text with a non-global npm install-family command in a shape this
+               repo or its contributors use: behind `if`/`!`/`sudo`/`time`/`env`/an
+               inline assignment, after value-taking options, across a backslash
+               continuation, or on a later line of a block
+        When: the D10a detector scans it
+        Then: it matches
+
+        `npm --prefix 'a;b' ci` depends on the quote-aware tokenizer
+        (TestShellTokenizerHonoursQuoting): a tokenizer that cuts the quoted
+        value at `;` leaves `npm --prefix a` with no subcommand.
+        Mutation caught: a detector that requires `npm` to be the first word, reads
+        a value-taking option's value as the subcommand, ignores continuations or
+        later lines, treats `--global=false` as global, or splits on a quoted
+        separator.
+        """
+        assert _runs_npm_install_family(run_body), f"Detector missed: {run_body!r}"
+
+    @pytest.mark.parametrize(
+        "run_body",
+        [
+            "npm install -g x",
+            "npm install --global x",
+            "npm i -g @mermaid-js/mermaid-cli@latest",
+            "npm install --global=true x",
+            "npm install -gD x",
+            "npm install \\\n  -g x",
+            "npm -g install x",
+            "npm --global install x",
+            "npm --location=global install x",
+            "npm --location global install x",
+            "npx mmdc -i a.mmd",
+            "npm --version",
+            'echo "$(npm config get prefix)/bin" >> $GITHUB_PATH',
+            "# npm ci is described here\necho ok",
+            'echo "x; npm ci"',
+            "echo 'a&&npm' ci",
+            'echo "a;npm" ci',
+            "echo npm ci",
+            "grep npm package.json",
+        ],
+        ids=[
+            "install-g",
+            "install-global",
+            "i-g",
+            "global-true",
+            "clustered-gD",
+            "continued-g",
+            "global-first",
+            "global-long-first",
+            "location-global-equals",
+            "location-global-word",
+            "npx",
+            "version",
+            "config",
+            "comment",
+            "quoted-separator",
+            "single-quoted-and-joined-to-npm",
+            "double-quoted-semicolon-joined-to-npm",
+            "npm-as-echo-argument",
+            "npm-as-grep-argument",
+        ],
+    )
+    def test_npm_detector_ignores_global_and_non_install_commands(self, run_body):
+        """
+        Given: `run:` text with a global npm install (`-g`, `--global`, `--global=true`,
+               clustered `-gD`, or `-g` on a continuation line), npx, `npm --version`,
+               `npm config`, `npm ci` only in a comment, inside a quoted string, or
+               `npm` as an argument of another command (`echo npm ci`,
+               `grep npm package.json`)
+        When: the D10a detector scans it
+        Then: it does not match
+
+        A global install does not read the lock, so requiring lock triggers there
+        would be a false requirement.
+        Quoted separators: quoted text is one word and never an operator
+        (TestShellTokenizerHonoursQuoting), so `echo "x; npm ci"`,
+        `echo 'a&&npm' ci` and `echo "a;npm" ci` are each one `echo` command.
+        The last two depend on the quote-aware tokenizer: a re-split that cuts
+        the quoted word at the separator produces `npm ci`.
+        Mutation caught: a detector that matches any line containing "npm install",
+        misses one global spelling, joins continuations wrongly, accepts `npm`
+        anywhere in a segment instead of only as the command word, treats
+        `npm --version` / `npx` as installs, or splits on a quoted separator.
+        """
+        assert not _runs_npm_install_family(run_body), f"Detector wrongly matched: {run_body!r}"
+
+    def test_npm_detector_reads_run_bodies_only(self):
+        """
+        Given: a parsed workflow whose only install-family command sits in a
+               github-script step's `with.script:` text, as a line that is exactly
+               `npm ci`, next to a step whose `run:` is `npm install -g x`
+        When: the D10a detector scans the workflow's `run:` bodies
+        Then: nothing matches
+
+        validate_mermaid.yml has this shape: an `npm install -g` hint inside a
+        github-script body, and a global install in a real `run:`. The script line
+        is a bare `npm ci` so that a `_run_bodies` which also reads `with.script`
+        is detected.
+        Mutation caught: `run = step.get("run") or step.get("with", {}).get("script")`,
+        or scanning raw file text or every string value.
+        """
+        data = {
+            "jobs": {
+                "j": {
+                    "steps": [
+                        {"uses": "actions/github-script@x", "with": {"script": "npm ci"}},
+                        {"run": "npm install -g x"},
+                    ]
+                }
+            }
+        }
+        assert not any(_runs_npm_install_family(body) for body in _run_bodies(data))
+
+    def test_global_only_npm_workflow_is_not_a_lock_consumer(self):
+        """
+        Given: the real validate_mermaid.yml, which installs mermaid-cli with `npm install -g`
+        When: workflows running npm install-family commands are collected
+        Then: validate_mermaid.yml is not among them
+
+        Mutation caught: the global-install exclusion failing on the real workflow,
+        which would force package-lock.json triggers onto a workflow that ignores the lock.
+        """
+        assert "validate_mermaid.yml" not in NPM_INSTALL_WORKFLOWS
+
+    def test_toolchain_read_set_is_found(self):
+        """
+        Given: the tracked tree
+        When: `.mise.toml` and every tracked file under `scripts/tools/` and
+              `.devcontainer/` are collected (ADR-037 D10b's read set)
+        Then: `.mise.toml` is tracked and each tree contributes at least one file
+
+        Non-vacuity guard, in the module's own pattern, for the parametrized test
+        below: a tree renamed or emptied would otherwise shrink the parametrization
+        or leave a phantom path.
+        Mutation caught: a renamed or removed `scripts/tools/` or `.devcontainer/`
+        directory, or an untracked `.mise.toml`.
+        """
+        assert ".mise.toml" in TRACKED_FILE_SET, ".mise.toml is not tracked"
+        for tree in TOOLCHAIN_READ_TREES:
+            assert any(path.startswith(tree) for path in TOOLCHAIN_READ_SET), (
+                f"No tracked file under {tree}; D10b's read set would be missing that tree."
+            )
+
+    @pytest.mark.parametrize("toolchain_input", TOOLCHAIN_READ_SET)
+    def test_pytest_workflow_triggers_on_the_files_the_devcontainer_suites_read(self, toolchain_input):
+        """
+        Given: validate_python.yml, the workflow that runs pytest (ADR-037 D10b)
+        When: its `paths:` filters are checked for `.mise.toml` and for every
+              tracked file under `scripts/tools/` and `.devcontainer/`
+        Then: each is selected for every filtered event, and the workflow has
+              filtered events to check
+
+        The devcontainer suites (test_mise_config, test_verify_deps,
+        test_install_deps, test_dockerfile, test_devcontainer_json,
+        test_setup_script) read these files. The parameters
+        come from the tracked tree, so a narrow wiring that names only some files
+        instead of the `scripts/tools/**` and `.devcontainer/**` globs leaves the
+        others RED.
+        Mutation caught: `.mise.toml`, a tree, or any single file in it missing
+        from `pull_request` or `push`, or the filters removed so nothing is checked.
+        """
+        assert "validate_python.yml" in PYTEST_WORKFLOWS, "validate_python.yml is no longer a pytest workflow"
+        filters = _trigger_filters(_workflow_data("validate_python.yml"))
+        assert {f.event for f in filters} >= {"pull_request", "push"}, (
+            f"validate_python.yml should filter both events, found {[f.event for f in filters]}"
+        )
+        uncovered = _covered_by_every_event("validate_python.yml", toolchain_input)
+        assert not uncovered, (
+            f"validate_python.yml does not select {toolchain_input} for: {', '.join(uncovered)}. "
+            "A pull request touching only it runs none of the devcontainer test suites."
         )
 
 
@@ -6601,8 +8296,7 @@ def _changes_directory(step: WorkflowStep) -> list[str]:
         if not stripped or stripped.startswith("#"):
             continue
         for segment in _split_simple_commands(_safe_split(stripped)):
-            while segment and (segment[0] in _LEADING_WORDS or _TOKEN_ASSIGN_RE.match(segment[0])):
-                segment = segment[1:]
+            segment = _strip_leading_words(segment)
             if segment and segment[0] == "cd":
                 found.append(stripped)
     return found
@@ -7646,6 +9340,9 @@ class TestModuleInventory:
     EXPECTED_CLASSES = frozenset(
         {
             "TestParserFidelity",
+            "TestShellTokenizerHonoursQuoting",
+            "TestAssignmentHandlingContract",
+            "TestKnownScanLimits",
             "TestStrictnessCoverage",
             "TestStrictnessMonotonicity",
             "TestGraphEmissionExclusion",
