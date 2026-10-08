@@ -4,9 +4,13 @@ Tests for ADR-026 D4 post-alignment content shape of the 8 issue-template
 source files in scripts/TEMPLATES/*.template.yml.
 
 Each test class targets a specific contract from ADR-016, ADR-017, ADR-019,
-ADR-021, ADR-022 as recorded in issue #327. These tests are independent of
-each other and deterministic; they operate only on the YAML source files,
-not on the generated .github/ISSUE_TEMPLATE/ outputs.
+ADR-021, ADR-022 as recorded in issue #327, except Sections H and I, which
+target ADR-020 and the control description/guidance design record
+(risk-map/docs/design/control-description-and-guidance.md). These tests are independent of
+each other and deterministic; they operate on the YAML source files, except
+Section I (TestControlDescriptionGuidanceTeaching and
+TestGeneratedControlFormsMatchSource), which also reads the committed
+.github/ISSUE_TEMPLATE/{new,update}_control.yml outputs.
 
 Naming convention:  test_<contract>_<scenario>_<expected_outcome>
 Docstring convention: Given / When / Then
@@ -18,6 +22,7 @@ helper text and safe to use as documentation examples.
 """
 
 import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -1018,8 +1023,8 @@ class TestControlGuidanceSolicitation:
     """
     The optional per-control ``guidance`` field needs a structural home in the
     two control templates: a textarea on new_control and a change-type option
-    on update_control. Helper-text rewording of ``description`` is out of scope
-    here (develop-side follow-up).
+    on update_control. The ``description`` helper and placeholder wording is
+    covered by Section I.
     """
 
     def test_new_control_has_control_guidance_textarea(self, repo_root: Path) -> None:
@@ -1118,3 +1123,228 @@ class TestControlGuidanceSolicitation:
         options: list[str] = (change_type.get("attributes") or {}).get("options") or []
         matches = [opt for opt in options if re.search(r"update guidance", opt, re.IGNORECASE)]
         assert matches, f"update_control change-type dropdown has no 'Update guidance' option; options={options}"
+
+
+# ============================================================================
+# Section I — control templates teach the description / guidance placement contract
+# (design record risk-map/docs/design/control-description-and-guidance.md).
+# Subjects are the source templates AND the committed generated forms: a
+# render-vs-committed comparison (TestGeneratedControlFormsMatchSource) is what
+# makes the generated files checkable, because a dry-run generator pass writes
+# nothing and so cannot detect a stale committed file.
+# ============================================================================
+
+# `{{<inner>}}` with any non-brace content; `inner` is validated separately.
+_SENTINEL_TOKEN = re.compile(r"\{\{(?P<inner>[^{}]*)\}\}")
+
+# Forbidding side: deliberately broad (tolerates whitespace and malformed
+# names) because over-catching a control/risk/persona sentinel is safe here.
+# `{{ref:...}}` citations and `{{component...}}` scope references never match.
+_ENTITY_SENTINEL_LOOSE = re.compile(r"\{\{\s*(?P<kind>control|risk|persona)[^{}]*\}\}", re.IGNORECASE)
+
+
+def _valid_entity_sentinels(text: str, kinds: tuple[str, ...]) -> list[str]:
+    """
+    Return the inner ids of tokenizer-valid intra sentinels of the given kinds.
+
+    Validity is decided by the prose tokenizer's own pattern
+    (_prose_tokens._RE_SENTINEL_INTRA_INNER, the same one validate_yaml_prose_subset
+    imports), so a taught example cannot be one the linter reports as an
+    invalid sentinel (e.g. `{{control}}`, `{{ controlX }}`).
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    try:
+        from precommit._prose_tokens import _RE_SENTINEL_INTRA_INNER
+    finally:
+        sys.path.pop(0)
+    found = []
+    for match in _SENTINEL_TOKEN.finditer(text):
+        inner = match.group("inner")
+        if _RE_SENTINEL_INTRA_INNER.fullmatch(inner) and inner.startswith(kinds):
+            found.append(inner)
+    return found
+
+
+def _entity_ids(repo_root: Path, filename: str) -> set[str]:
+    """Return the set of top-level entity ids in a risk-map/yaml file's list."""
+    data = yaml.safe_load((repo_root / "risk-map" / "yaml" / filename).read_text(encoding="utf-8"))
+    return {
+        entry["id"]
+        for entries in data.values()
+        if isinstance(entries, list)
+        for entry in entries
+        if isinstance(entry, dict) and "id" in entry
+    }
+
+
+def _control_field_attr(repo_root: Path, field_id: str, attr: str, *, generated: bool = False) -> str:
+    """
+    Return attributes.<attr> of a new_control body element; fail if absent.
+
+    generated=True reads the committed .github/ISSUE_TEMPLATE/new_control.yml
+    instead of the source template.
+    """
+    if generated:
+        path = repo_root / ".github" / "ISSUE_TEMPLATE" / "new_control.yml"
+        parsed = yaml.safe_load(path.read_text(encoding="utf-8"))
+        label = "generated new_control.yml"
+    else:
+        parsed, _ = _load_source(repo_root, "new_control")
+        label = "new_control.template.yml"
+    field = _get_field(_body_elements(parsed), field_id)
+    assert field is not None, f"{label} has no body element with id {field_id!r}"
+    return (field.get("attributes") or {}).get(attr) or ""
+
+
+_CONTROL_FORM_VARIANTS = pytest.mark.parametrize("generated", [False, True], ids=["source", "generated"])
+
+
+class TestControlDescriptionGuidanceTeaching:
+    """
+    new_control teaches the mechanically checkable half of DG4: ``description``
+    carries no ``{{control…}}``, ``{{risk…}}`` or ``{{persona…}}`` sentinels and
+    states objective and scope (DG2); the entity-sentinel example, which names
+    sibling controls and risks, is taught on the ``guidance`` field, which
+    itself carries no ``{{persona…}}`` sentinel (design record, "The `guidance`
+    Field", to which DG4 refers). Sibling controls named in words without a
+    sentinel are judgment per the design record's Enforcement table and are not
+    pinned here.
+    """
+
+    @_CONTROL_FORM_VARIANTS
+    @pytest.mark.parametrize("attr", ["description", "placeholder"])
+    def test_control_description_text_has_no_control_risk_persona_sentinel(
+        self, repo_root: Path, attr: str, generated: bool
+    ) -> None:
+        """
+        Given: the control-description element of new_control (source and generated)
+        When: its helper text (attributes.description) and placeholder are read
+        Then: neither contains a {{control...}}, {{risk...}} or {{persona...}}
+              sentinel (DG4; the field's own contract may not teach what it forbids)
+        """
+        text = _control_field_attr(repo_root, "control-description", attr, generated=generated)
+        found = [m.group(0) for m in _ENTITY_SENTINEL_LOOSE.finditer(text)]
+        assert not found, (
+            f"control-description {attr} contains sentinels excluded from description by DG4 "
+            f"(control-description-and-guidance.md): {found}"
+        )
+
+    @_CONTROL_FORM_VARIANTS
+    def test_control_description_helper_states_objective_and_scope(self, repo_root: Path, generated: bool) -> None:
+        """
+        Given: the control-description element of new_control (source and generated)
+        When: its helper text is read
+        Then: it contains the whole words 'objective' and 'scope' (case-insensitive),
+              the two parts DG2 allows in description. Whole-word presence is
+              asserted instead of a full sentence so the prose can be reworded
+              freely, while 'objectively' or 'telescope' do not satisfy it.
+        """
+        helper = _control_field_attr(repo_root, "control-description", "description", generated=generated)
+        missing = [w for w in ("objective", "scope") if not re.search(rf"\b{w}\b", helper, re.IGNORECASE)]
+        assert not missing, f"control-description helper must mention {missing} (DG2); got {helper!r}"
+
+    @_CONTROL_FORM_VARIANTS
+    def test_control_description_placeholder_states_objective_and_scope(
+        self, repo_root: Path, generated: bool
+    ) -> None:
+        """
+        Given: the control-description element of new_control (source and generated)
+        When: its placeholder is read
+        Then: it contains the whole words 'objective' and 'scope'. Presence is
+              pinned rather than only the absence of implementation wording
+              because presence is the positive contract (DG2) and is robust to
+              rewording; absence is pinned separately below.
+        """
+        placeholder = _control_field_attr(repo_root, "control-description", "placeholder", generated=generated)
+        missing = [w for w in ("objective", "scope") if not re.search(rf"\b{w}\b", placeholder, re.IGNORECASE)]
+        assert not missing, f"control-description placeholder must mention {missing} (DG2); got {placeholder!r}"
+
+    @_CONTROL_FORM_VARIANTS
+    def test_control_description_placeholder_does_not_solicit_implementation(
+        self, repo_root: Path, generated: bool
+    ) -> None:
+        """
+        Given: the control-description element of new_control (source and generated)
+        When: its placeholder is read
+        Then: it has no word starting with 'implement' (implementation content is
+              placed in guidance by DG2 and DG5, so description may not ask for it).
+              The placeholder deliberately avoids any 'implement...' word, even a
+              pointer to guidance.
+        """
+        placeholder = _control_field_attr(repo_root, "control-description", "placeholder", generated=generated)
+        found = re.findall(r"\bimplement\w*", placeholder, re.IGNORECASE)
+        assert not found, (
+            f"control-description placeholder solicits implementation content {found} (DG2/DG5): {placeholder!r}"
+        )
+
+    @_CONTROL_FORM_VARIANTS
+    def test_control_guidance_helper_teaches_resolvable_control_or_risk_sentinel(
+        self, repo_root: Path, generated: bool
+    ) -> None:
+        """
+        Given: the control-guidance element of new_control (source and generated)
+        When: its helper text is read
+        Then: it contains at least one tokenizer-valid {{control...}} or
+              {{risk...}} sentinel, and every such example id exists in
+              controls.yaml or risks.yaml (a taught example must be real)
+        """
+        helper = _control_field_attr(repo_root, "control-guidance", "description", generated=generated)
+        examples = _valid_entity_sentinels(helper, ("control", "risk"))
+        assert examples, (
+            f"control-guidance helper must carry a tokenizer-valid {{{{control...}}}} or "
+            f"{{{{risk...}}}} sentinel example; got {helper!r}"
+        )
+        known = _entity_ids(repo_root, "controls.yaml") | _entity_ids(repo_root, "risks.yaml")
+        unknown = [e for e in examples if e not in known]
+        assert not unknown, f"control-guidance example ids do not resolve in controls.yaml/risks.yaml: {unknown}"
+
+    @_CONTROL_FORM_VARIANTS
+    @pytest.mark.parametrize("attr", ["description", "placeholder"])
+    def test_control_guidance_text_has_no_persona_sentinel(
+        self, repo_root: Path, attr: str, generated: bool
+    ) -> None:
+        """
+        Given: the control-guidance element of new_control (source and generated)
+        When: its helper text and placeholder are read
+        Then: neither contains a {{persona...}} sentinel (persona-sentinel
+              exclusion in the design record's guidance section; the personas
+              field records responsible parties)
+        """
+        text = _control_field_attr(repo_root, "control-guidance", attr, generated=generated)
+        found = [m.group(0) for m in _ENTITY_SENTINEL_LOOSE.finditer(text) if m.group("kind").lower() == "persona"]
+        assert not found, f"control-guidance {attr} contains persona sentinels: {found}"
+
+
+class TestGeneratedControlFormsMatchSource:
+    """
+    The committed .github/ISSUE_TEMPLATE/{new,update}_control.yml must equal
+    what the generator renders from the current source template. The generator's
+    dry-run mode writes nothing, so a diff-after-dry-run check cannot detect a
+    stale committed form; this test renders to a temporary directory and
+    compares bytes.
+    """
+
+    @pytest.mark.parametrize("name", ["new_control", "update_control"])
+    def test_committed_generated_form_equals_fresh_render_of_source(
+        self, repo_root: Path, tmp_path: Path, name: str
+    ) -> None:
+        """
+        Given: scripts/TEMPLATES/<name>.template.yml and the committed generated form
+        When: the generator renders the source into an empty temporary directory
+        Then: the rendered bytes equal the committed .github/ISSUE_TEMPLATE/<name>.yml
+        """
+        sys.path.insert(0, str(repo_root / "scripts" / "hooks"))
+        try:
+            from issue_template_generator.generator import IssueTemplateGenerator
+        finally:
+            sys.path.pop(0)
+
+        generator = IssueTemplateGenerator(repo_root)
+        generator.output_dir = tmp_path
+        rendered = generator.generate_template(name, dry_run=False)
+        assert isinstance(rendered, Path), f"generate_template({name!r}) must return a Path when dry_run=False"
+        committed = repo_root / ".github" / "ISSUE_TEMPLATE" / f"{name}.yml"
+        assert committed.read_bytes() == rendered.read_bytes(), (
+            f"{committed.relative_to(repo_root)} is stale against scripts/TEMPLATES/{name}.template.yml; "
+            f"run python3 scripts/generate_issue_templates.py"
+        )

@@ -40,21 +40,31 @@ Next, define the control's properties in the main `controls.yaml` data file. Thi
 
 > **Optional Metadata Fields**: You can also add optional metadata fields like `mappings` (framework cross-references), `lifecycleStage`, `impactType`, and `actorAccess` to provide additional context. These fields support both specific arrays (e.g., `lifecycleStage: [planning, deployment]`) and universal values (e.g., `lifecycleStage: all`). See [Metadata Fields Guide](guide-metadata.md) for details.
 
+> **Description and guidance**: `description` (required) holds only the objective and a positive scope statement (DG2) and carries no `{{control…}}`, `{{risk…}}`, or `{{persona…}}` sentinel (DG4). Everything else goes in the optional `guidance` field, which carries no `{{persona…}}` sentinel. A boundary that names an existing sibling control should be answered by that sibling's own boundary (DG10). See [Control Description and Guidance Design](design/control-description-and-guidance.md) for the placement rules (DG1–DG11).
+
 ```yaml
 # Example of a specific control
 - id: controlNewControl
   title: A New and Important Control
   description:
     - >
-      A clear and concise description of what this control does, how it works,
-      and why it is an effective safeguard.
+      States the objective: the property that must hold. States the scope
+      positively: what the control governs, in terms that need no other control
+      to understand.
+  guidance:
+    - >
+      Implementation: mechanisms, acceptable equivalents, and anti-patterns
+      written as "X rather than Y". Applicability: the paths and deployment
+      forms the control covers. Rationale and residual risk, where it adds to
+      the mapped risks. Boundary, always last: how this control differs from
+      {{controlInputValidationAndSanitization}}.
   category: controlsModel
   personas:
     - personaModelProvider
     - personaApplicationDeveloper
   components:
     - componentTheModel
-    - componentOutputHandling
+    - componentApplicationOutputHandling
   risks:
     - riskInsecureModelOutput # Mapped to Insecure Model Output
     - riskPromptInjection # Mapped to Prompt Injection

@@ -36,11 +36,12 @@ body:
     attributes:
       label: Control Description*
       description: |
-        Detailed explanation of what the control does and how it mitigates risks.
+        State the control's objective and a positive statement of its scope: what the control governs.
+        Keep it short, mechanism-neutral, and understandable without reading other controls.
+        Implementation, applicability, rationale, and boundaries with related controls go in Control Guidance below.
 
-        Cross-reference related framework entities using sentinels, e.g. {{controlInputValidationAndSanitization}} or {{riskPromptInjection}}.
         Outbound citations go in External References below and are cited via {{ref:identifier}}.
-      placeholder: "Describe the control's purpose, implementation approach, and expected outcomes..."
+      placeholder: 'State the control''s objective and the scope it governs...'
     validations:
       required: true
 
@@ -51,6 +52,7 @@ body:
       description: |
         Optional. How to meet the objective, where it applies, and how it differs from sibling controls.
 
+        Cross-reference related framework entities using sentinels, e.g. {{controlInputValidationAndSanitization}} or {{riskPromptInjection}}.
         Outbound citations go in External References below and are cited via {{ref:identifier}}.
       placeholder: 'Describe implementation approaches, applicability, and boundaries with related controls...'
     validations:
