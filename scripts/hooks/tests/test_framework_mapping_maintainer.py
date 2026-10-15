@@ -3293,21 +3293,23 @@ class TestLiveCorpusInventory:
 
     def test_live_corpus_report_contains_total_block_count(self):
         """
-        The report output contains the total framework-sub-block count: 94.
+        The report output contains the total framework-sub-block count: 150.
 
         Given: the 4 live consumer YAMLs
         When:  migrate --report-legacy is run
-        Then:  the string '94' appears in the report output
+        Then:  the string '150' appears in the report output
 
         Corpus-scale sanity check — the TOTAL counts legacy + pinned, so it
-        tracks corpus size, not migration progress. Moved from 96 to 94 when
-        two invalid MITRE ATLAS mappings (AML.M0028 on controlAgentPluginPermissions,
-        AML.T0034.002 on riskRunawayAgentToolLoops — neither exists at the pinned
-        v5.0.1 edition) were removed rather than replaced. Unchanged by the
-        subsequent GOVERN-6.2/MEASURE-2.11 fix (below) — that fix swapped one
-        value for another and removed two more, but never emptied a block
-        entirely, so the block count doesn't move. The migration-completeness
-        guard is test_live_corpus_fully_migrated_no_legacy.
+        tracks corpus size, not migration progress, and moves whenever the
+        corpus grows. Moved from 96 to 94 when two invalid MITRE ATLAS mappings
+        (AML.M0028 on controlAgentPluginPermissions, AML.T0034.002 on
+        riskRunawayAgentToolLoops — neither exists at the pinned v5.0.1
+        edition) were removed rather than replaced. Unchanged by the subsequent
+        GOVERN-6.2/MEASURE-2.11 fix (below) — that fix swapped one value for
+        another and removed two more, but never emptied a block entirely, so
+        the block count doesn't move. The decomposition's controls and risks
+        then raised it from 94 to 150. The migration-completeness guard is
+        test_live_corpus_fully_migrated_no_legacy.
         """
         args = ["migrate", "--report-legacy"]
         for f in _CONTENT_FILES:
@@ -3316,17 +3318,17 @@ class TestLiveCorpusInventory:
         result = _run(*args)
         assert result.returncode == 0
         combined_output = result.stdout + result.stderr
-        assert "94" in combined_output, (
-            f"Expected '94' (total legacy block count) in report output; got:\n{combined_output}"
+        assert "150" in combined_output, (
+            f"Expected '150' (total block count) in report output; got:\n{combined_output}"
         )
 
     def test_live_corpus_report_contains_total_value_count(self):
         """
-        The report output contains the total value count: 142.
+        The report output contains the total value count: 219.
 
         Given: the 4 live consumer YAMLs
         When:  migrate --report-legacy is run
-        Then:  the string '142' appears in the report output
+        Then:  the string '219' appears in the report output
 
         Corpus-scale sanity check (legacy + pinned), tracks corpus size. Moved
         from 146 to 144 for the two-mapping MITRE ATLAS removal described in
@@ -3339,7 +3341,8 @@ class TestLiveCorpusInventory:
         relation to least-privilege permission scoping) was replaced with
         MEASURE-2.7@1.0 (security and resilience evaluation, matching the
         mapping-selection skill's own worked example for this control shape).
-        The swap is value-count-neutral; the two removals are the -2. See
+        The swap is value-count-neutral; the two removals are the -2. The
+        decomposition's controls and risks then raised it from 142 to 219. See
         test_live_corpus_fully_migrated_no_legacy for the completeness guard.
         """
         args = ["migrate", "--report-legacy"]
@@ -3349,8 +3352,8 @@ class TestLiveCorpusInventory:
         result = _run(*args)
         assert result.returncode == 0
         combined_output = result.stdout + result.stderr
-        assert "142" in combined_output, (
-            f"Expected '142' (total legacy value count) in report output; got:\n{combined_output}"
+        assert "219" in combined_output, (
+            f"Expected '219' (total value count) in report output; got:\n{combined_output}"
         )
 
     def test_live_corpus_fully_migrated_no_legacy(self):

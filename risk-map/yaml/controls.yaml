@@ -72,6 +72,7 @@ controls:
     risks:
       - riskSensitiveDataDisclosure
       - riskFederatedDistributedTrainingPrivacy
+      - riskConcentratedAccessCorrelation
   - id: controlTrainingDataManagement
     title: Training Data Management
     description:
@@ -184,6 +185,8 @@ controls:
       - riskOrchestratorRouteHijacking
       - riskMaliciousLoaderDeserialization
       - riskPromptResponseCachePoisoning
+      - riskConcentratedAccessCorrelation
+      - riskCredentialAtRestExposure
   - id: controlModelAndDataIntegrityManagement
     title: Model and Data Integrity Management
     description:
@@ -195,6 +198,18 @@ controls:
         Implement repository trust policies, cryptographic signatures, attestation
         frameworks, and offline verification capabilities to ensure integrity
         and authenticity of models and artifacts.
+      - >
+        This control covers model, data, and training-code artifacts. It is distinct
+        from {{controlToolServerSupplyChainIntegrity}}, which gates the acquisition,
+        installation, and update of tool-server software, and from
+        {{controlToolServerVetting}}, which decides whether a tool-server provider
+        is trustworthy enough to admit. It is also distinct from
+        {{controlModelAndDataExecutionIntegrity}}: this control protects artifacts
+        through development and deployment (signing, attestation, repository trust)
+        and produces the signatures and attestations that control checks, whereas
+        that control verifies artifacts against known-good sources at inference or
+        load time and governs controlled modification of the running system, including
+        the signed-model check at load time.
     category: controlsInfrastructure
     personas:
       - personaModelProvider
@@ -220,6 +235,7 @@ controls:
       - riskRetrievalVectorStorePoisoning
       - riskToolSourceProvenance
       - riskStaleAgentIdentityBinding
+      - riskAgenticToolSupplyChain
     mappings:
       mitre-atlas:
         - AML.M0013@5.0.1
@@ -249,12 +265,27 @@ controls:
       - >
         Examples include:
       - - >
-          Validating expected code and model signatures / hashes at inference-time.
+          Validating expected code and model signatures / hashes at inference-time, and
+          recording each verify-pass or verify-fail and each load, allow, or deny decision
+          with the artifact, the expected signature or hash relied on, the host, and the
+          time.
         - >
           Limiting and immutably recording all modifications to runtime AI system components
           via oversight processes.
         - >
           Other integrity controls appropriate to the deployment context.
+      - >
+        This control verifies the model and code artifacts of a running AI system
+        against known-good sources at inference or load time, and governs controlled
+        modification of the running system. It owns the signed-model check at load
+        time. It is distinct from {{controlModelAndDataIntegrityManagement}}, which
+        protects artifacts through development and deployment (signing, attestation,
+        repository trust) and produces the signatures and attestations this control
+        checks. It is also distinct from {{controlToolServerSupplyChainIntegrity}},
+        which gates the acquisition, installation, and update of tool-server software
+        before it is deployed; this control does not cover the provenance of
+        tool-server software. Showing that this control was enforced depends on the records
+        described above being committed and retained under {{controlAuditTrailCompleteness}}.
     category: controlsInfrastructure
     personas:
       - personaPlatformProvider
@@ -265,7 +296,6 @@ controls:
       - componentTheModel
     risks:
       - riskAdapterPEFTInjection
-      - riskInsecureIntegratedComponent
       - riskModelDeploymentTampering
       - riskMaliciousLoaderDeserialization
       - riskModelSourceTampering
@@ -302,6 +332,11 @@ controls:
       - riskShadowAndUnknownAgents
       - riskAgenticDelegationConfusedDeputy
       - riskCrossTenantCredentialPropagation
+      - riskBrokenAuthorizationEnforcement
+      - riskOverScopedToolAuthority
+      - riskAgenticToolSupplyChain
+      - riskCredentialAtRestExposure
+      - riskExcessiveNetworkExposure
     mappings:
       mitre-atlas:
         - AML.M0011@5.0.1
@@ -337,6 +372,7 @@ controls:
       - riskPromptResponseCachePoisoning
       - riskRetrievalVectorStorePoisoning
       - riskInsecureIntegratedComponent
+      - riskOverScopedToolAuthority
     mappings:
       mitre-atlas:
         - AML.M0010@5.0.1
@@ -455,6 +491,8 @@ controls:
       - riskDenialOfMLService
       - riskEconomicDenialOfWallet
       - riskModelReverseEngineering
+      - riskLongLivedSessionStateWeakness
+      - riskBrokenAuthorizationEnforcement
     mappings:
       mitre-atlas:
         - AML.M0019@5.0.1
@@ -502,6 +540,8 @@ controls:
     risks:
       - riskSensitiveDataDisclosure
       - riskRogueActions
+      - riskUnconsentedAgentAction
+      - riskConsentFatigue
   - id: controlAgentPluginPermissions
     title: Agent Permissions
     description:
@@ -530,6 +570,8 @@ controls:
       - componentTools
       - componentRAGContent
       - componentMemory
+      - componentFederationProxy
+      - componentToolServer
     risks:
       - riskInsecureIntegratedComponent
       - riskSensitiveDataDisclosure
@@ -537,6 +579,13 @@ controls:
       - riskToolSourceProvenance
       - riskAgenticDelegationConfusedDeputy
       - riskCrossTenantCredentialPropagation
+      - riskConcentratedAccessCorrelation
+      - riskBrokenAuthorizationEnforcement
+      - riskUnconsentedAgentAction
+      - riskUnsandboxedCodeExecution
+      - riskOverScopedToolAuthority
+      - riskConsentFatigue
+      - riskImplicitCrossBoundaryTrust
     mappings:
       nist-ai-rmf:
         - MEASURE-2.7@1.0
@@ -678,16 +727,60 @@ controls:
       - riskRunawayAgentToolLoops
       - riskZombieShadowMCPServers
       - riskAgenticDelegationConfusedDeputy
+      - riskLongLivedSessionStateWeakness
+      - riskBrokenAuthorizationEnforcement
+      - riskUnconsentedAgentAction
+      - riskOverScopedToolAuthority
+      - riskImplicitCrossBoundaryTrust
   - id: controlIsolatedConfidentialComputing
     title: Isolated and Confidential Computing
     description:
       - >
-        Use technologies that minimize the risk of 3rd-party access to critical resources
-        via hardware isolation invariants and/or physically isolated computing systems.
+        Protect critical workloads and resources from host operators, infrastructure
+        administrators, and co-tenants by admitting a workload only after its isolated
+        environment is verified, and running it within hardware-enforced isolation
+        boundaries or on physically isolated computing systems.
       - >
-        Examples include including CPU and TPU-based confidential computing technologies
+        This control governs hardware- and physical-layer isolation of the compute and
+        memory that hold critical workloads, and the verification of that isolated
+        environment before a workload is admitted to it.
+    guidance:
+      - >
+        Examples include CPU and TPU-based confidential computing technologies
         (TEEs, secure enclaves), system isolation, secure scheduling, and side-channel
         monitoring to prevent cross-tenant information leakage.
+      - Pair enclave/TEE isolation with remote attestation so that the isolated
+        environment can be cryptographically verified before it is trusted.
+        Attestation extends the protection beyond passive isolation to defend
+        against compromised host hardware, malicious infrastructure administrators,
+        and co-tenancy threats by proving that the workload is running in a genuine,
+        unmodified isolated environment. Record each admission and verification outcome (admit
+        or deny, verify-pass or verify-fail) with the workload, the attestation evidence and
+        reference measurements or policy relied on, the host or enclave, and the time. For
+        a physically isolated system, verification means confirming the system's identity
+        and configuration against an approved baseline before the workload is placed on it.
+      - "Account for the resulting trust boundary: when a workload runs in an enclave,
+        the host system, host OS, firmware, and hypervisor lie outside that boundary,
+        so privileged host-based software cannot directly read or modify the protected
+        workload. Secrets and keys are released only into the verified isolated environment,
+        so they are not exposed at rest on the host. An isolated or separate system bounds
+        what code running inside it can reach on shared infrastructure, but does not sandbox
+        that code within its own boundary. Isolation does not remove every path: side-channel leakage (see
+        {{riskAcceleratorAndSystemSideChannels}}) and certain physical hardware attacks
+        remain outside the enclave's mitigation and should be addressed by complementary
+        controls."
+      - >
+        This control is distinct from {{controlRuntimeHostIsolation}}, which confines a
+        running process with OS- and process-level isolation on a host it shares; this
+        control places the workload beyond the reach of that host, including its privileged
+        software. It is distinct from {{controlInboundNetworkExposureAndSegmentation}} and
+        {{controlNetworkEgressControl}}, which constrain network reachability to and from a
+        component rather than the isolation of its compute and memory. It is also distinct
+        from {{controlInterComponentTransportSecurity}}, which authenticates, encrypts, and
+        integrity-protects the channels between components; this control isolates the
+        compute and memory that hold the workload and does not itself protect those channels.
+        Showing that this control was enforced depends on the records described above being committed and
+        retained under {{controlAuditTrailCompleteness}}.
     category: controlsInfrastructure
     personas:
       - personaPlatformProvider
@@ -699,13 +792,17 @@ controls:
       - componentModelTrainingTuning
       - componentMemory
       - componentReasoningCore
+      - componentIsolationRuntime
     risks:
       - riskAcceleratorAndSystemSideChannels
-      - riskModelSourceTampering
       - riskModelExfiltration
       - riskModelDeploymentTampering
-      - riskOrchestratorRouteHijacking
       - riskCrossTenantCredentialPropagation
+      - riskUntrustedHostToolRuntimeExposure
+      - riskUnsandboxedCodeExecution
+      - riskImplicitCrossBoundaryTrust
+      - riskCredentialAtRestExposure
+      - riskConfidentialComputingAttestationBypass
   - id: controlRetrievalAndVectorSystemIntegrity
     title: Retrieval and Vector System Integrity Management
     description:
@@ -887,10 +984,18 @@ controls:
       - componentOrchestrationOutputHandling
       - componentTools
       - componentMemory
+      - componentFederationProxy
     risks:
       - riskCrossTenantCredentialPropagation
       - riskShadowAndUnknownAgents
       - riskStaleAgentIdentityBinding
+      - riskConcentratedAccessCorrelation
+      - riskLongLivedSessionStateWeakness
+      - riskAgentIdentitySpoofing
+      - riskUntrustedHostToolRuntimeExposure
+      - riskImplicitCrossBoundaryTrust
+      - riskCredentialAndTokenTheft
+      - riskCredentialAtRestExposure
     mappings:
       owasp-top10-llm:
         - LLM06:2025
@@ -935,10 +1040,14 @@ controls:
           not user-facing authentication (covered by application access
           controls).
         - >
-          Session token binding: Bind session tokens and API credentials to
-          transport-layer identifiers (e.g., TLS channel binding per RFC 5929)
-          so that a token captured from one TLS session cannot be replayed on
-          a different channel.
+          Session token binding: Bind session tokens and API credentials to a
+          session-unique transport-layer identifier so that a token captured from
+          one TLS session cannot be replayed on a different channel. Use the
+          tls-exporter binding of {{ref:rfc9266}} (TLS 1.3, or TLS 1.2 with the
+          extended master secret), or the tls-unique binding of {{ref:rfc5929}}
+          only on TLS 1.2 or earlier with the extended master secret. The
+          tls-server-end-point binding binds the server certificate, not the
+          session, and does not provide this anti-replay property.
         - >
           Replay protection: Apply nonce, timestamp, or sequence number
           mechanisms to tool invocation requests and inter-component messages
@@ -950,17 +1059,53 @@ controls:
           rebinding attacks.
         - >
           Certificate lifecycle management: Issue individual certificates per
-          component identity rather than shared wildcards. Automate certificate
-          rotation before expiry. Revoke certificates immediately on component
-          decommission or credential compromise.
+          channel endpoint rather than shared wildcards. Automate certificate
+          rotation before expiry. Revoke certificates immediately on endpoint
+          decommission or key compromise.
       - >
-        This control addresses the transport layer — how component messages are
-        protected in transit. It is distinct from {{controlOrchestratorAndRouteIntegrity}}
-        (which governs where traffic is routed), {{controlSecureByDefaultMLTooling}}
-        (which governs tooling selection and configuration), and
-        {{controlIsolatedConfidentialComputing}} (which governs hardware-level
-        compute isolation). Those controls assume secure channels; this control
-        establishes them.
+        This control addresses how component messages are protected in transit.
+        It is distinct from {{controlOrchestratorAndRouteIntegrity}} (where traffic
+        is routed), {{controlSecureByDefaultMLTooling}} (tooling selection and
+        configuration), and {{controlIsolatedConfidentialComputing}} (hardware-level
+        compute isolation, not the channels between components). Those controls
+        assume secure channels; this control establishes them.
+      - >
+        Identity and credentials sit on the other side of the channel. This control
+        binds session tokens to the TLS channel and authenticates the endpoint there;
+        siblings own the rest:
+      - - >
+          {{controlComponentIdentityRegistration}} enrolls the component,
+          {{controlComponentIdentityAuthentication}} issues and verifies its authenticator
+          at connection time, and {{controlComponentIdentityProvenance}} verifies per
+          invocation that the counterparty is still the registered, non-revoked principal.
+        - >
+          {{controlAuthenticationSchemeHardening}} makes the authentication scheme sound;
+          {{controlDelegatedAuthorizationIntegrity}} establishes the grant and its per-hop
+          verifiability.
+        - >
+          {{controlSenderConstrainedCredentials}} owns holder-key binding, including
+          mutual-TLS certificate-bound access tokens; {{controlSessionCredentialBindingAndLifecycle}}
+          owns the audience, lifetime, rotation and revocation of session credentials,
+          including on detected reuse or anomaly; {{controlSecretsAndKeyManagement}} owns
+          custody of the secrets and keys behind this control's certificates, and rotation
+          and revocation on compromise of the stored material.
+        - >
+          Issuing, rotating and revoking the certificates that secure the transport channel
+          itself stays with this control; per-principal authenticators, including
+          per-principal client certificates, belong to
+          {{controlComponentIdentityAuthentication}}.
+      - >
+        {{controlInboundNetworkExposureAndSegmentation}} governs whether a service is
+        reachable at all and {{controlNetworkEgressControl}} where a component may send;
+        this control applies once a connection is permitted.
+        {{controlMessageAndPayloadResourceLimits}} bounds the work a well-formed message
+        can impose on its receiver, which a protected channel does not.
+      - >
+        Protecting a channel does not make the receiver keep what it receives: commitment
+        of records is {{controlAuditTrailCompleteness}}. Structuring these controls
+        around an explicit trust topology is the posture of
+        {{controlAgenticZeroTrustPosture}}, of which this control is one operational
+        layer.
     category: controlsInfrastructure
     personas:
       - personaPlatformProvider
@@ -973,13 +1118,22 @@ controls:
       - componentOrchestrationInputHandling
       - componentOrchestrationOutputHandling
       - componentApplication
+      - componentAgentNetworkPolicyEnforcementPoint
     risks:
       - riskMCPTransportHijacking
       - riskOrchestratorRouteHijacking
       - riskInsecureIntegratedComponent
-      - riskToolRegistryTampering
-      - riskModelDeploymentTampering
       - riskZombieShadowMCPServers
+      - riskCredentialAndTokenTheft
+    externalReferences:
+      - id: rfc9266
+        title: RFC 9266 — Channel Bindings for TLS 1.3
+        url: https://datatracker.ietf.org/doc/html/rfc9266
+        type: spec
+      - id: rfc5929
+        title: RFC 5929 — Channel Bindings for TLS
+        url: https://datatracker.ietf.org/doc/html/rfc5929
+        type: spec
     mappings:
       nist-ai-rmf:
         - MEASURE-2.7@1.0
@@ -1001,37 +1155,57 @@ controls:
     title: Component Identity Provenance
     description:
       - >
-        Ensure that when one component invokes another, the calling component
-        can verify the callee is the currently registered, non-revoked
-        principal for that role — not merely the holder of a key for a
-        domain or network address. This control closes the gap that transport
-        security leaves open: TLS and mTLS prove key possession for an
-        endpoint, but do not attest that the endpoint is the legitimate
-        principal a registry system of record says it should be.
+        Ensure that when one component invokes another, the calling component can verify
+        at invocation time that the callee is the currently registered, non-revoked
+        principal for that role, ensuring that revocation in the authoritative registry
+        is observable to callers within a bounded time window.
+    guidance:
       - >
-        Implementation requires: a binding between a component's runtime
-        identity and an authoritative registry entry, such that revocation
-        in the registry is observable to callers within a bounded time
-        window; verification of that binding at invocation time, not solely
-        at channel establishment; and audit telemetry that records the
-        provenance assertion used so post-hoc detection of calls against
-        revoked or expired principals is possible.
+        Implementation requires: a binding between a component's runtime identity and an
+        authoritative registry entry, so revocation is observable to callers within a bounded
+        time window; verification at invocation time, not solely at channel establishment and
+        not by accepting the holder of a key for a domain or network address as the registered
+        principal; and audit telemetry recording, per invocation, the provenance assertion
+        presented, the verify-pass or verify-fail outcome, and the registry state relied on,
+        enabling after-the-fact detection of calls against revoked or expired principals. The
+        registry read is the enrollment record where one exists, otherwise the inventory of
+        authorized principals.
       - >
-        This control is mechanism-agnostic. Implementers may use SPIFFE/SVIDs,
-        capability tokens, signed registration receipts, mTLS with a private
-        CA whose issuance is gated on registry state, short-lived JWTs from
-        a registration authority, hardware-attested identities, or other
-        approaches that satisfy the intent. The control specifies the
-        question that must be answered at invocation time — "is this the
-        registered principal?" — not the cryptographic protocol used to
-        answer it.
+        This control is mechanism-agnostic: standing-check mechanisms such as registry-backed
+        short-lived assertions,
+        revocation lists or status checks consulted at call time, registration receipts
+        checked at call time, or other approaches satisfy it. It specifies the question that
+        must be answered at invocation time — "is this the registered principal?" — not the
+        protocol.
       - >
-        This control is distinct from {{controlInterComponentTransportSecurity}},
-        which secures the channel, and from {{controlAgentInventoryManagement}},
-        which maintains the registry of authorized principals. Inventory is
-        the lifecycle authority; provenance is the runtime attestation that
-        surfaces inventory state to callers; transport is the channel over
-        which both ride.
+        TLS and mTLS prove key possession for an endpoint, not that it is the principal the
+        registry says it should be. This control closes that gap: a revoked or replaced
+        principal still holding a valid authenticator is refused at invocation, reducing
+        impersonation by a stale or revoked identity.
+      - >
+        This control checks current standing, not identity establishment.
+        {{controlComponentIdentityRegistration}} enrolls a component as a recognized,
+        revocable client of the authorization server and issues no credential or
+        authenticator (its client identifier is the record of enrollment);
+        {{controlComponentIdentityAuthentication}} issues the principal identifier and the
+        bound authenticator and verifies them at connection time; this control verifies at
+        each invocation that the counterparty is still the currently registered, non-revoked
+        principal for its role. It is distinct from {{controlInterComponentTransportSecurity}},
+        which secures the channel, and from {{controlAgentInventoryManagement}}, which
+        maintains the registry of authorized principals (the lifecycle authority). It also
+        implements, at the invocation boundary, the explicit boundary verification that
+        {{controlAgenticZeroTrustPosture}} requires; the posture is that control's, the
+        per-invocation registry check this control's. It is also distinct from the controls
+        that rely on an established principal: {{controlAuthenticationSchemeHardening}} (which
+        schemes are acceptable), {{controlFederatedUserAuthentication}} (human-user identity),
+        {{controlDelegatedAuthorizationIntegrity}} and {{controlDelegatedAuthorityConfinement}}
+        (delegated authority), {{controlExternalizedAuthorizationDecisioning}} and
+        {{controlResourceAuthorizationEnforcement}} (authorization decision and enforcement),
+        and {{controlToolServerSupplyChainIntegrity}} and {{controlToolServerVetting}}
+        (tool-server software and provider admission); this control checks only that the
+        principal is still the registered one. Showing that this control was enforced
+        depends on its audit telemetry being committed and retained under
+        {{controlAuditTrailCompleteness}}.
     category: controlsInfrastructure
     personas:
       - personaPlatformProvider
@@ -1049,10 +1223,7 @@ controls:
       - riskZombieShadowMCPServers
       - riskStaleAgentIdentityBinding
       - riskMCPTransportHijacking
-    mappings:
-      nist-ai-rmf:
-        - MAP-3.4@1.0
-        - MEASURE-2.7@1.0
+      - riskAgentIdentitySpoofing
     lifecycleStage:
       - deployment
       - runtime
@@ -1173,3 +1344,2374 @@ controls:
     risks:
       - riskToolRegistryTampering
       - riskToolSourceProvenance
+  - id: controlAgentCapabilityNegotiation
+    title: Agent Capability Negotiation Control
+    description:
+      - >
+        Validate the tools and capabilities an agent acquires through runtime negotiation
+        against an approved policy, including that each is the approved version, before they
+        become reachable, preventing advertised capabilities from silently expanding the
+        agent's reach. The objective is a governed admission decision.
+      - >
+        Apply this control at the handshake boundary, where an agent binds the tools exposed
+        by a remote tooling or shared-service endpoint.
+    guidance:
+      - >
+        Evaluate admission against an allowlist binding each approved capability's identity
+        to the digest of its approved version, as pinned under
+        {{controlThirdPartyCapabilityAdmission}}. Do not expose (fail closed) a capability
+        outside the approved set or whose identity or digest does not match its pin; route it
+        to that control's re-approval, not inline approval. Re-evaluate on renegotiation so a
+        changed set is re-admitted, not inherited. Record each expose-or-withhold decision
+        with the offered identity and digest, the pin relied on, the requesting principal and
+        session, and the time.
+      - >
+        Remote tooling and shared-service endpoints include, for example, an MCP or A2A tool
+        server. Capabilities have the scope the admission control named below gives them:
+        tools, prompts, and instruction templates, each checked when offered during
+        negotiation. A prompt or instruction template delivered outside negotiation is covered
+        only by that control's admission and re-approval.
+      - >
+        This control is the runtime enforcement point. {{controlThirdPartyCapabilityAdmission}}
+        admits, pins, and re-approves; this control enforces that pin at each handshake,
+        re-admitting per session so an approved provider cannot silently expand its reach
+        mid-session. A change to an approved capability's description, schema or declared
+        metadata alters the digest, is not exposed, and triggers that control's re-approval. A
+        behavior change behind an unchanged description is caught only by the periodic and
+        trigger-driven re-review under {{controlToolServerVetting}}. It is distinct from
+        {{controlAgentPluginPermissions}}, the static least-privilege upper bound enforced
+        here; {{controlAgentPluginUserControl}}, which gates user approval of data-altering
+        actions; and {{controlAgentInventoryManagement}}, the lifecycle authority over which
+        endpoints may exist. Showing that this control enforced the pin depends on the records
+        described above being committed and retained under {{controlAuditTrailCompleteness}}.
+    category: controlsApplication
+    personas:
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+    components:
+      - componentReasoningCore
+      - componentTools
+      - componentAgentConsentSurface
+    risks:
+      - riskRogueActions
+      - riskInsecureIntegratedComponent
+      - riskToolSourceProvenance
+    mappings:
+      owasp-top10-llm:
+        - LLM06:2025
+    lifecycleStage:
+      - development
+      - runtime
+    impactType:
+      - integrity
+      - confidentiality
+    actorAccess:
+      - agent
+      - service-provider
+  - id: controlComponentIdentityAuthentication
+    title: Component Identity Authentication
+    description:
+      - >
+        Establish a distinct, authenticatable identity for each agent and each tool-serving
+        endpoint, whether remote or locally exposed, ensuring that a principal acting in or
+        on behalf of an AI system is authenticated before it is trusted and cannot be
+        impersonated. The objective is that every non-human claimant presents a unique
+        principal identifier with a verifiable authenticator bound to it, which the
+        verifier confirms at connection time.
+    guidance:
+      - >
+        Issue a unique principal identifier per agent or tool endpoint rather than reusing
+        a shared service account, and bind it to a verifiable authenticator — a workload
+        credential, a signed identity document, or a client certificate — so a counterparty
+        can confirm the principal before exchanging instructions or data. Authenticate
+        at connection time rather than inferring identity from a hostname,
+        port, or co-location; a shared, ambient, or network-address-derived identity
+        does not satisfy this control. Record each authenticate-pass or authenticate-fail
+        decision with the claimed principal identifier, the counterparty, the authenticator and
+        trust anchor relied on, and the time.
+      - >
+        Authentication strength and credential lifetime should be proportionate to the
+        principal's authority and blast radius: higher-privilege agents and side-effecting
+        tool endpoints warrant stronger authenticators and shorter-lived credentials,
+        while low-impact, read-only endpoints may accept lighter-weight authentication.
+        Implementers may satisfy the intent with SPIFFE/SVID workload identities, OAuth
+        client-credential or token-exchange flows, mutual TLS with per-principal certificates,
+        hardware-attested identities, or equivalent mechanisms; the control requires that
+        a distinct principal be authenticated, not any particular cryptographic scheme.
+      - >
+        This control applies equally to agent-to-tool, agent-to-agent, and orchestrator-to-agent
+        paths, independent of wire protocol (for example MCP, A2A, or vendor SDKs) or
+        deployment form (remote or locally exposed). A locally exposed tool server is
+        not implicitly trusted for binding to localhost; it is authenticated like any
+        other endpoint.
+      - >
+        This control is distinct from {{controlAgentInventoryManagement}} (the lifecycle
+        registry of which agents are authorized to exist), {{controlComponentIdentityProvenance}}
+        (which verifies at each invocation that the counterparty is still the currently
+        registered, non-revoked principal for its role: current standing, not identity
+        establishment), {{controlAgentIntegrityManagement}} (which
+        attests that a running agent matches its registered configuration), and {{controlAgentCredentialIsolation}}
+        (which scopes issued credentials to a tenant): those answer whether a principal
+        is registered, unmodified, and tenant-scoped, while this control establishes the
+        authenticatable principal that makes those questions answerable. It is also distinct
+        from {{controlInterComponentTransportSecurity}}, which protects the channel —
+        transport security can authenticate an endpoint key but does not establish that
+        the endpoint is a distinct, named principal. Per-principal authenticators, including
+        per-principal client certificates, are this control's; the certificates that secure
+        the transport channel itself are that control's. It is also distinct from
+        {{controlAuthenticationSchemeHardening}}, which decides which schemes and credential
+        types are acceptable, while this control authenticates a principal under an accepted scheme.
+        It is distinct from {{controlFederatedUserAuthentication}}, which authenticates human
+        users through a federated identity provider; this control authenticates non-human
+        principals.
+      - >
+        This control is closest to {{controlComponentIdentityRegistration}}, which enrolls
+        a component as a recognized, revocable client of the authorization server and
+        issues no credential or authenticator (its client identifier is the record of
+        enrollment). This control owns issuance: it issues the
+        unique principal identifier, binds the verifiable authenticator to it, and verifies
+        that authenticator at connection time. Where an enrollment protocol returns
+        credentials during registration, issuing them is this control's function exercised
+        at enrollment. The two hold independently — a principal can be authenticated against
+        a trust anchor that never enrolled it as a client of any authorization server (for
+        example an mTLS peer presenting a per-principal certificate chained to a trusted
+        CA), and an enrolled component still presents an unverified credential until this
+        control checks it at connect time. Showing that this control was enforced depends on
+        the records described above being committed and retained under {{controlAuditTrailCompleteness}}.
+    category: controlsInfrastructure
+    personas:
+      - personaPlatformProvider
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaModelServing
+      - personaGovernance
+    components:
+      - componentOrchestrationInputHandling
+      - componentOrchestrationOutputHandling
+      - componentTools
+      - componentModelServing
+      - componentApplication
+      - componentIdentityProvider
+      - componentToolServer
+    risks:
+      - riskMCPTransportHijacking
+      - riskAgentIdentitySpoofing
+    lifecycleStage:
+      - deployment
+      - runtime
+      - maintenance
+    impactType:
+      - integrity
+      - confidentiality
+      - accountability
+    actorAccess:
+      - external
+      - agent
+      - service-provider
+  - id: controlDelegatedAuthorizationIntegrity
+    title: Delegated Authorization Integrity
+    category: controlsInfrastructure
+    description:
+      - >
+        Ensure that when one component acts on behalf of another, the authority exercised is
+        carried by a verifiable delegated-authorization grant that names the original
+        principal, is scoped to the requested action, and can be re-evaluated independently at
+        each intermediary in the chain. The objective is an end-to-end handoff with auditable
+        provenance and scope, preventing an intermediary from silently broadening or
+        impersonating the authority it was given.
+    guidance:
+      - >
+        Favor a standards-based delegated-authorization framework (for example OAuth 2.0 token
+        exchange with audience-restricted, short-lived access tokens and fine-grained scopes)
+        rather than forwarding a caller's raw credential or a static long-lived secret. Bind
+        the acting party, original principal, and permitted scope in each grant, so each
+        intermediary, including remote tooling endpoints such as MCP or A2A tool servers, can
+        evaluate it against policy before honoring it. The policy decision point evaluates the
+        grant; the policy enforcement point at the intermediary enforces the decision. Both sit
+        in trusted, deterministic components outside the model. Record each grant verify-pass
+        or verify-fail decision with the acting party, original principal, scope and audience
+        evaluated, grant and policy relied on, and the time. See
+        {{ref:rfc-8693-token-exchange}}, {{ref:rfc-6749-oauth2}}, and
+        {{ref:nist-sp-800-162-abac}}.
+      - >
+        This control is distinct from {{controlAgentPluginPermissions}} (bounds delegated
+        authority to the intersection of the agent's and caller's permissions),
+        {{controlAgentCredentialIsolation}} (keeps credentials within a tenant boundary),
+        {{controlInterComponentTransportSecurity}} (protects the channel the grant rides
+        over), and {{controlComponentIdentityProvenance}} (attests that the callee is the
+        registered principal). Those assume a trustworthy grant exists; this control
+        establishes the grant and its per-hop verifiability. It is also distinct from
+        {{controlDelegatedAuthorityConfinement}}, which requires authority to be re-minted for
+        each hop's recipient rather than forwarded. The two are independent: a chain can
+        re-mint at every hop yet issue grants that cannot be independently re-evaluated at each
+        intermediary. Showing that this control was enforced depends on the records described
+        above being committed and retained under {{controlAuditTrailCompleteness}}.
+    personas:
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaPlatformProvider
+    risks:
+      - riskAgenticDelegationConfusedDeputy
+      - riskRogueActions
+    mappings:
+      owasp-top10-llm:
+        - LLM06:2025
+    externalReferences:
+      - id: rfc-8693-token-exchange
+        title: RFC 8693 — OAuth 2.0 Token Exchange
+        url: https://datatracker.ietf.org/doc/html/rfc8693
+        type: spec
+      - id: rfc-6749-oauth2
+        title: RFC 6749 — The OAuth 2.0 Authorization Framework
+        url: https://datatracker.ietf.org/doc/html/rfc6749
+        type: spec
+      - id: nist-sp-800-162-abac
+        title: 'NIST SP 800-162: Guide to Attribute Based Access Control (ABAC) Definition
+          and Considerations'
+        url: https://csrc.nist.gov/pubs/sp/800/162/upd2/final
+        type: spec
+    actorAccess:
+      - agent
+      - service-provider
+      - api
+    impactType:
+      - accountability
+      - confidentiality
+      - integrity
+    lifecycleStage:
+      - deployment
+      - runtime
+    components:
+      - componentReasoningCore
+      - componentApplication
+      - componentToolServer
+      - componentIdentityProvider
+      - componentAuthorizationPolicyDecisionPoint
+      - componentAuthorizationPolicyEnforcementPoint
+      - componentFederationProxy
+  - id: controlFederatedUserAuthentication
+    title: Federated User Authentication
+    category: controlsApplication
+    description:
+      - >
+        Establish the identity of human users by delegating authentication to a trusted
+        external identity provider. The objective is to ground every user-initiated
+        session in a verifiable identity issued by an authoritative provider, giving
+        downstream authorization, delegation, and audit decisions a trustworthy principal
+        to act on.
+      - >
+        This control governs authentication of human users at the application boundary.
+    guidance:
+      - >
+        Delegate authentication using federated standards (for example OIDC, OAuth 2.0,
+        or SAML), rather than collecting, storing, and verifying user credentials within
+        the AI application itself. Implementers should prefer an existing organizational
+        or commercial identity provider over a bespoke authentication implementation,
+        and should validate provider-issued tokens (signature, audience, expiry, issuer)
+        on each session establishment so that a token issued for one application cannot
+        be replayed against another. Record each accept or reject decision on a presented token
+        with the user principal, the issuing provider, the audience checked, the validation
+        result relied on, and the time.
+      - >
+        The protocol used and the deployment form (browser redirect, device-code flow,
+        remote tooling such as MCP servers) are implementation attributes.
+      - >
+        Delegating authentication to an established provider reduces the application's
+        exposure to credential-handling weaknesses (credential storage, password reset
+        flows, multi-factor enrollment) and lets the application inherit the provider's
+        identity assurance and session-management posture.
+      - >
+        This control is distinct from {{controlApplicationAccessManagement}}, which governs
+        authorization and resource governance once a principal is established — this
+        control answers "who is the human user" while access management answers "what
+        is this principal allowed to do." It is also distinct from the machine-to-machine
+        identity controls: {{controlComponentIdentityAuthentication}}, which authenticates
+        non-human component and agent principals; {{controlComponentIdentityProvenance}},
+        which verifies at invocation time that a caller is the currently registered
+        principal for its role; and {{controlAgentCredentialIsolation}}, which scopes agent
+        credentials to a tenant. It is also distinct from
+        {{controlAuthenticationSchemeHardening}}, which governs which authentication schemes
+        and credential types are acceptable under policy, while this control performs the
+        federated authentication of the human user. Those controls assume a separate user-identity origin where
+        a human initiates the request, which this control supplies. Where an agent acts on a user's behalf, the user identity established
+        here is the authority that delegation controls such as {{controlAgentPluginPermissions}}
+        narrow against. Showing that this control was enforced depends on the records described above being
+        committed and retained under {{controlAuditTrailCompleteness}}.
+    personas:
+      - personaApplicationDeveloper
+      - personaAgenticProvider
+      - personaGovernance
+    risks:
+      - riskCredentialAndTokenTheft
+    mappings:
+      mitre-atlas:
+        - AML.M0019@5.0.1
+    lifecycleStage:
+      - deployment
+      - runtime
+    actorAccess:
+      - external
+      - user
+    impactType:
+      - confidentiality
+      - accountability
+    components:
+      - componentApplication
+      - componentApplicationInputHandling
+      - componentIdentityProvider
+  - id: controlComponentIdentityRegistration
+    title: Component Identity Registration
+    category: controlsApplication
+    description:
+      - >
+        Ensure that each component participating in flows mediated by an authorization
+        server — agents, remote tool servers, and shared-service endpoints — is enrolled
+        as a recognized, revocable client of that authorization server, and that only a
+        component authorized to exist can be enrolled, ensuring the authorization server
+        can name and revoke every such client it serves.
+      - >
+        This control governs enrollment only: whether a component is a known client of the
+        authorization server, the role that recognition is scoped to, and whether it has
+        been revoked.
+    guidance:
+      - >
+        Registration binds a component to a distinct client identity at the identity provider,
+        scoped to the component's role, rather than leaving it to act under ambient trust
+        or a shared, unattributable credential. Where a component cannot be enrolled ahead of
+        time — for example a tool server discovered at runtime — a programmatic enrollment
+        mechanism such as OAuth 2.0 Dynamic Client Registration ({{ref:rfc7591-dcr}})
+        lets the component enroll through an attributable path instead of falling back to
+        a static or shared secret. Runtime enrollment is gated rather than open: the request
+        must carry an initial access credential issued for that component, or a signed
+        statement (for example a software statement) tied to the component's inventory
+        approval, and the authorization server rejects a request carrying neither, so that
+        a server nobody approved cannot enroll itself. Record each enroll or reject decision
+        with the requesting component, the initial access credential or software statement and
+        inventory entry relied on, the client identity enrolled, and the time.
+      - >
+        This control should follow least-privilege and zero-trust posture: a component's
+        registered identity scopes the credentials it can be issued, and every enrollment,
+        ahead of time or at runtime, should be gated on the component first being authorized
+        to exist (its inventory entry), so that an unregistered or decommissioned component
+        cannot obtain a usable client identity.
+      - >
+        This control is distinct from {{controlAgentInventoryManagement}},
+        which is the governance registry of what is authorized to exist (registration
+        consumes that authority, it does not replace it); from {{controlComponentIdentityProvenance}},
+        which verifies at each invocation that the counterparty is still the currently
+        registered, non-revoked principal (enrollment and its revocation are the standing
+        that check reads);
+        from {{controlAgentCredentialIsolation}}, which scopes issued credentials to tenant
+        boundaries; and from {{controlInterComponentTransportSecurity}}, which protects
+        the channel those credentials travel over. Registration enrolls the client and issues
+        no credential or authenticator; the client identifier returned at enrollment (for
+        example a DCR client_id) is the record of enrollment, not a principal identifier or
+        authenticator. Those controls bound, attest, and transport the identity
+        that {{controlComponentIdentityAuthentication}} issues.
+      - >
+        This control is closest to {{controlComponentIdentityAuthentication}}:
+        registration is the enrollment that makes a component a known, revocable client
+        of the authorization server and issues no credential or authenticator, while that
+        control issues the unique principal identifier, binds the verifiable authenticator
+        to it, and verifies it at connection time. The client identifier returned at
+        enrollment (for example a DCR client_id) is the enrollment record; where enrollment
+        also returns a credential, issuing it is that control's function exercised at
+        enrollment. Registration applies only to components in flows mediated
+        by an authorization server; a principal outside such flows is covered by that
+        control alone. The two hold independently — a component can be authenticated against
+        a trust anchor it was never registered into (for example a per-principal certificate
+        chained to a trusted CA), and an enrolled component's credential stays unverified
+        at use until that control checks it. Showing that this control was enforced depends on
+        the records described above being committed and retained under {{controlAuditTrailCompleteness}}.
+    personas:
+      - personaApplicationDeveloper
+      - personaAgenticProvider
+      - personaPlatformProvider
+    risks:
+      - riskAgentIdentitySpoofing
+      - riskZombieShadowMCPServers
+    lifecycleStage:
+      - development
+      - deployment
+      - runtime
+    impactType:
+      - confidentiality
+      - integrity
+      - accountability
+    actorAccess:
+      - agent
+      - service-provider
+      - external
+    externalReferences:
+      - type: spec
+        id: rfc7591-dcr
+        title: 'RFC 7591: OAuth 2.0 Dynamic Client Registration Protocol'
+        url: https://www.rfc-editor.org/rfc/rfc7591
+    components:
+      - componentReasoningCore
+      - componentToolServer
+      - componentTools
+      - componentIdentityProvider
+      - componentToolRegistry
+  - id: controlDelegatedAuthorityConfinement
+    title: Delegated Authority Confinement
+    description:
+      - >
+        Ensure that authority propagating across a delegation chain is re-established at
+        each hop for the specific party acting and the action requested: minted for and
+        bound to its own recipient, narrowed at each issuance to the requested action, and
+        attributable to the actor that took each action rather than only to the original
+        subject.
+    guidance:
+      - >
+        Establish authority afresh at each hop, for example through OAuth 2.0 Token Exchange
+        ({{ref:rfc-8693-token-exchange}}) or an equivalent per-hop issuance naming the
+        current acting party. Bind it to the current actor and audience-restrict it to the
+        intended recipient (resource indicators, {{ref:rfc-8707-resource-indicators}}),
+        rather than forwarding or reusing a token issued for an earlier hop or presenting an
+        inbound token unchanged downstream. Reject token passthrough by default: a resource
+        accepts only tokens issued specifically for it and neither honors nor forwards tokens
+        minted for another audience. Carry original-caller and intermediate-actor identities
+        forward as an actor chain so downstream policy and audit can attribute an action to
+        the full delegation path. Because a compromised intermediary can truncate or misstate
+        the chain it presents, have the terminal resource validate the chain against the
+        expected delegation topology rather than trusting a self-consistent chain. Narrow
+        scope and lifetime at each issuance to what the hop needs. Where no central
+        authorization server exists, signed delegation assertions binding actor, audience,
+        scope, and chain position satisfy the intent.
+      - >
+        Recipient-bound authority means a credential captured or over-scoped at one hop
+        cannot be replayed for broader authority downstream.
+      - >
+        This control governs how authority propagates across hops. It is distinct from
+        {{controlDelegatedAuthorizationIntegrity}}, which requires the grant to be verifiable
+        and independently re-evaluable at each intermediary; this one requires re-minting per
+        hop rather than forwarding. The two are independent — a system can re-mint at every
+        hop yet issue grants that cannot be independently re-evaluated (satisfying this
+        control but not that one). It is distinct from
+        {{controlSenderConstrainedCredentials}}, which makes one credential hard to replay
+        through proof-of-possession binding, not the propagation discipline across the chain;
+        from {{controlSessionCredentialBindingAndLifecycle}}, which governs audience binding
+        and lifetime of any credential or session (a chain can re-mint at every hop and still
+        issue long-lived, unbound tokens, and a short-lived, audience-bound token can still be
+        forwarded unchanged); and from {{controlAuthenticationSchemeHardening}}, which governs
+        whether a presented credential is verifiable and attributable at all, whereas this
+        control requires that it was issued for the hop presenting it, so forwarding a
+        verifiable token unchanged fails here. It is further distinct from
+        {{controlAgentPluginPermissions}}, which owns the intersection of the agent's
+        permissions and the caller's authorization as the bound on agent action (this control
+        narrows each issued credential to what the hop needs and does not compute that
+        intersection), and {{controlComponentIdentityProvenance}}, which verifies a callee is
+        the registered principal.
+    category: controlsApplication
+    personas:
+      - personaAgenticProvider
+      - personaPlatformProvider
+      - personaApplicationDeveloper
+      - personaGovernance
+    components:
+      - componentReasoningCore
+      - componentOrchestrationInputHandling
+      - componentOrchestrationOutputHandling
+      - componentTools
+      - componentApplication
+      - componentIdentityProvider
+      - componentFederationProxy
+    risks:
+      - riskAgenticDelegationConfusedDeputy
+      - riskAgentDelegationChainOpacity
+    mappings:
+      owasp-top10-llm:
+        - LLM06:2025
+    lifecycleStage:
+      - deployment
+      - runtime
+    impactType:
+      - accountability
+      - confidentiality
+      - integrity
+      - compliance
+    actorAccess:
+      - agent
+      - privileged
+    externalReferences:
+      - type: spec
+        id: rfc-8693-token-exchange
+        title: 'RFC 8693: OAuth 2.0 Token Exchange'
+        url: https://www.rfc-editor.org/rfc/rfc8693
+      - type: spec
+        id: rfc-8707-resource-indicators
+        title: 'RFC 8707: Resource Indicators for OAuth 2.0'
+        url: https://www.rfc-editor.org/rfc/rfc8707
+  - id: controlSenderConstrainedCredentials
+    title: Sender-Constrained Credentials
+    description:
+      - >
+        Bind credentials used for inter-component and tool authentication to their legitimate
+        holder, making possession of a credential value alone insufficient to authenticate.
+        The objective is that the presenter must additionally prove control of a holder-bound
+        key or context at use time.
+    guidance:
+      - >
+        Implement this through proof-of-possession mechanisms such as DPoP-style application-layer
+        binding ({{ref:rfc9449}}) and mutual-TLS certificate-bound access tokens
+        ({{ref:rfc-8705-mtls}}), which bind the token to the client's key rather than the
+        connection. Pair the binding with short credential lifetimes.
+      - >
+        This control is distinct from {{controlInterComponentTransportSecurity}}, which
+        binds tokens to the TLS channel; holder-key binding is independent of the channel
+        and survives hops and intermediaries. It is distinct from
+        {{controlAgentCredentialIsolation}}, which scopes issuance and propagation to a
+        tenant and governs which principals a credential is valid for; this control governs
+        whether a presenter is the rightful holder. It is distinct from
+        {{controlSessionCredentialBindingAndLifecycle}}, the lifecycle discipline in which
+        holder binding is one input: this control supplies the binding, and that control
+        sets the short lifetimes it is paired with.
+      - >
+        It is also distinct from {{controlDelegatedAuthorityConfinement}}, which governs
+        propagation across a delegation chain, minting authority afresh for each hop's
+        recipient; holder binding is a property of one credential, and either can be adopted
+        without the other. It is distinct from {{controlSecretsAndKeyManagement}}, which
+        governs custody, brokering, and rotation of held secrets and keys; this control
+        governs presentation time, not where the secret is stored.
+    category: controlsApplication
+    personas:
+      - personaPlatformProvider
+      - personaAgenticProvider
+      - personaModelServing
+      - personaApplicationDeveloper
+    components:
+      - componentTools
+      - componentModelServing
+      - componentReasoningCore
+      - componentOrchestrationInputHandling
+      - componentIdentityProvider
+    risks:
+      - riskMCPTransportHijacking
+      - riskAgentIdentitySpoofing
+    lifecycleStage:
+      - deployment
+      - runtime
+    impactType:
+      - confidentiality
+      - integrity
+    actorAccess:
+      - external
+      - api
+    externalReferences:
+      - type: spec
+        id: rfc9449
+        title: 'RFC 9449: OAuth 2.0 Demonstrating Proof of Possession (DPoP)'
+        url: https://www.rfc-editor.org/rfc/rfc9449
+      - type: spec
+        id: rfc-8705-mtls
+        title: 'RFC 8705: OAuth 2.0 Mutual-TLS Client Authentication and Certificate-Bound
+          Access Tokens'
+        url: https://www.rfc-editor.org/rfc/rfc8705
+  - id: controlExternalizedAuthorizationDecisioning
+    title: Externalized Authorization Decisioning
+    description:
+      - >
+        Ensure that authorization decisions are made by a policy decision point separated
+        from the points that enforce them, placing what an agent, tool, or service is allowed
+        to do under an explicit, administrable policy. Decisions are evaluated per request at
+        the granularity of the specific resource and parameters requested.
+      - >
+        This control governs how the authorization decision is made and administered.
+    guidance:
+      - >
+        Implementation centers on three roles from the {{ref:nist-sp-800-162-abac}} /
+        {{ref:nist-sp-800-207-zero-trust}} reference model: a policy administration point
+        where rules are authored and versioned as data; a policy decision point that evaluates
+        each request against those rules and its context (caller identity, delegated
+        authority, resource, action, and requested parameters — for example as Rich
+        Authorization Requests ({{ref:rfc-9396-rar}})); and policy enforcement points
+        co-located with each resource that consult the decision point before allowing an
+        action. Evaluate per request, not at coarse session scope. A dedicated policy language
+        keeps rules reviewable and testable independently of application code. Record each
+        permit or deny decision with the caller, resource and action, request context and
+        policy version relied on, and the time.
+      - >
+        Any mechanism qualifies (a general-purpose policy engine, a relationship- or
+        attribute-based authorization service, or capability-token issuance gated on policy
+        state), provided the decision is externalized from the enforcement site and driven by
+        administrable policy, not logic embedded in each site. Central operation of the
+        decision point is an availability and blast-radius trade-off, not the objective.
+      - >
+        Decoupling decision from enforcement keeps authorization consistent across delegation
+        hops, tool invocations, and service-to-service calls as agents and tools change, and
+        the recorded decisions make it auditable.
+      - >
+        This control is distinct from {{controlResourceAuthorizationEnforcement}}, which
+        enforces the decision per object at the resource boundary (this control supplies the
+        externalized decision those enforcement points consult; decision vs enforcement); and
+        from {{controlTrustedPolicyEnforcementPoint}}, which constrains the locus of both
+        roles: decision point and enforcement point each sit in trusted, deterministic
+        components outside the model's influence. It is distinct from
+        {{controlAgentPluginPermissions}} (the least-privilege policy content this control
+        externalizes), {{controlApplicationAccessManagement}} (identity and coarse enforcement
+        at the application boundary), and {{controlComponentIdentityProvenance}} (which
+        establishes which principal is calling, while this control decides what it may do).
+        Showing that this control was enforced depends on the records described above being
+        committed and retained under {{controlAuditTrailCompleteness}}.
+    category: controlsApplication
+    personas:
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaPlatformProvider
+      - personaGovernance
+    components:
+      - componentOrchestrationInputHandling
+      - componentTools
+      - componentApplication
+      - componentAuthorizationPolicyDecisionPoint
+      - componentAuthorizationPolicyEnforcementPoint
+    risks:
+      - riskAgenticDelegationConfusedDeputy
+      - riskRogueActions
+    lifecycleStage:
+      - development
+      - deployment
+      - runtime
+    impactType:
+      - confidentiality
+      - integrity
+      - accountability
+    actorAccess:
+      - agent
+      - api
+      - external
+    externalReferences:
+      - type: spec
+        id: nist-sp-800-162-abac
+        title: 'NIST SP 800-162: Guide to Attribute Based Access Control (ABAC) Definition
+          and Considerations'
+        url: https://csrc.nist.gov/pubs/sp/800/162/upd2/final
+      - type: spec
+        id: nist-sp-800-207-zero-trust
+        title: 'NIST SP 800-207: Zero Trust Architecture (policy decision point / policy
+          enforcement point model)'
+        url: https://csrc.nist.gov/pubs/sp/800/207/final
+      - type: spec
+        id: rfc-9396-rar
+        title: 'RFC 9396: OAuth 2.0 Rich Authorization Requests'
+        url: https://www.rfc-editor.org/rfc/rfc9396
+    mappings:
+      owasp-top10-llm:
+        - LLM06:2025
+  - id: controlMessageAndPayloadResourceLimits
+    title: Message and Payload Resource Limits
+    description:
+      - >
+        Bound the size and structural complexity of individual protocol messages, ensuring that
+        no single message or stream can exhaust compute, memory, or bandwidth on a receiving
+        component. This control governs per-message resource ceilings on the wire — maximum
+        payload size ({{ref:cwe-400}}), maximum nesting and recursion depth ({{ref:cwe-674}})
+        for structured payloads, and decompression-ratio limits ({{ref:cwe-409}}).
+    guidance:
+      - >
+        Implementers can reject or truncate messages above a configured size before full
+        buffering, cap deserialization nesting and recursion depth, and bound decompression
+        ratios. Where a protocol or framework ships without such ceilings, AI systems should
+        set them explicitly rather than rely on defaults, since agent and remote-tooling
+        protocols frequently expose endpoints (including locally-exposed tool servers) that
+        lack the hardened defaults of mature web stacks. Record each message rejected or
+        truncated at a ceiling with the sender, the receiving component, the limit exceeded,
+        and the time.
+      - >
+        These ceilings apply across all inter-component and remote-tooling channels (for
+        example agent-to-tool, orchestration, model-serving).
+      - >
+        This control is distinct from {{controlApplicationAccessManagement}}, which governs
+        how often a caller may issue requests (rate limiting, quotas), and
+        {{controlAgentExecutionBounds}}, which caps agent reasoning and tool-call loops. It is
+        distinct from {{controlInterComponentTransportSecurity}}, which authenticates and
+        encrypts the channel but does not bound the work a well-formed message imposes. Rate
+        limits restrain request frequency; these limits restrain the cost of any one message,
+        including the first. Showing that this control was enforced depends on the records
+        described above being committed and retained under {{controlAuditTrailCompleteness}}.
+    category: controlsInfrastructure
+    personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+    components:
+      - componentModelServing
+      - componentTools
+      - componentOrchestrationInputHandling
+      - componentOrchestrationOutputHandling
+      - componentAgentToolTransport
+      - componentToolInputHandling
+    risks:
+      - riskDenialOfMLService
+    mappings:
+      owasp-top10-llm:
+        - LLM10:2025
+    lifecycleStage:
+      - deployment
+      - runtime
+    impactType:
+      - availability
+    actorAccess:
+      - external
+      - api
+      - agent
+    externalReferences:
+      - type: cwe
+        id: cwe-400
+        title: 'CWE-400: Uncontrolled Resource Consumption'
+        url: https://cwe.mitre.org/data/definitions/400.html
+      - type: cwe
+        id: cwe-674
+        title: 'CWE-674: Uncontrolled Recursion'
+        url: https://cwe.mitre.org/data/definitions/674.html
+      - type: cwe
+        id: cwe-409
+        title: 'CWE-409: Improper Handling of Highly Compressed Data (Data Amplification)'
+        url: https://cwe.mitre.org/data/definitions/409.html
+  - id: controlTrustedPolicyEnforcementPoint
+    title: Trusted Policy Enforcement Point
+    category: controlsApplication
+    description:
+      - >
+        Ensure that the security-critical authorization decision and its enforcement are
+        carried out by trusted, deterministic components outside the model's influence.
+        This control governs where the decision and its enforcement are
+        placed.
+    guidance:
+      - >
+        Treat the model's output as a request to be checked, not an authority to be
+        trusted: a separate decision component determines whether a requested operation
+        is permitted, and a separate enforcement component rejects or constrains anything
+        outside policy before any side effect occurs. Record, from those trusted components
+        rather than from the model, each permit, deny, or constrain outcome with the principal,
+        the requested operation and its object, the policy relied on, and the time.
+        See {{ref:cosai-mcp-security}}.
+      - >
+        The role is locus-defined and protocol-independent: it applies wherever a model's
+        output gates a privileged operation, whether the call rides over MCP, A2A, an
+        in-process tool interface, or any other remote-tooling channel.
+      - >
+        The model is influenceable by untrusted content reaching its context (for example
+        via {{riskPromptInjection}}), so a system that relies on the model to authorize
+        an action or hold a guardrail can be steered into actions the requester was
+        never entitled to take. In the classical access-control model
+        ({{ref:nist-sp-800-162-abac}}) the model is neither the policy decision point nor the
+        policy enforcement point: both live in components the attacker cannot reach through
+        the model's context window. The enforcement point this control requires is a reference
+        monitor: tamperproof, always invoked, and small enough to be subject to analysis and
+        testing (AC-25 in {{ref:nist-sp-800-53r5}}).
+      - >
+        This control is distinct from {{controlExternalizedAuthorizationDecisioning}}
+        and {{controlResourceAuthorizationEnforcement}}, which assume trustworthy decision
+        and enforcement points and specify how the decision is externalized and where it
+        is enforced; this control establishes that the model is neither. It is distinct from
+        {{controlAgentPluginPermissions}} (which bounds the action scope an agent is
+        granted) and {{controlInputValidationAndSanitization}} (which filters adversarial
+        input to the model rather than relocating authorization out of it). Showing that this
+        control was enforced depends on the records described above being committed and retained under
+        {{controlAuditTrailCompleteness}}.
+    personas:
+      - personaApplicationDeveloper
+      - personaAgenticProvider
+      - personaPlatformProvider
+    components:
+      - componentTools
+      - componentReasoningCore
+      - componentOrchestrationInputHandling
+      - componentAuthorizationPolicyEnforcementPoint
+      - componentToolInputHandling
+    risks:
+      - riskAgenticDelegationConfusedDeputy
+      - riskRogueActions
+      - riskPromptInjection
+    mappings:
+      owasp-top10-llm:
+        - LLM06:2025
+    lifecycleStage:
+      - development
+      - deployment
+      - runtime
+    impactType:
+      - integrity
+      - accountability
+    actorAccess:
+      - external
+      - api
+    externalReferences:
+      - type: paper
+        id: cosai-mcp-security
+        title: CoSAI — MCP Security Considerations
+        url: https://github.com/cosai-oasis/ws1-supply-chain
+      - type: spec
+        id: nist-sp-800-162-abac
+        title: 'NIST SP 800-162: Guide to Attribute Based Access Control (ABAC) Definition
+          and Considerations'
+        url: https://csrc.nist.gov/pubs/sp/800/162/upd2/final
+      - type: spec
+        id: nist-sp-800-53r5
+        title: 'NIST Special Publication 800-53 Revision 5: Security and Privacy Controls for
+          Information Systems and Organizations'
+        url: https://doi.org/10.6028/NIST.SP.800-53r5
+  - id: controlInformedAgentConsentSurface
+    title: Informed Agent Consent Surface
+    description:
+      - >
+        Ensure that a human-in-the-loop approval of a security-relevant agent or tool
+        action is an informed decision: the approver both sees the decision-relevant
+        facts and can act on them. Where a person is the authorising party, the consent
+        surface renders what is being requested and its consequences completely and
+        unambiguously, with no truncation, hidden content, or confusable characters left
+        undisclosed; the approved action is the action executed.
+      - >
+        This control governs the quality of the agent consent surface — both the provenance
+        content it renders and its intelligibility.
+    guidance:
+      - >
+        Render the machine-resolved tool identity, registered origin or publisher, and
+        the marshalled inputs at the approval point — not the tool's self-described label,
+        which is the channel an attacker controls — so that a lookalike or shadowed tool
+        is distinguishable before the action runs. This is the agentic analogue of anti-phishing
+        origin display.
+      - >
+        Render the approval through a trusted path, so that what the approver sees is
+        what is signed: present the complete, untruncated inputs, expose content that
+        would otherwise be hidden or collapsed, and disclose confusable or non-printing
+        characters rather than rendering them as look-alikes. Render the consequence of
+        the action alongside its inputs, such as what data it alters, what it sends
+        and to whom, and whether it can be undone, so the decision rests on effect and
+        not only on a label. Record each approve or reject decision with the approving
+        principal, the tool identity, inputs, and consequence as displayed, and the time.
+      - >
+        Approval should not degrade into a reflexive click-through. Keep the prompt
+        intelligible and calibrate its salience and frequency to the risk
+        of the action, so high-consequence requests stay distinguishable and do not lose
+        effect through habituation (consent fatigue). Safe execution should not depend
+        on the human absorbing every prompt. Whether an action needs approval at all,
+        including whether routine, low-risk actions are batched, defaulted, or
+        pre-approved by policy, is decided by {{controlAgentPluginUserControl}}; this
+        control does not batch or default consent. When its surface is shown, it is shown
+        in full.
+      - >
+        This control is distinct from {{controlAgentPluginUserControl}}, which governs
+        whether human approval is required at all, and from {{controlUserTransparencyAndControls}},
+        which governs general disclosure of AI risks and user control over data use; those
+        establish that a gate exists, and whether it applies, while this ensures that when
+        the gate is shown it presents a complete, intelligible, non-fatiguing,
+        provenance-accurate decision. Showing that this control was enforced depends on the
+        records described above being committed and retained under {{controlAuditTrailCompleteness}}.
+    category: controlsApplication
+    personas:
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+    components:
+      - componentAgentConsentSurface
+      - componentApplicationConsentSurface
+      - componentToolServer
+      - componentTools
+    risks:
+      - riskToolSourceProvenance
+      - riskConsentFatigue
+      - riskUnconsentedAgentAction
+    lifecycleStage:
+      - development
+      - runtime
+    impactType:
+      - integrity
+      - safety
+      - accountability
+    actorAccess:
+      - user
+    mappings:
+      eu-ai-act:
+        - Article 14@2024
+  - id: controlAgentHostSecureConfiguration
+    title: Agent Host Secure Configuration
+    description:
+      - >
+        Configure the host and client environments that run agents and remote tooling
+        with security-relevant settings that resist tampering by unprivileged users and
+        by agents acting with a user's authority. The objective is to ensure that
+        protective configuration — including the human approval surface, tool-invocation
+        gating, and least-privilege defaults — can be changed only by the role that owns it.
+      - >
+        This control governs the integrity of the configuration itself — whether protective
+        settings can be turned off by someone, or by something acting for someone, who
+        should not be able to.
+    guidance:
+      - >
+        Implementation favors a hardened baseline whose security-relevant settings are
+        owned by a privileged role and applied to running agent and tool-host instances,
+        with changes to those settings restricted to that role and each change, applied or
+        rejected, recorded for later review with the setting, its before and after values, the
+        changing principal, the authorization relied on, and the time. Secure defaults should
+        require explicit, authorized opt-out rather than
+        being disablable from an unprivileged context, and configuration drift from the
+        baseline should be detectable.
+      - >
+        User-writable settings are reachable by anything running with the user's
+        authority, including a prompt-injected agent acting as the user. Ownership of
+        protective settings by a privileged role, rather than by the user the agent
+        runs as, is what keeps such an agent from editing away its own approval gate
+        or tool restrictions.
+      - >
+        This control is distinct from {{controlRuntimeHostIsolation}}, which sandboxes
+        the running process to bound its blast radius; this control keeps the protective
+        settings (including that isolation) from being silently disabled. It is distinct
+        from {{controlAgentPluginUserControl}},
+        which establishes that user approval is sought for consequential agent actions
+        — this control keeps that approval surface from being disabled — and from {{controlSecureByDefaultMLTooling}}
+        (selecting/shipping tooling with secure defaults) and {{controlAgentPluginPermissions}}
+        (which scopes the agent's action authority rather than the tamper-resistance of
+        the settings that bound it). Showing that this control was enforced depends on the
+        records described above being committed and retained under {{controlAuditTrailCompleteness}}.
+    category: controlsApplication
+    personas:
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaPlatformProvider
+    components:
+      - componentReasoningCore
+      - componentTools
+      - componentRuntimeHosting
+      - componentAgentConsentSurface
+    risks:
+      - riskRogueActions
+    lifecycleStage:
+      - deployment
+      - runtime
+    impactType:
+      - integrity
+      - safety
+      - accountability
+    actorAccess:
+      - user
+      - agent
+  - id: controlToolServerVetting
+    title: Tool Server Vetting and Approval
+    category: controlsGovernance
+    description:
+      - >
+        Ensure that remote and third-party tool servers are admitted to an agentic system
+        only after passing a documented security review, ensuring that the set of reachable
+        tool providers reflects a current, explicit vetting decision.
+    guidance:
+      - >
+        This control is the admission gate: a candidate tool server (an MCP, A2A,
+        or other remote-tooling endpoint) is assessed against the organization's security
+        criteria and the review outcome (admit, deny, or withdraw), including the publisher
+        identity approved for the server, the criteria and evidence relied on, the reviewing
+        principal, and the time, is recorded before the server becomes invocable,
+        consistent with {{ref:mcp-security-best-practices}}. This admission record is the
+        authoritative record of the approved publisher identity; downstream checks verify
+        against it.
+      - >
+        Vetting criteria typically cover the provider's ownership, provenance, and supplier-trust
+        chain — including a preference for first-party, provider-hosted endpoints over
+        unaffiliated third parties — the declared tool surface and its side effects, authentication
+        posture, and known-vulnerability history; the depth of review scales with the
+        server's privilege and blast radius. Enterprise deployments may operationalize
+        the approved set through managed configuration, centralized or distributed, that
+        limits client access to only servers that cleared the enterprise review process;
+        the documented review gate, not the configuration mechanism, is the objective.
+      - >
+        An admission decision is not permanent. Re-review an admitted server periodically
+        and on trigger events such as a change of provider ownership, newly disclosed
+        vulnerability history, or a lapse in supplier trust, and withdraw admission where
+        the server no longer meets the criteria.
+      - >
+        This control is the supplier-vetting equivalent of classical third-party vendor
+        security assessment (the supply chain risk management family, SR, of
+        {{ref:nist-sp-800-53r5}}) applied to the tool-provider supply chain.
+      - >
+        This control is distinct from {{controlThirdPartyCapabilityAdmission}}, which
+        admits and re-approves the capability set (including prompt capabilities) a
+        vetted provider exposes — this control vets whether the provider/server is trustworthy
+        at all. Its re-review is the only check that catches a behavior change behind a
+        byte-identical capability description, which the pin check at the
+        {{controlAgentCapabilityNegotiation}} handshake and the pin under
+        {{controlThirdPartyCapabilityAdmission}} cannot see. It is distinct from
+        {{controlToolServerSupplyChainIntegrity}} (provenance of the server software package
+        where the organization acquires and runs it, which it verifies against the publisher
+        identity approved here; for a remote server the organization does not host, assurance
+        comes from this control's admission and the pin under
+        {{controlThirdPartyCapabilityAdmission}}, and that control does not apply),
+        {{controlAgentInventoryManagement}} (the lifecycle authority over which endpoints may
+        exist, not the record of the approved publisher identity),
+        {{controlModelAndDataIntegrityManagement}}
+        (tamper-verification of model, data, and training-code artifacts), {{controlComponentIdentityProvenance}} (invocation-time
+        attestation that a caller is the registered principal), and {{controlToolRegistryAndDiscoveryIntegrity}}
+        (integrity-protection of registered tool manifests and metadata — vetting decides
+        whether a provider earns registration; that control protects the registry entry's
+        integrity thereafter). Showing that this control was enforced depends on the records described above
+        being committed and retained under {{controlAuditTrailCompleteness}}.
+    personas:
+      - personaGovernance
+      - personaApplicationDeveloper
+      - personaAgenticProvider
+      - personaPlatformProvider
+    components:
+      - componentToolServer
+      - componentToolRegistry
+    risks:
+      - riskInsecureIntegratedComponent
+      - riskToolSourceProvenance
+    lifecycleStage:
+      - planning
+      - development
+      - deployment
+      - maintenance
+    impactType:
+      - integrity
+      - accountability
+      - compliance
+    actorAccess:
+      - supply-chain
+      - service-provider
+    externalReferences:
+      - type: paper
+        id: mcp-security-best-practices
+        title: 'MCP Security: Threats, Controls, and Mitigations'
+        url: https://modelcontextprotocol.io/specification/draft/basic/security_best_practices
+      - type: spec
+        id: nist-sp-800-53r5
+        title: 'NIST Special Publication 800-53 Revision 5: Security and Privacy Controls for
+          Information Systems and Organizations'
+        url: https://doi.org/10.6028/NIST.SP.800-53r5
+    mappings:
+      mitre-atlas:
+        - AML.M0016@5.0.1
+      nist-ai-rmf:
+        - GOVERN-6.1@1.0
+        - MEASURE-2.7@1.0
+      owasp-top10-llm:
+        - LLM03:2025
+  - id: controlRuntimeHostIsolation
+    title: Runtime Host Isolation
+    description:
+      - >
+        Run serving, orchestration, and tool-server processes under OS- and process-level
+        isolation on any host, confining each to a least-privilege execution context (the
+        host privileges, other host processes, and resources its task requires) and denying
+        a compromised or vulnerable process any escalation path to the host or
+        lateral-movement path to other workloads on it.
+      - >
+        This is a host-hardening posture, applied whether or not the process is trusted at
+        deploy time.
+    guidance:
+      - >
+        Implementations may use containerization or microVM boundaries; OS namespaces and
+        control groups; syscall filtering (seccomp); mandatory access control profiles
+        (AppArmor, SELinux); dropped Linux capabilities; non-root, per-process service
+        accounts; and read-only or scoped filesystem and network views. The primitives are
+        deployment attributes; the control is the property that a process executes with only
+        the host privileges its task warrants.
+      - >
+        In scope: model-serving processes, orchestration runtimes, and tool servers wherever
+        hosted, whether co-resident with the agent or client or on a dedicated or third-party
+        tool-hosting substrate (for example, MCP servers in either placement), and any process
+        that executes model-generated code, such as an agent's code-execution or shell tool.
+      - >
+        This control is distinct from {{controlIsolatedConfidentialComputing}}, which
+        provides hardware-level isolation (TEEs, secure enclaves) against privileged-host and
+        cross-tenant access; {{controlAgentHostSecureConfiguration}}, which keeps protective
+        host settings from being tampered with (this control isolates the running process,
+        that control keeps the isolation and other protections from being disabled);
+        {{controlSecureByDefaultMLTooling}}, which governs selection and secure-default
+        configuration of tooling, not the runtime host boundary; and
+        {{controlAgentPluginPermissions}}, which constrains an agent's logical tool/action
+        scope, not the host privileges of the process serving a tool. It is also distinct
+        from {{controlAgenticZeroTrustPosture}}, which sets the design-time trust topology and
+        requires assume-breach segmentation; this control is the host-layer enforcement of
+        that segmentation for running processes.
+    category: controlsInfrastructure
+    personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+    components:
+      - componentTools
+      - componentModelServing
+      - componentApplication
+      - componentIsolationRuntime
+      - componentToolHosting
+      - componentRuntimeHosting
+    risks:
+      - riskInsecureIntegratedComponent
+      - riskUntrustedHostToolRuntimeExposure
+      - riskUnsandboxedCodeExecution
+    lifecycleStage:
+      - deployment
+      - runtime
+    impactType:
+      - confidentiality
+      - integrity
+      - availability
+    actorAccess:
+      - external
+      - agent
+      - service-provider
+  - id: controlResourceAuthorizationEnforcement
+    title: Resource Authorization Enforcement
+    description:
+      - >
+        Ensure that every request to read or act on a protected resource is enforced
+        against the requesting principal's verified identity and role at an explicit
+        policy enforcement point. Enforcement for each object, tool, and data resource is
+        consistent — regardless of whether the caller is a user, a service, or an agent —
+        limiting each principal to the resources its role and context entitle it to.
+    guidance:
+      - >
+        Evaluate authorization per resource instance, not merely per endpoint or resource
+        type, so a valid identity for one object does not confer access to sibling objects of
+        the same type (the classical broken-object-level-authorization, or BOLA, failure).
+        Follow least-privilege and privilege-separation so the permission scope granted to a
+        service or tool integration is the minimum its function requires.
+      - >
+        Enforcement points at the resource boundary admit or deny each call by checking it
+        against the authorization decision supplied to them (the PDP output in
+        {{ref:nist-sp-800-162-abac}}), not the calling service's discretion. Record each
+        admit or deny decision with the principal, specific resource instance and action,
+        policy decision relied on, and the time.
+      - >
+        Remote tooling and shared-service integrations (MCP tool servers, plugin backends,
+        orchestration endpoints) are in scope: grant each narrow, resource-scoped permissions
+        enforced on every call, not broad ambient authority. Agent-initiated calls are the
+        agent case of this same per-object enforcement.
+      - >
+        This control governs per-object authorization enforcement at the resource. It depends
+        on {{controlExternalizedAuthorizationDecisioning}}, which supplies the externalized
+        policy decision its enforcement points consult; it does not itself require that
+        decision to be externalized, administered, or evaluated (decision vs enforcement). It
+        is distinct from {{controlTrustedPolicyEnforcementPoint}}, which requires the decision
+        point and the enforcement point both to live in components the model cannot
+        influence. It is distinct from {{controlApplicationAccessManagement}} (coarse identity
+        gating + quotas), {{controlAgentPluginPermissions}} (which tools/actions an agent may
+        invoke), {{controlAgentCredentialIsolation}} (tenant scoping), and
+        {{controlComponentIdentityProvenance}} (who the principal is); those establish
+        identity and coarse gating, while this control decides whether the established
+        principal may reach the specific resource instance. It is also distinct from
+        {{controlAuditRecordRepositoryIndependence}}, which separates append, read, and delete
+        authority over the audit record, places the store's administrative plane outside the
+        recorded trust domain, and has that plane record its own administrative actions; the
+        least-privilege and privilege-separation here bound permission scope at application
+        resources, not authority over the audit record's storage. Showing that this control
+        was enforced depends on its decision records being committed and retained under
+        {{controlAuditTrailCompleteness}}.
+    category: controlsApplication
+    personas:
+      - personaApplicationDeveloper
+      - personaAgenticProvider
+      - personaPlatformProvider
+      - personaModelServing
+      - personaGovernance
+    components:
+      - componentApplication
+      - componentTools
+      - componentOrchestrationInputHandling
+      - componentMemory
+      - componentDataStorage
+      - componentAuthorizationPolicyEnforcementPoint
+      - componentAuthorizationPolicyDecisionPoint
+    risks:
+      - riskBrokenAuthorizationEnforcement
+      - riskAgenticDelegationConfusedDeputy
+      - riskRogueActions
+    mappings:
+      owasp-top10-llm:
+        - LLM06:2025
+    lifecycleStage:
+      - deployment
+      - runtime
+    impactType:
+      - confidentiality
+      - integrity
+      - privacy
+      - accountability
+    actorAccess:
+      - external
+      - api
+      - user
+      - agent
+      - privileged
+    externalReferences:
+      - id: nist-sp-800-162-abac
+        title: 'NIST SP 800-162: Guide to Attribute Based Access Control (ABAC) Definition
+          and Considerations'
+        url: https://csrc.nist.gov/pubs/sp/800/162/upd2/final
+        type: spec
+  - id: controlUntrustedContextContainment
+    title: Untrusted Context Containment
+    description:
+      - >
+        Treat model-external content that enters an AI system's context — tool and function-call
+        responses, retrieved documents, tool and resource schema descriptions, and other
+        third-party data — as untrusted, and contain the actions the model may take in
+        response, preventing such content from driving privileged or side-effecting behavior
+        on its own. This control governs the trust treatment and action-gating of untrusted
+        context.
+    guidance:
+      - >
+        Where feasible, label context by provenance and require a higher assurance step
+        (independent authorization, user confirmation via {{controlAgentPluginUserControl}},
+        or a policy check) before content originating outside a trust boundary can trigger a
+        side-effecting action. Record each allow, block, or escalate decision with the
+        trigger's provenance label, the action requested, the assurance step required and its
+        outcome, the principal, and the time.
+      - >
+        This control is the residual-risk posture for the absence of a true instruction/data
+        boundary inside the model: models share one token channel for instructions and data,
+        so untrusted context cannot be made structurally inert and containment shifts to the
+        surrounding system.
+      - >
+        This control is distinct from {{controlInputValidationAndSanitization}}, which
+        filters adversarial user queries to the model; {{controlAgentPluginPermissions}},
+        which sets the least-privilege upper bound and confused-deputy checks on agent
+        authority; and {{controlAgentObservability}}, which records what an agent did. It is
+        distinct from {{controlAgentPluginUserControl}}, which requires user approval for
+        data-altering actions; this control decides which actions triggered by
+        untrusted-origin content need an assurance step, and approval is one step it can
+        require. It supplies the trust-labelling and action-gating layer on which those
+        controls' decisions act. Showing that this control was enforced depends on the records
+        described above being committed and retained under {{controlAuditTrailCompleteness}}.
+    category: controlsApplication
+    personas:
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaModelServing
+    components:
+      - componentModelServing
+      - componentReasoningCore
+      - componentOrchestrationInputHandling
+      - componentMemory
+      - componentTools
+      - componentToolOutputHandling
+      - componentToolServer
+    risks:
+      - riskPromptInjection
+    mappings:
+      owasp-top10-llm:
+        - LLM01:2025
+    lifecycleStage:
+      - development
+      - deployment
+      - runtime
+    impactType:
+      - integrity
+    actorAccess:
+      - external
+      - api
+  - id: controlSecretsAndKeyManagement
+    title: Secrets and Key Management
+    description:
+      - >
+        Ensure that secrets and cryptographic key material held at rest by AI system
+        components — API keys, downstream service credentials, signing and encryption keys,
+        and access tokens — are stored, brokered, and rotated through a dedicated
+        secrets-management capability. The control has five parts: centralized custody,
+        scoped short-lived credentials, encryption of key material, rotation and revocation,
+        and classification-driven handling.
+    guidance:
+      - >
+        **Centralized custody:** Hold secrets in a dedicated secret store or key-management
+        service, not in plaintext configuration, container images, source repositories,
+        environment variables, or memory dumps. Where a store serves several principals,
+        scope retrieval so none can read another's secrets.
+      - >
+        **Scoped, short-lived credentials:** For credentials this component brokers or
+        stores, issue narrowly scoped, short-lived credentials per task. Give every stored
+        long-lived secret, such as a static downstream API key, a maximum lifetime, a
+        rotation cadence set at issuance, and a named rotation owner.
+      - >
+        **Encryption of key material:** Protect stored keys with envelope encryption
+        or hardware-backed key protection, and separate key-encrypting keys from the
+        data they protect.
+      - >
+        **Rotation and revocation:** Support automated rotation on a defined cadence and
+        immediate revocation, without redeploying the holding component, on suspected
+        compromise of stored secret material or on component decommission.
+      - >
+        **Classification-driven handling:** Classify the secret and data material a
+        component holds so that storage, encryption, and access decisions can be driven
+        by sensitivity rather than applied uniformly.
+      - >
+        Orchestrators and tool servers (for example MCP or A2A tool endpoints) accumulate
+        credentials for many downstream services and broker them across delegation hops,
+        so one mishandled secret has a large blast radius.
+      - >
+        This control is distinct from {{controlInterComponentTransportSecurity}}, which
+        protects credentials in transit; {{controlAgentCredentialIsolation}}, which keeps
+        issued agent credentials within tenant boundaries during delegation; and
+        {{controlModelAndDataAccessControls}}, which governs who may access models and
+        datasets. Those assume well-custodied secrets; this control establishes that custody.
+        This control owns the scope and lifetime assigned when a secret is issued and stored,
+        and rotation and revocation on compromise of stored material. For transport
+        certificates, {{controlInterComponentTransportSecurity}} issues, rotates and revokes;
+        this control holds the private keys. {{controlSessionCredentialBindingAndLifecycle}}
+        owns revocation on detected reuse or anomaly, session-identifier rotation, and the
+        lifetime of a credential as presented and used.
+        {{controlSenderConstrainedCredentials}} owns presentation-time reuse-resistance
+        (proof-of-possession, sender-constraint).
+    category: controlsInfrastructure
+    personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+    components:
+      - componentTools
+      - componentOrchestrationInputHandling
+      - componentOrchestrationOutputHandling
+      - componentModelServing
+      - componentDataStorage
+    risks:
+      - riskSensitiveDataDisclosure
+      - riskCredentialAtRestExposure
+    mappings:
+      mitre-atlas:
+        - AML.M0012@5.0.1
+      owasp-top10-llm:
+        - LLM02:2025
+    lifecycleStage:
+      - deployment
+      - runtime
+    impactType:
+      - confidentiality
+      - integrity
+    actorAccess:
+      - external
+      - agent
+      - privileged
+      - infrastructure-provider
+  - id: controlInboundNetworkExposureAndSegmentation
+    title: Inbound Network Exposure and Segmentation
+    description:
+      - >
+        Constrain the inbound network reachability of AI-system services to the callers
+        each requires, through exposure control and segmentation.
+    guidance:
+      - >
+        **Inbound exposure:** Bind services to the narrowest interface that satisfies their
+        role — a loopback or explicit internal interface rather than all interfaces.
+        Locally-run tool servers and sidecars listen on secure-by-default interfaces and are
+        not reachable from the broader network by default. Treat exposure as a deliberate,
+        reviewable configuration decision rather than a default. Record each denied inbound
+        connection and each change to an exposure or segmentation rule, with the source, the
+        destination service, the rule relied on, and the time.
+      - >
+        **Segmentation:** Place services behind segmentation boundaries that scope
+        reachability to authorized peers. Segment between tenant, trust, and environment
+        boundaries so a compromised service cannot reach unrelated services: default-deny
+        inbound, allowlisted ingress, denied lateral paths, consistent with a zero-trust
+        posture.
+      - >
+        This control is distinct from {{controlNetworkEgressControl}}, which governs
+        outbound reachability: this control governs who may reach a service, that control
+        where a component may send. It is distinct from
+        {{controlInterComponentTransportSecurity}}, which secures the channel once a
+        connection is permitted; this control governs whether the service should have been
+        reachable at all. It is distinct from {{controlIsolatedConfidentialComputing}}
+        (hardware-layer isolation), {{controlSecureByDefaultMLTooling}} (tooling secure
+        defaults generally; this is the network-exposure slice), and
+        {{controlModelAndDataAccessControls}} (identity-scoped asset access, not network
+        reachability). It is also distinct from {{controlAgenticZeroTrustPosture}}, which
+        sets the design-time trust topology and requires assume-breach segmentation as a
+        structural property; this control enforces inbound reachability and segmentation at
+        the network layer within that topology. Showing that this control was enforced depends
+        on the records described above being committed and retained under
+        {{controlAuditTrailCompleteness}}.
+    category: controlsInfrastructure
+    personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+    components:
+      - componentModelServing
+      - componentTools
+      - componentOrchestrationInputHandling
+      - componentOrchestrationOutputHandling
+      - componentToolNetworkPolicyEnforcementPoint
+      - componentAgentNetworkPolicyEnforcementPoint
+    risks:
+      - riskMCPTransportHijacking
+      - riskZombieShadowMCPServers
+      - riskInsecureIntegratedComponent
+      - riskExcessiveNetworkExposure
+    lifecycleStage:
+      - deployment
+      - runtime
+    impactType:
+      - confidentiality
+      - integrity
+      - availability
+    actorAccess:
+      - external
+      - agent
+      - infrastructure-provider
+  - id: controlToolServerSupplyChainIntegrity
+    title: Tool-Server Supply Chain Integrity
+    description:
+      - >
+        Ensure that third-party tool-server software the organization acquires and runs,
+        including servers it hosts for remote access, is provenance-verified and
+        integrity-gated before it is acquired, installed, or updated. The objective is a
+        verifiable chain of custody from publisher to deployed tool server.
+      - >
+        This control governs the acquisition, installation, and update lifecycle of
+        tool-server software, in four parts: provenance verification, package-integrity
+        gating, dependency transparency, and software-update integrity.
+    guidance:
+      - >
+        Calibrate provenance evidence and install-time gating strictness to each tool
+        server's trust, action sensitivity, and blast radius, not a single uniform bar:
+      - - >
+          **Provenance verification** of publisher and source before adoption, using signed
+          artifacts and build provenance (for example SLSA-style attestations, in-toto, or
+          registry-native signing), not name or description alone.
+        - >
+          **Package-integrity gating** at install and update: verify checksums and signatures
+          against the publisher identity approved for that server, not one the package
+          asserts for itself, so a substituted, tampered, typosquatted, or differently-signed
+          package fails closed before deployment.
+        - >
+          **Dependency transparency** through a software bill of materials (SBOM) for the
+          server and its transitive dependencies, reviewed against known-vulnerable and
+          disallowed components.
+        - >
+          **Software-update integrity**: obtain updates over authenticated channels and
+          re-verify them with the same provenance and integrity checks as first install, so
+          a trusted server cannot be silently replaced.
+        - >
+          **Decision records** for each verify-pass or verify-fail outcome: the server and
+          package, the publisher identity and provenance evidence relied on, the principal or
+          pipeline that ran the check, and the time.
+      - >
+        This control applies where the organization acquires and runs the tool-server
+        software, such as a self-hosted MCP or other remote-tooling server. For a remote
+        server a third party hosts, there is no package to install and this control does not
+        apply; assurance there comes from the admission under {{controlToolServerVetting}} and
+        the pin under {{controlThirdPartyCapabilityAdmission}}.
+      - >
+        This control is the upstream supply-chain gate the inventory and runtime controls
+        depend on. It is distinct from {{controlToolServerVetting}}, which decides through
+        documented review whether a provider or server is trustworthy enough to admit; this
+        control verifies the software as acquired, installed, or updated, taking as the
+        expected identity the publisher identity recorded by vetting's admission decision.
+        Vetting may draw on this control's provenance evidence. A vetted server has not
+        thereby had its package verified, and a verified package has not thereby been vetted.
+        It is distinct from {{controlThirdPartyCapabilityAdmission}}, which admits and
+        re-approves the capability set (tools, prompts, and instruction templates) and decides
+        whether a changed capability may execute; this control owns the integrity and
+        provenance of software updates. It is distinct from
+        {{controlToolRegistryAndDiscoveryIntegrity}}, which owns the integrity of registry
+        entries and tool metadata, including their tampering; this control is limited to the
+        software package. It is distinct from {{controlAgentInventoryManagement}}, the
+        lifecycle authority over which tool servers may exist, which detects shadow and zombie
+        servers; this control's checks should gate entry into it. It is distinct from
+        {{controlModelAndDataIntegrityManagement}}, which protects model, data, and
+        training-code artifacts; {{controlModelAndDataExecutionIntegrity}}, which verifies
+        known-good artifacts at inference time; {{controlSecureByDefaultMLTooling}}, which
+        governs the security posture of selected tooling, not the verifiability of its origin;
+        and {{controlComponentIdentityProvenance}}, which attests at invocation time that a
+        running endpoint is the registered principal, where this control establishes that the
+        software behind it entered through a verified supply chain. Showing that this control
+        was enforced depends on the records described above being committed and retained under
+        {{controlAuditTrailCompleteness}}.
+    category: controlsInfrastructure
+    personas:
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaPlatformProvider
+      - personaGovernance
+    components:
+      - componentTools
+      - componentToolServer
+      - componentToolRegistry
+    risks:
+      - riskToolSourceProvenance
+      - riskAgenticToolSupplyChain
+    mappings:
+      mitre-atlas:
+        - AML.M0013@5.0.1
+        - AML.M0014@5.0.1
+      nist-ai-rmf:
+        - GOVERN-6.1@1.0
+      owasp-top10-llm:
+        - LLM03:2025
+    lifecycleStage:
+      - development
+      - deployment
+      - maintenance
+    impactType:
+      - integrity
+      - accountability
+      - compliance
+    actorAccess:
+      - supply-chain
+      - service-provider
+  - id: controlSessionCredentialBindingAndLifecycle
+    title: Session and Credential Binding
+    category: controlsInfrastructure
+    description:
+      - >
+        Reduce the value of a stolen authentication token or session identifier by constraining
+        where and how long it can be used, rotating session identifiers on privilege or context
+        change and revoking a credential on detected reuse. This is the identity- and
+        credential-layer concern from {{ref:cosai-agentic-identity}}. The objective is that a
+        credential observed by an attacker is not replayable beyond its intended audience or
+        indefinitely.
+    guidance:
+      - >
+        Approaches include audience-bound tokens scoped to their intended recipient, so a
+        credential issued for one endpoint cannot be replayed against another; short
+        credential and session lifetimes scoped to a task, request, or session; rotation of
+        session identifiers on privilege or context change; and prompt revocation and
+        invalidation when reuse from an unexpected origin, device, or concurrent session is
+        detected. Implementers may use OAuth audience restriction, rotating session
+        identifiers, sender-constrained tokens, or any approach achieving the same property.
+      - >
+        This control applies wherever agents, remote tools, and shared services authenticate
+        to one another, including locally-exposed tool-server endpoints sometimes treated as
+        implicitly trusted. The remote-tooling protocol (for example MCP) is a deployment
+        attribute, not the locus of the control.
+      - >
+        This control is distinct from:
+      - - >
+          {{controlInterComponentTransportSecurity}}, which secures the channel a credential
+          travels over, including channel binding and message-level replay protection. This
+          control limits where and for how long the credential is valid.
+        - >
+          {{controlAgentCredentialIsolation}}, which confines agent credentials to one tenant.
+          This control governs reuse resistance regardless of tenancy.
+        - >
+          {{controlApplicationAccessManagement}}, which decides whether an authenticated
+          principal is authorized for an action. This control governs the audience and
+          lifetime of the credential itself, not the authorization of its principal.
+        - >
+          {{controlSecretsAndKeyManagement}}, which governs custody of held secret and key
+          material, the lifetime and rotation cadence assigned to stored secrets at issuance,
+          and rotation and revocation on compromise of stored material. This control governs
+          the audience and lifetime of the credential as presented and used, including
+          session-identifier rotation and revocation on detected reuse or anomaly.
+        - >
+          {{controlDelegatedAuthorityConfinement}}, which issues authority afresh for each
+          hop's recipient. This control governs the binding and lifetime of any credential or
+          session, delegated or not: a chain can re-mint authority at every hop and still
+          issue long-lived, unbound tokens.
+        - >
+          {{controlSenderConstrainedCredentials}}, which supplies the proof-of-possession
+          binding that makes a credential resistant to replay by a non-holder. This control is
+          the lifecycle discipline in which holder binding is one input. Either can be adopted
+          without the other.
+    personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+    risks:
+      - riskCredentialAndTokenTheft
+      - riskLongLivedSessionStateWeakness
+    externalReferences:
+      - id: cosai-agentic-identity
+        title: 'CoSAI: Agentic Identity and Access Control'
+        url: https://github.com/cosai-oasis/ws3-secure-design-patterns
+        type: spec
+    actorAccess:
+      - external
+      - api
+      - agent
+    impactType:
+      - confidentiality
+      - integrity
+      - accountability
+    lifecycleStage:
+      - runtime
+    components:
+      - componentApplication
+      - componentToolServer
+      - componentAgentToolTransport
+      - componentIdentityProvider
+  - id: controlAuthenticationSchemeHardening
+    title: Authentication Scheme Hardening
+    category: controlsInfrastructure
+    description:
+      - >
+        Select authentication and authorization schemes that bind each request to a verifiable,
+        appropriately scoped principal. The objective is that every machine-to-machine
+        and user-to-service authentication establishes who the caller is in a way the
+        relying party can independently verify and attribute.
+      - >
+        This control governs the quality and trust properties of the authentication scheme
+        itself — what counts as an acceptable credential.
+    guidance:
+      - >
+        Schemes that frustrate this objective — HTTP basic auth, long-lived static API
+        keys, and pass-through (token-passthrough) patterns where an upstream credential,
+        including one relayed by a remote-tooling or shared-service intermediary such as
+        an MCP or plugin tool server, is forwarded unverified to a downstream service —
+        should be deprecated in favor of federated identity, short-lived tokens,
+        proof-of-possession or channel-bound credentials, and per-principal rotation. Record
+        each decision on whether a presented scheme or credential type is acceptable under
+        the scheme policy, with the scheme and credential type, the policy relied on, and the time.
+      - >
+        This control is distinct from {{controlInterComponentTransportSecurity}}, which
+        secures the channel the credential travels over and assumes a credential exists;
+        from {{controlComponentIdentityProvenance}}, which verifies a presented identity
+        is the registered principal for a role; and from {{controlAgentCredentialIsolation}},
+        which scopes credentials to tenant boundaries once a strong scheme is in place.
+        Those controls assume a sound authentication scheme; this control establishes
+        one. It is distinct from {{controlComponentIdentityAuthentication}}, which makes the
+        authenticate-pass or authenticate-fail decision for a non-human principal under an
+        accepted scheme, and from {{controlFederatedUserAuthentication}}, which owns
+        delegating human-user authentication to a federated identity provider and the accept
+        or reject of the tokens it issues; this control governs only which schemes and
+        credential types are acceptable under policy. It is distinct from
+        {{controlDelegatedAuthorityConfinement}}, which requires
+        authority to be re-minted for each hop's recipient; this control governs whether the
+        credential a hop receives is verifiable and attributable, that control whether it was
+        issued for that hop. Showing that this control was enforced depends on the records described above
+        being committed and retained under {{controlAuditTrailCompleteness}}.
+    personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+    risks:
+      - riskAgentIdentitySpoofing
+    components:
+      - componentApplication
+      - componentToolServer
+      - componentAgentToolTransport
+      - componentIdentityProvider
+      - componentAuthorizationPolicyEnforcementPoint
+  - id: controlToolArgumentValidationAndSanitization
+    title: Tool Argument Validation and Sanitization
+    description:
+      - >
+        Validate and sanitize the arguments an agent passes to a tool, function, or backend
+        service before they are executed.
+      - >
+        This control governs the values flowing through a tool call. The receiving tool
+        or service is responsible for validating parameters independently of the calling
+        agent's apparent intent.
+    guidance:
+      - >
+        Apply conventional injection-prevention techniques scoped to the argument type,
+        for example:
+      - - >
+          Constrain arguments to an expected schema, type, and allowlist of values or formats,
+          not freeform strings where structured input is expected.
+        - >
+          Use parameterized or prepared interfaces so argument values cannot alter the
+          structure of the operation they feed ({{ref:cwe-89}}).
+        - >
+          Canonicalize file-path arguments and bound them to a permitted root to prevent
+          traversal ({{ref:cwe-22}}).
+        - >
+          Avoid passing argument values through a shell interpreter; where a system command is
+          unavoidable, pass a non-interpreted argument vector, not a concatenated string
+          ({{ref:cwe-77}}).
+        - >
+          Handle serialized payloads with restricted, type-bounded deserialization, or reject
+          them ({{ref:cwe-502}}).
+        - >
+          Record each rejected or sanitized argument with the calling agent, the tool, the
+          argument and the check it failed, and the time.
+      - >
+        Tool selection is not evidence that argument values are safe: injected content can
+        steer an agent into emitting parameters that reach a backend as a shell command, file
+        path, database query, or serialized object. The tool boundary is where classical
+        injection defenses apply.
+      - >
+        This control is distinct from {{controlInputValidationAndSanitization}}, which
+        screens adversarial queries reaching the model, and
+        {{controlOutputValidationAndSanitization}}, which screens model output before
+        consumption. It is also distinct from {{controlAgentPluginPermissions}}, which governs
+        which tools an agent may invoke and with what authority: permissions decide whether a
+        call is allowed, this control whether its arguments are safe to execute. They are
+        complementary: a permitted tool can still be driven to harm with malicious arguments.
+        Showing that this control was enforced depends on the records described above being
+        committed and retained under {{controlAuditTrailCompleteness}}.
+    category: controlsApplication
+    personas:
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaPlatformProvider
+    components:
+      - componentTools
+      - componentOrchestrationInputHandling
+      - componentToolInputHandling
+    risks:
+      - riskPromptInjection
+      - riskRogueActions
+    mappings:
+      owasp-top10-llm:
+        - LLM05:2025
+    lifecycleStage:
+      - development
+      - runtime
+    impactType:
+      - confidentiality
+      - integrity
+      - availability
+    actorAccess:
+      - external
+      - api
+      - agent
+    externalReferences:
+      - type: cwe
+        id: cwe-77
+        title: 'CWE-77: Improper Neutralization of Special Elements used in a Command
+          (Command Injection)'
+        url: https://cwe.mitre.org/data/definitions/77.html
+      - type: cwe
+        id: cwe-22
+        title: 'CWE-22: Improper Limitation of a Pathname to a Restricted Directory (Path
+          Traversal)'
+        url: https://cwe.mitre.org/data/definitions/22.html
+      - type: cwe
+        id: cwe-89
+        title: 'CWE-89: Improper Neutralization of Special Elements used in an SQL Command
+          (SQL Injection)'
+        url: https://cwe.mitre.org/data/definitions/89.html
+      - type: cwe
+        id: cwe-502
+        title: 'CWE-502: Deserialization of Untrusted Data'
+        url: https://cwe.mitre.org/data/definitions/502.html
+  - id: controlNetworkEgressControl
+    title: Network Egress Control
+    description:
+      - >
+        Constrain the outbound network reachability of AI-system components to the
+        destinations each legitimately requires.
+    guidance:
+      - >
+        In scope: model-serving endpoints, orchestration services, agents, and the tool
+        servers they run. Constraining egress keeps a compromised or misbehaving component
+        from originating arbitrary external connections, including data exfiltration and
+        command-and-control (C2) callbacks.
+      - >
+        Govern component-originated connections through an egress policy or forward proxy,
+        not unrestricted external access: default-deny outbound with allowlisted
+        destinations and ports scoped to each component's needs; egress filtering or
+        proxying that constrains C2 reachability and bulk data egress (network-boundary
+        data-loss prevention); and destination scoping so an agent or tool server cannot
+        reach external endpoints beyond its task. Calibrate strictness to the sensitivity
+        of the data a component handles and its blast radius. Record each denied outbound
+        connection with the originating component, the destination, the policy rule relied
+        on, and the time.
+      - >
+        This control is distinct from {{controlInboundNetworkExposureAndSegmentation}},
+        which governs inbound exposure and segmentation: this control governs where a
+        component may send. It is distinct from {{controlInterComponentTransportSecurity}}
+        (protects the channel once permitted), {{controlModelAndDataAccessControls}}
+        (principal access to assets, not egress paths), and
+        {{controlIsolatedConfidentialComputing}} (compute/memory isolation, not the network).
+        Showing that this control was enforced depends on the records described above being
+        committed and retained under {{controlAuditTrailCompleteness}}.
+    category: controlsInfrastructure
+    personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+    components:
+      - componentModelServing
+      - componentTools
+      - componentReasoningCore
+      - componentToolNetworkPolicyEnforcementPoint
+      - componentAgentNetworkPolicyEnforcementPoint
+    risks:
+      - riskModelExfiltration
+      - riskInsecureIntegratedComponent
+      - riskExcessiveNetworkExposure
+    mappings:
+      owasp-top10-llm:
+        - LLM02:2025
+    lifecycleStage:
+      - deployment
+      - runtime
+    impactType:
+      - confidentiality
+      - integrity
+    actorAccess:
+      - external
+      - service-provider
+  - id: controlThirdPartyCapabilityAdmission
+    title: Third-Party Capability Admission Control
+    description:
+      - >
+        Ensure that the third-party tools, prompts, and instruction templates an agent
+        acquires (its capabilities) are admitted against an approval policy before first use
+        and re-approved before a material change takes effect. The objective is
+        capability-set-level admission: a capability offered through runtime discovery
+        executes only after a current approval gate, and one delivered by any other route is
+        covered by the approval policy alone.
+    guidance:
+      - >
+        **Admission:** Favor a documented approval gate proportionate to the capability's
+        privilege and blast radius: confirm the providing server has cleared
+        {{controlToolServerVetting}}, and pin each approved capability to a reviewed version,
+        recorded as its identity plus a digest over its description, input and output schema
+        and declared metadata as reviewed, so the pin can be checked at runtime. Record each
+        approve, reject, and re-approval decision with the capability identity and digest,
+        the providing server, the approving principal, the review evidence, and the time.
+      - >
+        **Re-approval on material change:** Trigger re-approval on description, schema,
+        permission, or version change, and route capability-set changes through a reviewable
+        path, not runtime self-assertion. A change offered at runtime outside that path is
+        caught by the pin check at the negotiation handshake and returned here.
+      - >
+        This control addresses dependency-and-update ("rug-pull") compromise, where a
+        capability benign at adoption is later swapped, re-versioned, or allowed to redefine
+        its own description, prompts and instruction templates included. The pin detects
+        changes to description, schema and declared metadata; a behavior change behind an
+        unchanged description is addressed by the re-review under {{controlToolServerVetting}}.
+      - >
+        This control owns onboarding admission, pinning, and re-approval of the capability
+        set. It is distinct from {{controlToolServerVetting}}, which judges the
+        provider/server; {{controlToolServerSupplyChainIntegrity}}, which provenance-verifies
+        tool-server software the organization acquires and runs and owns the integrity of its
+        updates, while this control owns the review path for capability-set changes; and
+        {{controlToolRegistryAndDiscoveryIntegrity}}, which integrity-protects registered tool
+        manifests and metadata and detects changes to them. A detected change to registered
+        metadata, or a pin mismatch at a handshake, triggers this control's re-approval, and
+        this control decides whether the changed capability may execute. It is distinct from
+        {{controlAgentCapabilityNegotiation}}, which enforces the approved pin at each runtime
+        handshake (comparing identity and digest, withholding a mismatch, triggering
+        re-approval here); this control admits, pins, and re-approves what that enforcement
+        point checks. Showing that this control was enforced depends on the records described
+        above being committed and retained under {{controlAuditTrailCompleteness}}.
+    category: controlsInfrastructure
+    personas:
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaPlatformProvider
+      - personaGovernance
+    components:
+      - componentTools
+      - componentReasoningCore
+      - componentOrchestrationInputHandling
+      - componentToolServer
+    risks:
+      - riskToolSourceProvenance
+      - riskToolRegistryTampering
+    mappings:
+      nist-ai-rmf:
+        - GOVERN-6.1@1.0
+      owasp-top10-llm:
+        - LLM03:2025
+    lifecycleStage:
+      - development
+      - deployment
+      - maintenance
+    impactType:
+      - integrity
+      - confidentiality
+      - accountability
+    actorAccess:
+      - supply-chain
+      - service-provider
+      - agent
+  - id: controlAgenticZeroTrustPosture
+    title: Agentic Zero-Trust Posture
+    description:
+      - >
+        Design agentic systems to treat every component boundary — between orchestrator
+        and agent, agent and tool server, tool server and downstream API — as an explicit,
+        verified trust boundary. This posture, grounded in zero-trust
+        architecture principles ({{ref:nist-sp-800-207}}), applies at design time to
+        the system's trust topology: no implicit trust at any boundary, with trust
+        established per boundary by verification. The posture comprises three structural
+        properties, a decomposition specific to this framework, that must be present by
+        design: explicit boundary verification, assume-breach segmentation, and
+        defense-in-depth layering.
+    guidance:
+      - >
+        **Explicit boundary verification:** Trust at each component boundary is
+        established by verification, never assumed. No component assumes trust from
+        co-location, adjacency, network position, localhost binding, prior authentication
+        in a different segment, or a certificate that proves only key possession. How
+        identity is checked at invocation is the concern of {{controlComponentIdentityProvenance}}.
+      - >
+        **Assume-breach segmentation:** The system is designed so that compromise of any
+        one segment (an agent process, a tool server, the orchestration plane) cannot
+        propagate laterally beyond that segment; segment boundaries are enforced by distinct
+        identity domains, scoped credentials, and policy enforcement points that do not
+        transit compromised segments.
+      - >
+        **Defense-in-depth layering:** Multiple independent control layers (transport
+        security, identity verification, permission narrowing, observability) are stacked
+        so failure of any one layer is not a system-wide breach.
+      - >
+        The individual mechanisms that enforce this posture at runtime (transport authentication,
+        credential scoping, registry-bound identity) belong to the operational controls
+        that implement it. This control addresses the architectural posture — the design
+        decision about what the system's trust topology must be. It is distinct from
+        the controls that implement individual layers of that posture: {{controlAgentPluginPermissions}}
+        enforces least-privilege narrowing and caller-authorization checks at individual
+        delegation hops; {{controlInterComponentTransportSecurity}} establishes authenticated,
+        encrypted channels; {{controlComponentIdentityProvenance}} binds runtime identity
+        to the authoritative registry at invocation time; {{controlAgentCredentialIsolation}}
+        scopes credentials to tenant boundaries; and {{controlInboundNetworkExposureAndSegmentation}}
+        and {{controlRuntimeHostIsolation}} enforce assume-breach segmentation at the network
+        and host layers. Adopting this posture commits the organization
+        to structuring those operational controls around an explicit trust topology rather
+        than deploying them individually while leaving implicit trust gaps at co-located
+        or adjacent components. The risks this control links are the ones the absence of
+        this posture leaves structurally open; they are reduced when the operational
+        controls named above are deployed.
+    category: controlsGovernance
+    personas:
+      - personaGovernance
+      - personaAgenticProvider
+      - personaPlatformProvider
+    components:
+      - componentReasoningCore
+      - componentTools
+      - componentOrchestrationInputHandling
+      - componentOrchestrationOutputHandling
+      - componentModelServing
+    risks:
+      - riskAgenticDelegationConfusedDeputy
+      - riskCrossTenantCredentialPropagation
+      - riskShadowAndUnknownAgents
+      - riskMCPTransportHijacking
+      - riskInsecureIntegratedComponent
+      - riskRogueActions
+    mappings:
+      nist-ai-rmf:
+        - GOVERN-1.2@1.0
+    externalReferences:
+      - type: spec
+        id: nist-sp-800-207
+        title: 'NIST Special Publication 800-207: Zero Trust Architecture'
+        url: https://doi.org/10.6028/NIST.SP.800-207
+  - id: controlAIInfrastructureObservability
+    title: AI Infrastructure Observability
+    description:
+      - >
+        Maintain tamper-evident telemetry across the AI system infrastructure as foundational
+        evidence for compliance, security oversight, and forensic reconstruction.
+      - >
+        This control addresses the infrastructure and platform layer of observability:
+        the log streams, distributed traces, and audit records produced by the components
+        the AI system runs on and through.
+    guidance:
+      - >
+        The infrastructure in scope includes hosts, model-serving endpoints, API gateways,
+        client connections, and orchestration transport paths. The telemetry lets an
+        organization demonstrate compliance obligations and reconstruct security incidents
+        after the fact.
+      - >
+        Effective implementation provides: structured, queryable log streams from serving
+        infrastructure and host-level event sources; distributed trace correlation across
+        request paths that cross component boundaries (gateways, load balancers, serving
+        endpoints, application tiers); log retention policies calibrated to applicable
+        compliance and forensic requirements; and integrity protections (write-once storage,
+        cryptographic log chaining, or equivalent) that make after-the-fact alteration
+        of audit records evident. The instrumentation should be sufficient to reconstruct the
+        infrastructure-side sequence of events for any request that traversed the system.
+      - >
+        Collection may be centralized, or distributed across stores where data scale or
+        system segmentation makes a single repository impractical. Distributed stores share
+        a common retention, integrity, and access-control policy, are monitored so that a
+        source that stops reporting is detected, and can be queried together for correlation.
+        The requirement is that the telemetry stay complete, correlatable, and tamper-evident,
+        not that it follow a particular collection topology.
+      - >
+        This control is distinct from {{controlAgentObservability}}, which addresses
+        behavioral telemetry of individual agents (actions, tool invocations, reasoning);
+        complete agent-level logs do not answer whether a serving endpoint was substituted,
+        which clients connected to a model gateway, or what network activity accompanied an
+        incident. It is distinct from {{controlAuditTrailIntegrityVerification}}, which checks
+        on a cadence, against an externally held reference, that the integrity structure of
+        committed audit records still holds; this control requires the telemetry to carry that
+        structure. It is distinct from {{controlAuditTrailCompleteness}}, which requires the
+        audit record repository to hold a per-writer continuity expectation, so a sequence
+        break, an out-of-order arrival, or a writer gone quiet is reportable and reported. This
+        control's ordering is per-request, and its source monitoring for distributed
+        collection is pipeline health: it detects that a telemetry source it collects from has
+        stopped reporting. It does not judge whether an audit-record writer's records reached
+        the repository; that is record continuity, judged against the repository's per-writer
+        expectation. Where an audit writer is also a source this control collects from, both
+        may fire on the same event, for different purposes. The writer emits the continuity
+        signal under the control that owns it; this control emits it only for infrastructure
+        sources it instruments. Requiring that signal and judging audit-record writer
+        continuity against it is the repository's, and neither control depends on the other
+        widening its scope.
+    category: controlsInfrastructure
+    personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaGovernance
+    components:
+      - componentModelServing
+      - componentApplication
+      - componentOrchestrationInputHandling
+      - componentOrchestrationOutputHandling
+    risks:
+      - riskAgentDelegationChainOpacity
+      - riskShadowAndUnknownAgents
+      - riskZombieShadowMCPServers
+      - riskModelDeploymentTampering
+      - riskAuditTrailTampering
+    mappings:
+      nist-ai-rmf:
+        - MEASURE-2.4@1.0
+        - MANAGE-4.1@1.0
+      eu-ai-act:
+        - Article 12@2024
+  - id: controlAIComponentPatchManagement
+    title: AI Component Patch Management
+    description:
+      - >
+        Maintain a tested, staged, and version-tracked update lifecycle for deployed
+        AI-system components, including model serving infrastructure, orchestration frameworks,
+        and remote tool servers, with enforcement on escalation. The discipline has two
+        interdependent parts: update management and version enforcement.
+    guidance:
+      - >
+        **Update management:** validate fixes and upgrades in pre-production before
+        promotion, and roll them out in stages or canaries so a patch regression is contained
+        before it reaches the full deployment.
+      - >
+        **Version enforcement:** maintain a registry of deployed component versions, drawing
+        on the inventory established by {{controlModelAndDataInventoryManagement}} and
+        {{controlAgentInventoryManagement}}, and remediate documented vulnerabilities on
+        risk-tiered timelines, with severity, exploitability, and exposure setting the
+        deadline, consistent with {{ref:nist-sp-800-40r4}}. Blocking or quarantining instances
+        still running a vulnerable version is the escalation when a timeline is missed or the
+        vulnerability is actively exploited, so detection drives mandatory remediation, not
+        advisory notices. Record each remediate, escalate, block or quarantine decision with
+        the instance, version, vulnerability and tier, deadline relied on, and time.
+      - >
+        This control applies to AI-specific components classical patch management often
+        misses: MCP tool server instances outside conventional software asset management,
+        model serving infrastructure in cloud or container environments, and orchestration
+        framework dependencies, whose exploitable vulnerabilities accumulate silently without
+        an update process.
+      - >
+        This control is the remediation counterpart to {{controlVulnerabilityManagement}},
+        which identifies and monitors vulnerabilities in production; this control closes the
+        detect-to-remediate loop. It is distinct from {{controlIncidentResponseManagement}}
+        (response to active incidents, including rollback of a faulty update during one) and
+        {{controlSecureByDefaultMLTooling}} (selecting secure-by-default tooling at initial
+        deployment); the standing update cadence here operates in normal operations. Showing
+        that this control was enforced depends on the records described above being committed
+        and retained under {{controlAuditTrailCompleteness}}.
+    category: controlsInfrastructure
+    personas:
+      - personaPlatformProvider
+      - personaAgenticProvider
+      - personaApplicationDeveloper
+      - personaGovernance
+    components:
+      - componentModelServing
+      - componentTools
+      - componentOrchestrationInputHandling
+      - componentOrchestrationOutputHandling
+    risks:
+      - riskInsecureIntegratedComponent
+    externalReferences:
+      - id: nist-sp-800-40r4
+        title: 'NIST SP 800-40 Rev. 4: Guide to Enterprise Patch Management Planning:
+          Preventive Maintenance for Technology'
+        url: https://csrc.nist.gov/pubs/sp/800/40/r4/final
+        type: spec
+    mappings:
+      nist-ai-rmf:
+        - MANAGE-4.1@1.0
+  - id: controlAuditRecordRepositoryIndependence
+    title: Audit Record Repository Independence
+    description:
+      - >-
+        Ensure the durable record of what an AI system did is held under an authority the recorded
+        workload does not control. The obligation attaches to the storage substrate ({{componentAuditRecordRepository}}).
+        It requires three structural properties: separated append, read, and delete authority;
+        an administrative plane outside the recorded trust domain; and self-recording of
+        the administrative plane.
+    guidance:
+      - >-
+        **Separated append, read, and delete authority:** the authority to append records does not carry authority to read
+        the trail back, amend it, or remove entries; audit read access is granted separately;
+        and no principal holds append together with deletion or retention-shortening authority.
+        **An administrative plane outside the recorded trust domain:** the authority to configure
+        retention, grant and revoke access, and authorize deletion sits outside the trust domain
+        of the workloads the store records, so compromise of a recorded workload confers none
+        over the record of that compromise. **Self-recording of the administrative plane:** actions
+        taken against the store — retention changes, access grants and revocations, deletions,
+        expiry, and roster changes — are themselves written to the trail. These are properties
+        of authority, not of any mechanism expressing it: credentials are the usual expression,
+        but a one-way write path into write-once media satisfies the first without one.
+      - >-
+        Where a recorded workload's operator also operates its store, that operator arranges the
+        separation: holding both roles is the ordinary case for separation of duties, not an exemption.
+      - >-
+        The obligation does not attach to the components that write to the store: an emitter can
+        produce complete and accurate records and still not guarantee they survive an adversary holding
+        administrative authority over the workload being recorded. That adversary is frequently the
+        recorded workload itself, which is why a component cannot be its own audit authority.
+      - >-
+        Omitting the third leaves the first two asserted rather than evidenced — though not falsifiable
+        on its own, since self-recorded administrative actions land in the same trail an administrator
+        can rewrite; only the externally held reference point of {{controlAuditTrailIntegrityVerification}}
+        closes that. NIST SP 800-53 states these as enhancements to the protection of audit information
+        — AU-9(4), AU-9(5) and AU-9(6) for the authority separation, and AU-9(2) and AU-9(7) for
+        the administrative plane, which it frames topologically ({{ref:nist-sp-800-53r5}}). This
+        control states that in control-plane terms; the topological form remains stronger wherever
+        an adversary reaches host or hypervisor privilege, since a co-located store falls to that
+        adversary regardless of logical partitioning. The EU AI Act divides them similarly, separating
+        recording under Article 12 from the duty to keep records under Articles 19 and 26(6) ({{ref:eu-ai-act-2024}}).
+      - >-
+        This control, with {{controlAuditTrailCompleteness}} and {{controlAuditTrailIntegrityVerification}},
+        divides by the question the trail must answer — who could have changed it, whether everything
+        reached it, and whether what reached it still stands — not by the properties within an
+        answer: here the separated administrative plane does not by itself subsume separated authority:
+        it holds against an adversary who has compromised or operates the recorded workload only
+        when no credential that workload holds carries data-plane rights beyond append, since a
+        compromised writer credential with read or delete rights acts on the trail without
+        touching the administrative plane; self-recording makes either checkable. {{controlResourceAuthorizationEnforcement}}
+        carries least-privilege and privilege-separation for service and tool-integration permission
+        scope, but is an application-layer control that does not reach this component and names
+        neither the append/read/delete triad over the audit record nor where its administrative
+        plane sits.
+    category: controlsInfrastructure
+    personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaAgenticProvider
+      - personaGovernance
+    components:
+      - componentAuditRecordRepository
+    risks:
+      - riskAuditTrailTampering
+    mappings:
+      eu-ai-act:
+        - Article 19@2024
+        - Article 26(6)@2024
+    lifecycleStage:
+      - deployment
+      - runtime
+      - maintenance
+    impactType:
+      - confidentiality
+      - integrity
+      - accountability
+      - compliance
+    actorAccess:
+      - privileged
+      - agent
+      - infrastructure-provider
+    externalReferences:
+      - type: spec
+        id: nist-sp-800-53r5
+        title: >-
+          NIST Special Publication 800-53 Revision 5: Security and Privacy Controls for Information
+          Systems and Organizations
+        url: https://doi.org/10.6028/NIST.SP.800-53r5
+      - type: spec
+        id: eu-ai-act-2024
+        title: Regulation (EU) 2024/1689 (Artificial Intelligence Act)
+        url: https://eur-lex.europa.eu/eli/reg/2024/1689/oj
+  - id: controlAuditTrailCompleteness
+    title: Audit Trail Completeness
+    description:
+      - >-
+        Ensure that every record which should have entered the trail held in
+        {{componentAuditRecordRepository}}, including the decision records of enforcement points,
+        did enter it and remains for as long as it should. The
+        objective is that absence becomes reportable and reported. This control has three parts: verified
+        commitment on the write path, a stated contract for failure and expiry, and a continuity
+        expectation held across writers.
+    guidance:
+      - >-
+        **Verified commitment on the write path.** A record has entered the trail only when the
+        repository acknowledges it. The store authenticates itself as the write destination and
+        returns an acknowledgement of durable commitment attributable to that identity; a success
+        response from an endpoint that cannot present the repository's identity is not a
+        commitment. This defeats write-path redirection by address rewrite alone, where an
+        emitter's destination is reconfigured or impersonated so records are accepted and
+        discarded. An adversary who also rewrites the emitter's trust anchors still diverts
+        records; the continuity expectation can surface the silence unless that adversary also
+        supplies the continuity signal.
+      - >-
+        **A stated contract for failure and expiry.** For each class of event the store states
+        what a failed commit means (the recorded operation blocks until its record is durable, or
+        proceeds with the failure recorded and alerted) and a minimum retention period, with
+        capacity provisioned so ordinary volume does not consume it. Decision records produced by
+        enforcement controls (admit or deny, approve or reject, verify pass or fail) are a class
+        of event the trail commits and retains. Their failure posture is stated per class: by
+        default a deny or reject is not silently dropped, and whether a failed commit blocks the
+        decision or lets it proceed with the failure alerted is an explicit per-class choice,
+        because an enforcement point that fails open on a deny leaves the consequential decision
+        unrecorded. Their minimum retention is set by the deploying organization's accountability
+        obligations. NIST SP 800-53 assigns the failure posture to the organization under AU-5
+        and storage capacity to the medium under AU-4 ({{ref:nist-sp-800-53r5}}). A regulatory
+        retention period is a floor, not a target: the EU AI Act requires providers and deployers
+        to keep logs under their control for at least six months ({{ref:eu-ai-act-2024}}).
+        Within that floor, overwriting the oldest records is not an acceptable response to
+        storage pressure,
+        although AU-5 permits it, because flooding a store until records of interest age out is
+        an attack technique; on exhaustion the store falls back to its stated commit posture.
+        Early expiry is an administrative action; this control depends on
+        {{controlAuditRecordRepositoryIndependence}} to govern it.
+      - >-
+        **A continuity expectation held across writers.** The store requires of each writer a
+        signal from which continuity can be judged and holds that expectation itself. The writer
+        emits the signal under the control that owns that writer; the store requires and judges
+        it, so a sequence break, an out-of-order arrival, or a writer gone quiet is reportable
+        rather than a silent hole. A continuity break raises an alert on a path outside the
+        writer's control, following the alerting pattern
+        {{controlAuditTrailIntegrityVerification}} uses for a verification failure, without
+        depending on that control. Sequence numbers,
+        heartbeats, and writer manifests realize the signal; they are not the requirement. This
+        is the half of the trail no emitter can attest to: a suppressed emitter is
+        indistinguishable from an idle one from its own vantage point, so only the store's
+        expectation can notice a writer terminated, silenced, or redirected. The expectation does
+        not detect a compromised emitter that fabricates heartbeats or sequence numbers; a signal
+        the writer cannot mint for itself narrows that case, and what remains is residual. The
+        roster of expected writers includes non-agent writers (enforcement points, decision
+        points, identity and registry services), not only agents. It is administrative state of
+        the store; this control depends on the self-recording property of
+        {{controlAuditRecordRepositoryIndependence}} for roster changes, since otherwise
+        deregistering a writer silently retires its expectation. A non-agent writer is reconciled
+        against the decision points declared for the owning control's deployment, exposing an
+        enforcement point that was never registered; agent writers are reconciled against
+        {{controlAgentInventoryManagement}}, on which this control depends for that case.
+      - >-
+        Neither {{controlInterComponentTransportSecurity}} nor
+        {{controlComponentIdentityAuthentication}} supplies commitment: a protected channel to a
+        properly identified peer can still end at an endpoint that discards what it receives.
+        {{controlAIInfrastructureObservability}} emits the continuity signal only for
+        infrastructure sources it instruments, its scope being per-request ordering rather than
+        per-writer continuity, and {{controlAgentObservability}} does not reach ordering at all;
+        this control depends on neither widening. Detecting that a telemetry source has stopped
+        reporting into the collection pipeline is {{controlAIInfrastructureObservability}}'s, as
+        pipeline health; judging an audit-record writer's continuity against the repository's
+        expectation is this control's, as record continuity. Where an audit writer is also a
+        source {{controlAIInfrastructureObservability}} collects from, both may fire on the same
+        event, for different purposes. This control and {{controlAuditTrailIntegrityVerification}}
+        divide the trail's failure modes: this control addresses records that never became
+        durable or were lost to a retention or expiry failure; that control addresses records
+        altered while durable. Deletion of a committed record, detected against the independently
+        held reference point, including removal before minimum retention through an unauthorized
+        change to the retention schedule, is that control's and not this one's.
+    category: controlsInfrastructure
+    personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaAgenticProvider
+      - personaGovernance
+    components:
+      - componentAuditRecordRepository
+    risks:
+      - riskAuditTrailTampering
+    mappings:
+      eu-ai-act:
+        - Article 19@2024
+        - Article 26(6)@2024
+    lifecycleStage:
+      - deployment
+      - runtime
+      - maintenance
+    impactType:
+      - integrity
+      - availability
+      - accountability
+      - compliance
+    actorAccess:
+      - privileged
+      - agent
+      - infrastructure-provider
+    externalReferences:
+      - type: spec
+        id: nist-sp-800-53r5
+        title: >-
+          NIST Special Publication 800-53 Revision 5: Security and Privacy Controls for Information
+          Systems and Organizations
+        url: https://doi.org/10.6028/NIST.SP.800-53r5
+      - type: spec
+        id: eu-ai-act-2024
+        title: Regulation (EU) 2024/1689 (Artificial Intelligence Act)
+        url: https://eur-lex.europa.eu/eli/reg/2024/1689/oj
+  - id: controlAuditTrailIntegrityVerification
+    title: Audit Trail Integrity Verification
+    description:
+      - >-
+        Protect the integrity of records committed to the trail in
+        {{componentAuditRecordRepository}} for as long as they are retained, ensuring that
+        unauthorized modification or deletion of a committed record is detected, with detection
+        bounded by the externally held reference point the trail is verified against. This control has
+        two parts: a tamper-evident record structure, and independent verification of that structure
+        on a defined cadence.
+    guidance:
+      - >-
+        **Tamper-evident record structure.** Records are held so that altering or removing one after
+        the fact leaves a discrepancy a reader can find: write-once media, cryptographic chaining of
+        each record to its predecessors, or an equivalent binding a later edit cannot silently
+        satisfy. The cryptographic form is AU-9(3) ({{ref:nist-sp-800-53r5}}).
+      - >-
+        **Independent verification on a cadence.** A verifier that does not run under the authority
+        of the recorded workloads checks the structure on a defined schedule, not only during an
+        investigation, and a verification failure raises an alert on the same path as a security
+        incident. A principal holding full authority over the store can rewrite the trail and its
+        structure together into a self-consistent whole, so the verifier checks against a reference
+        point held outside that authority and committed to periodically; this bounds how far back
+        such a rewrite can reach undetected. Publishing a hash-chain head or Merkle tree root to an
+        independent witness is the common realization; an independently retained copy or an outside
+        countersignature serves the same purpose for a trail structured otherwise.
+      - >-
+        Detectability is not detection — an integrity structure nothing verifies produces no
+        evidence, and a flat log file offers nothing to verify at all.
+      - >-
+        The tamper-evident structure restates for the repository the requirement
+        {{controlAIInfrastructureObservability}} places on the telemetry it covers. The restatement
+        is deliberate: a verification obligation needs a stated object, and this control adds the
+        verification that requirement lacks. This control and {{controlAuditTrailCompleteness}}
+        divide the trail's failure modes: records altered or deleted while they were durable, detected
+        against the witnessed structure, and records that never became durable or were lost to a
+        retention or expiry failure. Removal of a committed record before its minimum retention,
+        including through an unauthorized change to the retention schedule, is detected as
+        deletion of a committed record under this control. It differs from
+        {{controlAuditRecordRepositoryIndependence}}: independence determines who could have
+        rewritten the trail, this control whether anyone did — which is why the verifier and the
+        reference point sit outside the authority independence establishes, and why that reference
+        is what makes independence's self-recording property checkable. {{controlThreatDetection}}
+        and {{controlIncidentResponseManagement}} consume the trail as evidence and depend on this
+        control for the evidentiary value of what they read.
+    category: controlsInfrastructure
+    personas:
+      - personaPlatformProvider
+      - personaModelServing
+      - personaAgenticProvider
+      - personaGovernance
+    components:
+      - componentAuditRecordRepository
+    risks:
+      - riskAuditTrailTampering
+    mappings:
+      nist-ai-rmf:
+        - MEASURE-2.7@1.0
+    lifecycleStage:
+      - deployment
+      - runtime
+      - maintenance
+    impactType:
+      - integrity
+      - accountability
+      - compliance
+    actorAccess:
+      - privileged
+      - agent
+      - infrastructure-provider
+    externalReferences:
+      - type: spec
+        id: nist-sp-800-53r5
+        title: >-
+          NIST Special Publication 800-53 Revision 5: Security and Privacy Controls for Information
+          Systems and Organizations
+        url: https://doi.org/10.6028/NIST.SP.800-53r5
