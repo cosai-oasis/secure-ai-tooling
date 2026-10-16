@@ -9,13 +9,7 @@ The `mermaid-styles.yaml` file has four required top-level keys: `version`, `fou
 string (e.g. `1.0.0`) and does not need its own section. The other three are described
 below.
 
-Each example declares its scope in the first YAML comment. A
-`# schema-example: fragment` shows partial edits to merge into the existing
-configuration. A `# schema-example: complete <dot.path>` supplies an entire
-section to replace as a unit; the documentation tests check that it supplies
-all required fields within that section. A `# schema-example: complete`
-without a path denotes a standalone configuration. These comments do not
-change how YAML is loaded.
+See [example markers and how to apply them](../../scripts/docs/styling-configuration.md#configuration-file-structure) before copying these snippets.
 
 ### Foundation Design Tokens
 

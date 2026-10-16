@@ -16,9 +16,9 @@ guard fails loudly if that class of drift recurs.
 
 Each fenced example declares its validation contract in its first YAML
 comment. Fragments are deep-merged onto the live configuration. Complete
-examples additionally validate without inheriting any required fields
-within their declared scope: the entire config, or a dot-separated section
-path. The schema remains the source of required fields in either case.
+sections name a dot-separated path and additionally validate with that
+section replaced wholesale, without inheriting required fields inside it.
+The schema remains the source of required fields in either case.
 """
 
 import copy
@@ -44,7 +44,7 @@ _SCHEMA_FILE = _REPO_ROOT / "risk-map" / "schemas" / "mermaid-styles.schema.json
 # so a doc author using the shorter or differently-cased fence tag is still caught.
 _YAML_FENCE_PATTERN = re.compile(r"```ya?ml\n(.*?)```", re.DOTALL | re.IGNORECASE)
 _EXAMPLE_DECLARATION_PATTERN = re.compile(
-    r"# schema-example: (fragment|complete)(?: ([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*))?"
+    r"# schema-example: (?:fragment|complete ([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*))"
 )
 
 
@@ -73,18 +73,14 @@ def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]
     return merged
 
 
-def _parse_example_declaration(yaml_text: str, label: str, index: int) -> tuple[str, str | None]:
-    """Require an explicit fragment or complete-scope contract on the first line."""
+def _parse_example_declaration(yaml_text: str, label: str, index: int) -> str | None:
+    """Return the required complete-section path, or None for an explicit fragment."""
     declaration = _EXAMPLE_DECLARATION_PATTERN.fullmatch(yaml_text.partition("\n")[0])
     assert declaration is not None, (
         f"{label} block {index} must start with '# schema-example: fragment' "
-        "or '# schema-example: complete [dot.path]'"
+        "or '# schema-example: complete <dot.path>'"
     )
-    kind, scope = declaration.groups()
-    assert kind == "complete" or scope is None, (
-        f"{label} block {index}: schema-example fragment cannot declare a section path"
-    )
-    return kind, scope
+    return declaration.group(1)
 
 
 def _with_complete_section(
@@ -163,15 +159,15 @@ class TestStylingDocExamplesMatchSchema:
         A failure here means the doc shows a contributor an edit the schema
         will not accept — the exact failure mode this guard exists to catch.
         """
-        kind, scope = _parse_example_declaration(yaml_text, label, index)
+        scope = _parse_example_declaration(yaml_text, label, index)
         example = yaml.safe_load(yaml_text)
         assert isinstance(example, dict), f"{label} block {index} did not parse to a mapping: {yaml_text!r}"
 
         merged = _deep_merge(_load_live_config(), example)
         configurations = [("after merging onto the live config", merged)]
-        if kind == "complete":
-            complete = _with_complete_section(merged, example, scope, label, index) if scope else example
-            configurations.append((f"as a complete example ({scope or 'entire config'})", complete))
+        if scope is not None:
+            complete = _with_complete_section(merged, example, scope, label, index)
+            configurations.append((f"as a complete section ({scope})", complete))
 
         validator = Draft7Validator(_load_schema())
         for context, configuration in configurations:
@@ -259,29 +255,6 @@ class TestCompleteStylingExamples:
 
         doc_guard("fixture.md", 0, source)
 
-    def test_complete_full_config_is_accepted(self, doc_guard):
-        """
-        Given a complete full configuration satisfying the current schema
-        When the collected documentation guard validates it without a section path
-        Then the standalone configuration is accepted
-        """
-        source = _marked_example(_load_live_config(), "complete")
-
-        doc_guard("fixture.md", 0, source)
-
-    def test_complete_full_config_cannot_inherit_required_root_key(self, doc_guard):
-        """
-        Given a full configuration example missing its required version
-        When the collected documentation guard validates it as complete
-        Then it rejects the missing root key instead of borrowing the live version
-        """
-        example = _load_live_config()
-        del example["version"]
-        source = _marked_example(example, "complete")
-
-        with pytest.raises(AssertionError, match="'version' is a required property"):
-            doc_guard("fixture.md", 0, source)
-
     def test_complete_nested_section_cannot_inherit_required_field(self, doc_guard):
         """
         Given a complete flowchart section missing its required padding
@@ -335,6 +308,19 @@ class TestCompleteStylingExamples:
 
 class TestStylingExampleDeclarations:
     """Every extracted block has an explicit, valid validation contract."""
+
+    def test_complete_declaration_requires_section_path(self, doc_guard):
+        """
+        Given a schema-valid full configuration with a bare complete declaration
+        When the collected documentation guard validates its declaration
+        Then it rejects the missing section path with a schema-example error
+        """
+        example = _load_live_config()
+        Draft7Validator(_load_schema()).validate(example)
+        source = _marked_example(example, "complete")
+
+        with pytest.raises(AssertionError, match="schema-example"):
+            doc_guard("fixture.md", 0, source)
 
     @pytest.mark.parametrize(
         "marker",
