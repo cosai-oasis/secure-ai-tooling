@@ -113,7 +113,7 @@ See [CONTRIBUTING.md](../../CONTRIBUTING.md) for the proper branching workflow (
 
 ### Write clear commit messages
 
-Use the "This commit does..." format for clarity.
+Use the Conventional Commits format described in [CONTRIBUTING.md](../../CONTRIBUTING.md#commit-messages-format), for example `docs(controls): clarify the scope of controlAgentExecutionBounds`.
 
 ### Link PRs to issues
 

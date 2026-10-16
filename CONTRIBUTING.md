@@ -138,13 +138,38 @@ Major changes on Github or to a WS document using any other official project pla
 
 **For non-content changes**: After completing work on a feature branch, rebase `main` before opening a PR. After PR is approved, rebase again to make sure changes from the latest `main` are picked up before merging the PR.
 
-### Commit messages format:
+### Commit messages format
 
-In the commit message, always continue the sentence "This commit does ...".
+Commit messages follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/):
 
-Examples of good commit messages:
-"This commit renames examples folder in the root of the repo to reference-implementations"
-"This commit bumps dependency packages versions to fix potential security issues".
+```
+<type>(<optional scope>): <description>
+
+<optional body>
+
+<optional trailers>
+```
+
+- **scope** (optional): the area changed, for example `risks`, `controls`, `components`, `personas`, `schema`, `frameworks`, `site`, `ci`, `deps`.
+- **body** (optional): explains why the change is made, not only what changed.
+- A breaking change adds `!` after the type or scope (`feat(schema)!: ...`) and may explain the break in a `BREAKING CHANGE:` footer.
+
+This project also requires:
+
+- **type**: one of `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
+- **description**: imperative mood, lowercase, no trailing period. Example: "add", not "added" or "adds".
+- Trailers, such as the AI-assistance `Co-authored-by` trailer ([ADR-004](docs/adr/004-ai-assistant-trailer.md)), go at the end, separated by a blank line.
+
+Pull request titles use the same format, because a squash merge uses the PR title as the commit subject.
+
+Examples:
+
+```
+feat(risks): add a risk for poisoned agent memory
+fix(schema): reject blank port styles in decoupled graph rendering
+docs: describe the commit message format in CONTRIBUTING.md
+build(deps): bump check-jsonschema to 0.38.2
+```
 
 ## Signing the eCLA/iCLA
 
