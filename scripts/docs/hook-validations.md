@@ -377,6 +377,92 @@ Only `invalid` causes exit 1. `valid-but-superseded` is printed
 informationally to surface the D10b audit surface for maintainer review.
 Also runs in `validate-all.sh` with the four content paths explicit.
 
+## 19. Framework Mapping Catalogue Membership
+
+`validate-mapping-catalogue` hook runs
+`scripts/hooks/precommit/validate_mapping_catalogue.py --force --block` when
+any file in its read-set is staged.
+
+**Trigger:**
+`^(risk-map/(yaml/(risks|controls|components|personas|frameworks)\.yaml|schemas/frameworks\.schema\.json)|scripts/hooks/precommit/(validate_mapping_catalogue|framework_mapping|validate_mapping_drift)\.py|scripts/framework_catalogues/)`
+(`pass_filenames: false`)
+
+The hook takes no filenames. It is a default scanner over its own read-set:
+the four content YAMLs, `frameworks.yaml`, `frameworks.schema.json` and the
+vendored catalogue directory, each resolved from the validator's own location
+rather than the working directory (ADR-038 D3a). `--force` is the enabling
+argument: without it the validator reads nothing, prints
+`skipping validation: --force not given (nothing examined)` and exits 0. Every
+invocation in the tree (this hook, the CI job and `validate-all.sh`) passes
+`--force --block`.
+
+**What it validates (ADR-027 D5 Tier 2, ADR-038):**
+
+Tier 1 (§18) confirms that a value's version token is registered. Tier 2
+additionally confirms that the value's id exists in the edition the token
+names, using the vendored per-edition catalogues under
+`scripts/framework_catalogues/<framework>/`, one subdirectory per
+adjudicated framework. The adjudicated set is defined in the validator, by
+its `ADJUDICATED_FRAMEWORKS` table (ADR-038 D5). Only frameworks in that
+table are checked; values of every other framework are `skip`.
+
+Before any value is classified, the validator reads its inputs in three
+stages (ADR-038 D4):
+
+1. Verify every file listed in the framework's `SHA256SUMS` against its
+   digest. Nothing in the directory is parsed before this passes.
+2. Parse `manifest.yaml` from the verified bytes.
+3. Resolve every registered edition (`version` plus each `priorVersions`
+   token) to one manifest entry, and require that edition's catalogue to be
+   listed in `SHA256SUMS`. A token resolves by `release` first, then by a
+   unique `format-version`, so `5.0.1` resolves to release `2025.10`.
+
+Each value of an adjudicated framework then receives Tier 1's verdict first.
+A Tier 1 `skip` or `invalid` stands unchanged. A value Tier 1 accepts
+(`current` or `valid-but-superseded`) keeps that verdict unless its id is
+absent from the `techniques` and `mitigations` of its own pinned edition, in
+which case it is `invalid`. Tier 2 therefore never accepts a value Tier 1
+rejects, but it can turn a value Tier 1 accepts, including a
+`valid-but-superseded` one, into `invalid`. The detail line names any other
+registered edition that does contain the id (`present at <token>`) or
+reports `absent from every registered edition`.
+
+**Exit codes (ADR-038 D4a):**
+
+- `0` — no `invalid` value; `invalid` values without `--block` (warn tier);
+  or no `--force` (nothing examined).
+- `1` — at least one `invalid` value under `--block`.
+- `2` — read error: a missing, unreadable or unparsable input, a digest
+  mismatch, a registered edition that does not resolve, or a required
+  catalogue not listed in `SHA256SUMS`. The run prints
+  `catalogue check not performed: read error (exit 2)`.
+
+Output is the same with and without `--block`: every `invalid` line and a
+`summary:` line with per-verdict counts. Also runs in `validate-all.sh` and in
+the `mapping-catalogue-validation` CI job.
+
+**Catalogue refresh:** every registry bump of an adjudicated framework
+refreshes its whole subdirectory, in the same commit as the registry
+`version` flip or an earlier one (ADR-027 D10, ADR-038 D7):
+
+1. Choose one upstream commit. From it, copy verbatim `dist/manifest.yaml`,
+   the `dist/v6/` catalogue of the edition the bump registers, the `dist/v6/`
+   catalogue of every edition already vendored, and `LICENSE`.
+2. Regenerate `SHA256SUMS` with `sha256sum --text` over `manifest.yaml` and
+   every catalogue file (not `SHA256SUMS`, `SOURCE` or `LICENSE`). Update
+   `SOURCE` with the commit and the licence.
+3. Run the validator with `--force --block` over the bumped tree; it must not
+   exit 2.
+4. Record the output of `du -sh` on the framework's subdirectory in the
+   bump's description.
+
+The existing catalogues are re-copied because `SHA256SUMS` detects changes
+to the local copy only, not to upstream. A diff to a previously vendored
+catalogue at step 1 is how an upstream re-publication is detected
+(ADR-038 D1); the bump's description records it. An adjudicated framework is
+bumped when the corpus needs a new edition, not on every upstream release
+(ADR-038 D7a).
+
 ---
 
 **Related:**

@@ -724,7 +724,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--version",
         default=None,
         metavar="VER",
-        help="Framework version string (e.g. 5.0.1). Omit for unversioned frameworks.",
+        help="Framework version string (e.g. 2026.09). Omit for unversioned frameworks.",
     )
     parent.add_argument(
         "--framework-specific-ref",

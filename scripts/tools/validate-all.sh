@@ -258,6 +258,18 @@ else
     FAILURES=$((FAILURES + 1))
 fi
 
+# Tier 2 catalogue membership (ADR-027 D5, ADR-038 D6 item 10). It default-scans
+# its __file__-anchored read-set, so it takes no paths. --force is required
+# (without it nothing is read and the exit is 0) and --block makes an invalid
+# value fail the sweep (ADR-038 D4a).
+banner "Framework mapping catalogue-membership validation"
+if python3 scripts/hooks/precommit/validate_mapping_catalogue.py --force --block; then
+    pass_msg "Framework mapping catalogue membership"
+else
+    fail_msg "Framework mapping catalogue-membership validation reported errors"
+    FAILURES=$((FAILURES + 1))
+fi
+
 if [[ "$CHECK_GENERATION" == "true" ]]; then
     banner "Generated table parity"
     if ! check_generated_tables; then

@@ -2877,6 +2877,64 @@ def _write_prose_references_corpus(base: Path, poisoned: bool) -> None:
     (yaml_dir / "probe-index.yaml").write_text(yaml.dump({"risks": []}), encoding="utf-8")
 
 
+# Poison for validate_mapping_catalogue.py: AML.M0028 is a well-formed ATLAS id
+# pinned at a registered token (5.0.1, which resolves to release 2025.10), so
+# Tier 1 accepts it, but the id is absent from that edition's catalogue — the
+# ADR-027 D5 Tier 2 `invalid` class and nothing else. The clean twin pins
+# AML.T0020, which the 5.0.1 edition carries. Both ids sit at 5.0.1 because
+# ADR-038 D8 retains a registered edition's catalogue indefinitely, so the
+# membership facts this probe relies on cannot move under a later bump.
+_CATALOGUE_POISON_VALUE = "AML.M0028@5.0.1"
+_CATALOGUE_CLEAN_VALUE = "AML.T0020@5.0.1"
+_CATALOGUE_DIR_RELATIVE = "scripts/framework_catalogues"
+_CATALOGUE_CONTENT_FILES = (
+    "risk-map/yaml/risks.yaml",
+    "risk-map/yaml/controls.yaml",
+    "risk-map/yaml/components.yaml",
+    "risk-map/yaml/personas.yaml",
+)
+
+
+def _write_mapping_catalogue_corpus(base: Path, poisoned: bool) -> None:
+    """Corpus for validate_mapping_catalogue.py; poison = id absent at its pinned edition (ADR-038 D6 item 7).
+
+    The oracles are copied from the repository, not synthesised: the registry
+    (frameworks.yaml), the schema whose pinned patterns Tier 1 applies
+    (frameworks.schema.json) and the whole vendored catalogue directory
+    (manifest.yaml, SHA256SUMS and every registered edition's catalogue). The
+    validator verifies the catalogue bytes against SHA256SUMS and requires a
+    catalogue for every registered edition (ADR-038 D3c, D4), so a hand-built
+    stand-in would have to re-derive both and would stay self-consistent while
+    the shipped copy drifted. Copied, the clean run fails here exactly as CI
+    fails when the vendored record and the registry disagree.
+
+    The content files are synthetic and minimal, so the probe does not depend
+    on the live corpus. Each of the four carries one entity because the
+    validator treats a content file without a top-level entity list as a read
+    error (exit 2), which would make every run fail for a reason unrelated to
+    the injected value. Only controls.yaml carries a mapping value.
+    """
+    for relative in ("risk-map/yaml/frameworks.yaml", "risk-map/schemas/frameworks.schema.json"):
+        _copy_repo_file(base, relative)
+    shutil.copytree(_REPO_ROOT / _CATALOGUE_DIR_RELATIVE, base / _CATALOGUE_DIR_RELATIVE)
+
+    yaml_dir = _yaml_dir(base)
+    value = _CATALOGUE_POISON_VALUE if poisoned else _CATALOGUE_CLEAN_VALUE
+    controls = {
+        "controls": [{"id": "controlProbe", "title": "Probe Control", "mappings": {"mitre-atlas": [value]}}]
+    }
+    (yaml_dir / "controls.yaml").write_text(yaml.dump(controls), encoding="utf-8")
+    (yaml_dir / "risks.yaml").write_text(
+        yaml.dump({"risks": [{"id": "riskProbe", "title": "Probe Risk"}]}), encoding="utf-8"
+    )
+    (yaml_dir / "components.yaml").write_text(
+        yaml.dump({"components": [{"id": "componentProbe", "title": "Probe Component"}]}), encoding="utf-8"
+    )
+    (yaml_dir / "personas.yaml").write_text(
+        yaml.dump({"personas": [{"id": "personaProbe", "title": "Probe Persona"}]}), encoding="utf-8"
+    )
+
+
 # --- probe registry ---------------------------------------------------------
 
 BLOCK_PROBES: dict[str, BlockProbe] = {
@@ -2924,6 +2982,28 @@ BLOCK_PROBES: dict[str, BlockProbe] = {
         options=("--schema-dir", "risk-map/schemas", "--id-sources", "risk-map/yaml/probe-index.yaml"),
         marker="riskProbeDoesNotExist",
         warn_check="intra-doc sentinel resolution (ADR-016 D6)",
+    ),
+    # ADR-038 D6 item 7. `--force` is the enabling argument (without it the
+    # validator reads nothing and exits 0), so it goes in enabling_args, where
+    # the CI tier requires the workflow argv to supply it. The positionals are
+    # non-empty because the CI tier passes them too: they are how the derived
+    # `--force --block` argv reaches the poisoned content rather than the
+    # validator's __file__-anchored defaults in the real repository.
+    "validate_mapping_catalogue.py": BlockProbe(
+        script_path=_HOOKS_DIR / "precommit" / "validate_mapping_catalogue.py",
+        write_corpus=_write_mapping_catalogue_corpus,
+        positionals=_CATALOGUE_CONTENT_FILES,
+        enabling_args=("--force",),
+        options=(
+            "--frameworks",
+            "risk-map/yaml/frameworks.yaml",
+            "--schema",
+            "risk-map/schemas/frameworks.schema.json",
+            "--catalogue-dir",
+            _CATALOGUE_DIR_RELATIVE,
+        ),
+        marker="'AML.M0028' is not in edition '5.0.1'",
+        warn_check="catalogue membership at the pinned edition (ADR-027 D5 Tier 2, ADR-038)",
     ),
 }
 
@@ -6606,6 +6686,98 @@ class TestWorkflowTriggerCoverage:
             "which is the same silent failure "
             "test_gate_workflow_triggers_on_everything_that_defines_the_gate reports for "
             "the workflow's own scripts, one layer further from the command line."
+        )
+
+    # ADR-038 D6 item 5. The hook is read from .pre-commit-config.yaml by id; its
+    # `files:` regex is not restated here. The synthetic paths are catalogue names
+    # no registry has registered, so no tracked-file sample can contain them. The
+    # first stands for the next edition of an existing framework; the second, under
+    # a framework key that does not exist, for a second framework's catalogues, and
+    # pins the trigger at the scripts/framework_catalogues/ root ADR-038 D2 and D6
+    # item 5 name rather than at the mitre-atlas/ subdirectory.
+    _CATALOGUE_HOOK_ID = "validate-mapping-catalogue"
+    _CATALOGUE_WORKFLOW = "validation.yml"
+    _SYNTHETIC_CATALOGUE_PATHS = (
+        "scripts/framework_catalogues/mitre-atlas/ATLAS-2099.01.yaml",
+        "scripts/framework_catalogues/zz-synthetic/catalogue-2099.01.yaml",
+    )
+
+    def test_catalogue_workflow_triggers_on_the_catalogue_hook_inputs(self):
+        """
+        Given: the `validate-mapping-catalogue` hook from .pre-commit-config.yaml
+               and validation.yml, the workflow that runs its validator
+        When:  validation.yml's `paths:` filters are checked against (i) every
+               tracked file the hook's `files:`/`exclude:` selects, (ii) the
+               local import closure of the hook's validator script, and (iii) the
+               synthetic catalogue paths the hook's `files:` also selects
+        Then:  every one is matched for every filtered event (`pull_request`
+               and `push`)
+
+        This test exists because ADR-037 D9 (#484) is not implemented yet.
+        `test_gate_workflow_triggers_on_the_corpus_its_governed_hooks_scan` reads
+        its hook set from ADR-037's D1 table (`ADR_GOVERNED_HOOK_IDS`), and this
+        hook has no row there (ADR-037 D9c), so that test contributes no
+        catalogue path for it. Without this test, dropping
+        `scripts/framework_catalogues/**` from either filter, or replacing it
+        with today's catalogue file names, passes the suite, and the next
+        registry bump, a catalogue-only pull request, merges without
+        validation.yml running.
+
+        The synthetic paths catch the second form: today's tracked files are
+        all matched by a list of their own names, a new edition's file is not.
+        The one under a nonexistent framework key also catches a filter
+        narrowed to `scripts/framework_catalogues/mitre-atlas/**`, which every
+        tracked catalogue file satisfies today.
+        """
+        hooks = PRECOMMIT_HOOKS_BY_ID.get(self._CATALOGUE_HOOK_ID) or []
+        assert len(hooks) == 1, (
+            f"Exactly one `{self._CATALOGUE_HOOK_ID}` hook expected in .pre-commit-config.yaml; "
+            f"found {len(hooks)} (ADR-038 D6 item 1)."
+        )
+        hook = hooks[0]
+        entry_tokens = _safe_split(str(hook.get("entry") or ""))
+        script = next((token for token in entry_tokens if token.endswith(".py")), None)
+        assert script in TRACKED_FILE_SET, (
+            f"`{self._CATALOGUE_HOOK_ID}` entry does not run a tracked validator script: {hook.get('entry')!r}"
+        )
+        resolutions = _workflow_script_resolutions(self._CATALOGUE_WORKFLOW)
+        executed = {Path(record.basename).name for record in resolutions}
+        assert Path(script).name in executed, (
+            f"{self._CATALOGUE_WORKFLOW} does not run {script}; ADR-038 D6 item 3 places the "
+            "Tier 2 CI job there, so the trigger requirement below would have no workflow."
+        )
+        assert _trigger_filters(_workflow_data(self._CATALOGUE_WORKFLOW)), (
+            f"{self._CATALOGUE_WORKFLOW} declares no `paths:` or `paths-ignore:` filter; this "
+            "rule no longer applies and should be removed with the filter."
+        )
+
+        hook_files = set(_expected_hook_files(hook))
+        catalogue_files = {path for path in hook_files if path.startswith("scripts/framework_catalogues/")}
+        assert catalogue_files, (
+            f"`{self._CATALOGUE_HOOK_ID}` selects no tracked file under scripts/framework_catalogues/; "
+            "the catalogue half of this check would hold vacuously."
+        )
+        unselected = [path for path in self._SYNTHETIC_CATALOGUE_PATHS if not re.search(hook["files"], path)]
+        assert not unselected, (
+            f"`{self._CATALOGUE_HOOK_ID}` files: {hook['files']!r} does not select {unselected}; a "
+            "newly vendored edition or framework would not trigger the hook (ADR-038 D2, D6 item 1)."
+        )
+        closure = _local_import_closure(script)
+        assert closure, f"{script} imports no local module; the closure half of this check would hold vacuously."
+
+        required = hook_files | closure | set(self._SYNTHETIC_CATALOGUE_PATHS)
+        uncovered = {
+            path: missing
+            for path in sorted(required)
+            if (missing := _covered_by_every_event(self._CATALOGUE_WORKFLOW, path))
+        }
+        assert not uncovered, (
+            f"{self._CATALOGUE_WORKFLOW} runs `{self._CATALOGUE_HOOK_ID}` but its `paths:` filters do "
+            f"not cover the hook's inputs (ADR-038 D6 item 5):\n"
+            + "\n".join(
+                f"  - {path}  (not matched for: {', '.join(events)})" for path, events in uncovered.items()
+            )
+            + "\nA pull request touching only these files merges without the Tier 2 job running."
         )
 
     @pytest.mark.parametrize("workflow_name", PYTEST_WORKFLOWS)

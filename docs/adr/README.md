@@ -53,6 +53,7 @@ If a decision is about *how the Risk Map content model is shaped*, it belongs in
 | [035](035-pinned-sources-manifest.md) | Pinned-sources manifest (`risk-map/yaml/sources.yaml`) for reproducible citation provenance — corpus-wide registry, disjoint-by-role sibling to `frameworks.yaml`, keep-and-flag fallback; implements ADR-031 D4 | Draft | 2026-07-22 |
 | [036](036-decoupled-component-graph-emission.md) | Decoupled component-graph emission — aspects, channels, and bands; a topological rewrite of the drawn graph so no edge crosses a top-level category cluster, with a flat/decoupled mode toggle as the rollback lever | Draft | 2026-07-22 |
 | [037](037-ci-validation-authority-and-block-parity.md) | CI as the enforcing gate for risk-map validation — `--block` parity between CI and pre-commit, strictness monotonicity, and the graph-generation prohibition | Draft (includes the 2026-10-06 [addendum](037-ci-validation-authority-and-block-parity.md#addendum-2026-10-06-lockfile-and-toolchain-inputs-are-gate-defining-inputs)) | 2026-07-27 |
+| [038](038-tier-2-catalogue-data-input.md) | Tier 2 catalogue data input — vendored, checksummed per-edition framework catalogues | Draft | 2026-10-01 |
 
 ## Conventions
 

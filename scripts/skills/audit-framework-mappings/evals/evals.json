@@ -4,10 +4,10 @@
     {
       "id": 1,
       "prompt": "Audit this control mapping value: mitre-atlas: [AML.M0018]. Is it conformant?",
-      "expected_output": "Flags the missing version pin — ADR-027 requires AML.M0018@5.0.1 — deferring to the style guide's pinned pattern.",
+      "expected_output": "Flags the missing version pin — ADR-027 requires a version-pinned value — deferring to the style guide's pinned pattern. The correct form pins the registered current edition, AML.M0018@2026.09. A passing answer names 2026.09 as the registered current edition: either it gives AML.M0018@2026.09 as the correct form, or it gives AML.M0018@5.0.1, a still-valid prior edition, together with the current-edition advisory that new values are composed at @2026.09. An answer that names only AML.M0018@5.0.1, with no mention of 2026.09 and no current-edition advisory, fails item 2. Facts this case depends on: risk-map/yaml/frameworks.yaml registers mitre-atlas version '2026.09' with 5.0.1 in priorVersions; if the registered version advances, the expected pinned form moves with it. AML.M0018 'User Training' is present in the vendored scripts/framework_catalogues/mitre-atlas/ATLAS-2025.10.yaml and ATLAS-2026.09.yaml.",
       "expectations": [
-        "Flags that the value is missing its version pin (@5.0.1) required by ADR-027",
-        "States the correct form is AML.M0018@5.0.1",
+        "Flags that the value is missing its version pin, required by ADR-027",
+        "Names 2026.09 as the registered current edition: either states the correct form is AML.M0018@2026.09, or gives AML.M0018@5.0.1 (a still-valid prior edition) together with the current-edition advisory that new values are composed at @2026.09. An answer that names only AML.M0018@5.0.1, with no mention of 2026.09 and no current-edition advisory, FAILS this item",
         "Treats the framework-mappings-style-guide as the authoritative source rather than an unversioned form"
       ]
     },
@@ -285,16 +285,16 @@
     {
       "id": 24,
       "prompt": "This is a candidate-mode audit: I'm drafting a new control (entity type: control) that is not yet in the corpus. Candidate value: mitre-atlas: AML.M0032@5.0.1. Is it conformant and current?",
-      "expected_output": "The value passes format/version compliance (well-formed AML.M####@5.0.1 pattern) and structural compliance (a mitigation is the correct class for a control, no crossover). But live-verify must check against the pinned edition registered in frameworks.yaml (mitre-atlas @5.0.1), not just whatever a live web search of MITRE's current catalog serves: AML.M0032 ('Segmentation of AI Agent Components') is present in MITRE ATLAS's current/main catalog but does not appear in the v5.0.1 release -- v5.0.1's mitigations run only through AML.M0025. This is not a 'doesn't exist' failure; it is the fourth live-verify outcome from Output format item 4 -- real in the current live catalog but added only in an edition later than this repo's pin. Reports it as 'not yet valid at the pinned edition' and flags it rather than confirming it as current, and recommends against adding the mapping as-is (it could be revisited once the repo's pin advances past the edition that introduced it).",
+      "expected_output": "The value passes format/version compliance: @5.0.1 is a still-valid prior edition registered in frameworks.yaml, so the well-formed AML.M####@5.0.1 value passes with the current-edition advisory (compose new values at @2026.09). Structural compliance passes (a mitigation is the correct class for a control, no crossover). Live-verify checks the edition the value's own token names, not the registered current edition and not just whatever a live web search of MITRE's current catalog serves: @5.0.1 resolves through the manifest to release 2025.10, whose mitigations run only through AML.M0025, so AML.M0032 is absent there; AML.M0032 ('Segmentation of AI Agent Components') is present at the registered current edition, release 2026.09. This is not a 'doesn't exist' failure; it is the fourth live-verify outcome from Output format item 4 -- real in a later edition than the one the value's token names. Reports it as 'not yet valid at the pinned edition', flags it rather than confirming it as current, and recommends against adding the value as written, re-pinning it to AML.M0032@2026.09 instead. Facts this case depends on: risk-map/yaml/frameworks.yaml registers mitre-atlas version '2026.09' with priorVersions [mitre-atlas@5.0.1]; scripts/framework_catalogues/mitre-atlas/manifest.yaml resolves format-version 5.0.1 to release 2025.10; AML.M0032 is absent from the vendored ATLAS-2025.10.yaml (mitigations AML.M0000-AML.M0025) and present in ATLAS-2026.09.yaml (mitigations AML.M0000-AML.M0039). If the registered version or priorVersions change, the re-pin target and the format/version verdict move with them.",
       "expectations": [
         "Recognizes this as candidate mode (per Scope) with a stated entity type (control)",
-        "Confirms the value passes format/version compliance (correct AML.M####@5.0.1 pattern)",
+        "Confirms the value passes format/version compliance: AML.M####@5.0.1 is well-formed and 5.0.1 is a still-valid prior edition registered in frameworks.yaml",
         "Confirms structural compliance: a mitigation (AML.M####) is the correct class for a control, no technique/mitigation crossover",
-        "Live-verifies against the specific pinned edition registered in frameworks.yaml (mitre-atlas @5.0.1) rather than treating a live web search of MITRE's current catalog as sufficient",
-        "Discovers AML.M0032 is present in MITRE ATLAS's current/main catalog but absent from the v5.0.1 release (v5.0.1's mitigations top out at AML.M0025)",
-        "Does NOT confirm the mapping as current merely because a live web search finds AML.M0032 in MITRE's current catalog",
+        "Live-verifies against the edition the value's token names (@5.0.1, release 2025.10) rather than the registered current edition or a live web search of MITRE's current catalog",
+        "Discovers AML.M0032 is absent at the edition the value names (release 2025.10, whose mitigations top out at AML.M0025) and present at the registered current edition 2026.09",
+        "Does NOT confirm the mapping as current merely because AML.M0032 exists at the current edition or in MITRE's current catalog",
         "Reports this using the SKILL.md-mandated fourth live-verify outcome -- 'not yet valid at the pinned edition' -- distinguishing it from a flat 'doesn't exist' or 'not found' failure",
-        "Recommends against accepting the candidate as currently mapped, rather than passing it as a clean accept"
+        "Recommends against accepting the value as written and recommends re-pinning it to the registered current edition (AML.M0032@2026.09)"
       ]
     }
   ]

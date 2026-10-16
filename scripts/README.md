@@ -24,6 +24,7 @@ Development tools and utilities for this project.
 - Component edge validation and graph generation
 - Control-to-risk reference validation
 - Framework reference validation
+- Framework mapping-value validation (purity, drift, catalogue membership)
 - Issue template generation and validation
 - Mermaid SVG generation and markdown table generation
 
@@ -104,6 +105,7 @@ Development tools and utilities for this project.
 - `hooks/precommit/validate_versionid_purity.py` - versionId purity validator (ADR-027 D2b/D2c)
 - `hooks/precommit/validate_mapping_purity.py` - framework mapping-value purity validator (ADR-027 D4c)
 - `hooks/precommit/validate_mapping_drift.py` - framework mapping-value drift validator (ADR-027 D5/D5a)
+- `hooks/precommit/validate_mapping_catalogue.py` - framework mapping catalogue-membership validator (ADR-027 D5 Tier 2, ADR-038); checks each pinned id against the vendored catalogue of its edition
 - `hooks/validate_issue_templates.py` - Issue template schema validation
 - `generate_issue_templates.py` - Issue template generator from sources
 - `framework_mapping_maintainer.py` - maintainer CLI to add/update/remove pinned framework mapping values (ADR-027 D4)
@@ -112,6 +114,28 @@ Development tools and utilities for this project.
 - `tools/verify-deps.sh` - Verifies all required tools are installed and correct versions
 - `tools/validate-all.sh` - Dev helper: runs every validator with `--force` for non-staged verification (no regeneration)
 - `agents/content-reviewer.md` - Content review agent definition (LLM-neutral structured prompt)
+
+**Vendored Framework Catalogues (`framework_catalogues/<framework>/`):**
+
+Verbatim copies of upstream per-edition framework catalogues. They are the data
+input of the Tier 2 catalogue-membership validator, which reads them locally;
+no hook, CI job or validator fetches catalogue data (ADR-038). There is one
+subdirectory per adjudicated framework; the adjudicated set is defined in the
+validator, by its `ADJUDICATED_FRAMEWORKS` table (ADR-038 D5). The
+`mitre-atlas/` subdirectory holds:
+
+- `manifest.yaml` - verbatim copy of the upstream release manifest; used to resolve a registered version token to a release
+- `ATLAS-<release>.yaml` - verbatim copy of the upstream catalogue for each registered edition (`version` plus every `priorVersions` entry)
+- `SHA256SUMS` - sha256 record for `manifest.yaml` and every catalogue file; the validator verifies it before parsing anything and exits 2 on a mismatch
+- `SOURCE` - upstream repository, the commit the files were copied from, and the licence (provenance for reviewers; not read by the validator)
+- `LICENSE` - verbatim copy of the upstream licence, which must accompany the redistributed files
+
+The root `.gitattributes` entry `scripts/framework_catalogues/** -text` exempts
+the directory from end-of-line conversion so checked-out files stay
+byte-identical to their recorded digests. Do not modify these files outside
+a registry bump. Every registry bump of an adjudicated framework re-copies
+all of its vendored files from one upstream commit, the existing catalogues
+included, and regenerates `SHA256SUMS` (ADR-038 D7).
 
 **Related Documentation:**
 

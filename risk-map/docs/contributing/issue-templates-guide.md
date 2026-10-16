@@ -151,7 +151,7 @@ The template includes inline links to:
 
 - **Component Changes** - Use `+` to add, `-` to remove (e.g., `+ componentModelEvaluation`, `- componentDataSources`)
 - **Risk Changes** - Same syntax (e.g., `+ riskModelSourceTampering`, `- riskPromptInjection`)
-- **Framework Changes** - Same syntax (e.g., `+ mitre-atlas: AML.M0015@5.0.1`, `- nist-ai-rmf: GOVERN-6.2@1.0`)
+- **Framework Changes** - Same syntax (e.g., `+ mitre-atlas: AML.M0015@2026.09`, `- nist-ai-rmf: GOVERN-6.2@1.0`)
 - **Supporting Evidence** - Links to discussions, standards, references
 
 **Example Walkthrough:**
@@ -170,7 +170,7 @@ Component Changes:
 + componentModelEvaluation
 
 Framework Changes:
-+ mitre-atlas: AML.M0015@5.0.1
++ mitre-atlas: AML.M0015@2026.09
 ```
 
 **GitHub Permalink Best Practices:**
@@ -250,7 +250,7 @@ External References:
     url: https://arxiv.org/abs/1708.06733
 
 Framework Mappings:
-mitre-atlas: AML.T0018@5.0.1
+mitre-atlas: AML.T0018@2026.09
 stride: Tampering
 ```
 
@@ -647,7 +647,7 @@ Update templates support quick actions using familiar git diff syntax:
 
 ```
 + componentNewItem
-+ mitre-atlas: AML.M0015@5.0.1
++ mitre-atlas: AML.M0015@2026.09
 ```
 
 **Remove:** Prefix with `-`

@@ -43,8 +43,8 @@ Must match one of the frameworks defined in [`frameworks.yaml`](../yaml/framewor
 ```yaml
 mappings:
   mitre-atlas:
-    - AML.T0018@5.0.1
-    - AML.T0020@5.0.1
+    - AML.T0018@2026.09
+    - AML.T0020@2026.09
   nist-ai-rmf:
     - MEASURE-2.7@1.0
     - MEASURE-2.8@1.0
@@ -218,7 +218,7 @@ actorAccess:
     - controlModelAndDataIntegrityManagement
   mappings:
     mitre-atlas:
-      - AML.T0010@5.0.1
+      - AML.T0010@2026.09
     stride:
       - Tampering
       - ElevationOfPrivilege
@@ -255,7 +255,7 @@ actorAccess:
     - riskModelDeploymentTampering
   mappings:
     mitre-atlas:
-      - AML.M0013@5.0.1
+      - AML.M0013@2026.09
     # TODO(#343 follow-up): SC-8 / SI-7 are NIST SP 800-53 control IDs, not NIST
     # AI RMF function IDs — a pre-existing content smell to reconcile on develop.
     nist-ai-rmf:
@@ -284,7 +284,7 @@ You can include only the fields that are relevant:
   # ... required fields ...
   mappings:
     mitre-atlas:
-      - AML.T0015@5.0.1
+      - AML.T0015@2026.09
 
 # Only lifecycle and impact
 - id: RISK-002

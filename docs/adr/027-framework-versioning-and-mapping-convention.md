@@ -3,6 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-05-22
 **Authors:** Architect agent, with maintainer review
+**Extended by:** [ADR-038](038-tier-2-catalogue-data-input.md) — supplies the per-edition catalogues D5's Tier 2 requires, and its D7a narrows D10c's bump triggers for frameworks Tier 2 adjudicates (need-driven, not on-publish). D1–D11 are otherwise unchanged.
 
 ---
 

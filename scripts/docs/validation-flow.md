@@ -2,8 +2,9 @@
 
 When you commit changes, the pre-commit framework reads `.pre-commit-config.yaml`
 at the repo root, selects hooks whose `files:` regex matches the staged set,
-and runs them in declaration order. The sequence below matches the current
-config exactly. Each hook only runs when its trigger files are staged; unused
+and runs them in declaration order. The sequence below covers selected
+stages and does not list every hook; `.pre-commit-config.yaml` is the
+authoritative list. Each hook only runs when its trigger files are staged; unused
 hooks show `(no files to check) Skipped` in the output.
 
 1. **Schema Validation** — one `check-jsonschema` hook per yaml/schema pair
@@ -36,13 +37,21 @@ hooks show `(no files to check) Skipped` in the output.
 12. **Issue Template Validation** — `validate_issue_templates.py` runs when
     anything under `.github/ISSUE_TEMPLATE/` or `scripts/TEMPLATES/` is
     staged (including the files just regenerated in step 11).
-13. **Graph Regeneration** — `regenerate_graphs.py` produces the component
+13. **Framework Mapping Catalogue Membership** —
+    `validate_mapping_catalogue.py --force --block` runs when a content YAML,
+    `frameworks.yaml`, `frameworks.schema.json`, the validator or its imported
+    modules, or anything under `scripts/framework_catalogues/` is staged. It
+    checks that each pinned MITRE ATLAS value's id exists in the edition its
+    token names, reading the vendored, checksummed catalogues (ADR-027 D5
+    Tier 2, ADR-038). It scans its full read-set rather than staged
+    filenames.
+14. **Graph Regeneration** — `regenerate_graphs.py` produces the component
     relationship graph (1 markdown + 1 mermaid output) when `components.yaml`
     or `mermaid-styles.yaml` is staged. The output pair is `git add`-ed on
     success.
-14. **Table Regeneration** — `regenerate_tables.py` regenerates 8 table
+15. **Table Regeneration** — `regenerate_tables.py` regenerates 8 table
     outputs across 4 triggers (see `scripts/docs/table-generation.md`).
-15. **SVG Regeneration** — `regenerate_svgs.py` converts
+16. **SVG Regeneration** — `regenerate_svgs.py` converts
     `risk-map/diagrams/*.mmd`/`*.mermaid` files to SVG, including diagrams
     staged in the index by `components.yaml`/`mermaid-styles.yaml` changes
     via chained-generator discovery (ADR-005 Addendum 2026-09-28).

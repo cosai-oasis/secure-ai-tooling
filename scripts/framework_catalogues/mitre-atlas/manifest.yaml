@@ -1,0 +1,249 @@
+- release: '2026.09'
+  release-date: '2026-09-15'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2026.09.yaml
+- release: '2026.08'
+  release-date: '2026-08-31'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2026.08.yaml
+- release: '2026.07'
+  release-date: '2026-07-31'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2026.07.yaml
+- release: '2026.06'
+  release-date: '2026-06-30'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2026.06.yaml
+- release: '2026.05'
+  release-date: '2026-05-27'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2026.05.yaml
+- release: '2026.04'
+  release-date: '2026-04-30'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2026.04.yaml
+  - format-version: 5.6.0
+    path: legacy/ATLAS-5.6.0.yaml
+- release: '2026.03'
+  release-date: '2026-03-30'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2026.03.yaml
+  - format-version: 5.5.0
+    path: legacy/ATLAS-5.5.0.yaml
+- release: '2026.02'
+  release-date: '2026-02-05'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2026.02.yaml
+  - format-version: 5.4.0
+    path: legacy/ATLAS-5.4.0.yaml
+- release: '2026.01'
+  release-date: '2026-01-30'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2026.01.yaml
+  - format-version: 5.3.0
+    path: legacy/ATLAS-5.3.0.yaml
+- release: '2025.12'
+  release-date: '2025-12-24'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2025.12.yaml
+  - format-version: 5.2.0
+    path: legacy/ATLAS-5.2.0.yaml
+- release: 2025.11.2
+  release-date: '2025-11-25'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2025.11.2.yaml
+  - format-version: 5.1.1
+    path: legacy/ATLAS-5.1.1.yaml
+- release: '2025.11'
+  release-date: '2025-11-06'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2025.11.yaml
+  - format-version: 5.1.0
+    path: legacy/ATLAS-5.1.0.yaml
+- release: '2025.10'
+  release-date: '2025-10-15'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2025.10.yaml
+  - format-version: 5.0.1
+    path: legacy/ATLAS-5.0.1.yaml
+- release: '2025.09'
+  release-date: '2025-09-30'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2025.09.yaml
+  - format-version: 5.0.0
+    path: legacy/ATLAS-5.0.0.yaml
+- release: '2025.08'
+  release-date: '2025-08-13'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2025.08.yaml
+  - format-version: 4.9.1
+    path: legacy/ATLAS-4.9.1.yaml
+- release: '2025.04'
+  release-date: '2025-04-22'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2025.04.yaml
+  - format-version: 4.9.0
+    path: legacy/ATLAS-4.9.0.yaml
+- release: '2025.03'
+  release-date: '2025-03-14'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2025.03.yaml
+  - format-version: 4.8.0
+    path: legacy/ATLAS-4.8.0.yaml
+- release: '2024.10'
+  release-date: '2024-10-01'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2024.10.yaml
+  - format-version: 4.7.0
+    path: legacy/ATLAS-4.7.0.yaml
+- release: '2024.07'
+  release-date: '2024-07-09'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2024.07.yaml
+  - format-version: 4.6.0
+    path: legacy/ATLAS-4.6.0.yaml
+- release: '2024.03'
+  release-date: '2024-03-11'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2024.03.yaml
+  - format-version: 4.5.2
+    path: legacy/ATLAS-4.5.2.yaml
+- release: '2024.01'
+  release-date: '2024-01-12'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2024.01.yaml
+  - format-version: 4.5.1
+    path: legacy/ATLAS-4.5.1.yaml
+- release: '2023.10'
+  release-date: '2023-10-25'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2023.10.yaml
+  - format-version: 4.5.0
+    path: legacy/ATLAS-4.5.0.yaml
+- release: '2023.04'
+  release-date: '2023-04-12'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2023.04.yaml
+  - format-version: 4.4.0
+    path: legacy/ATLAS-4.4.0.yaml
+- release: '2023.02'
+  release-date: '2023-02-28'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2023.02.yaml
+  - format-version: 4.3.0
+    path: legacy/ATLAS-4.3.0.yaml
+- release: '2023.01'
+  release-date: '2023-01-18'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2023.01.yaml
+  - format-version: 4.2.0
+    path: legacy/ATLAS-4.2.0.yaml
+- release: '2022.10'
+  release-date: '2022-10-27'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2022.10.yaml
+  - format-version: 4.1.0
+    path: legacy/ATLAS-4.1.0.yaml
+- release: 2022.05.2
+  release-date: '2022-05-27'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2022.05.2.yaml
+  - format-version: 4.0.0
+    path: legacy/ATLAS-4.0.0.yaml
+- release: '2022.05'
+  release-date: '2022-05-16'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2022.05.yaml
+  - format-version: 3.1.0
+    path: legacy/ATLAS-3.1.0.yaml
+- release: 2022.03.2
+  release-date: '2022-03-23'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2022.03.2.yaml
+  - format-version: 3.0.0
+    path: legacy/ATLAS-3.0.0.yaml
+- release: '2022.03'
+  release-date: '2022-03-10'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2022.03.yaml
+  - format-version: 2.4.0
+    path: legacy/ATLAS-2.4.0.yaml
+- release: '2022.02'
+  release-date: '2022-02-07'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2022.02.yaml
+  - format-version: 2.3.1
+    path: legacy/ATLAS-2.3.1.yaml
+- release: '2022.01'
+  release-date: '2022-01-24'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2022.01.yaml
+  - format-version: 2.3.0
+    path: legacy/ATLAS-2.3.0.yaml
+- release: '2021.12'
+  release-date: '2021-12-08'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2021.12.yaml
+  - format-version: 2.2.1
+    path: legacy/ATLAS-2.2.1.yaml
+- release: '2021.10'
+  release-date: '2021-10-29'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2021.10.yaml
+  - format-version: 2.2.0
+    path: legacy/ATLAS-2.2.0.yaml
+- release: '2021.08'
+  release-date: '2021-08-31'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2021.08.yaml
+  - format-version: 2.1.0
+    path: legacy/ATLAS-2.1.0.yaml
+- release: '2021.06'
+  release-date: '2021-06-11'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2021.06.yaml
+  - format-version: 2.0.1
+    path: legacy/ATLAS-2.0.1.yaml
+- release: '2021.05'
+  release-date: '2021-05-13'
+  versions:
+  - format-version: 6.0.0
+    path: v6/ATLAS-2021.05.yaml
+  - format-version: 2.0.0
+    path: legacy/ATLAS-2.0.0.yaml

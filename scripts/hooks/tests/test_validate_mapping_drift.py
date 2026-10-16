@@ -193,15 +193,22 @@ class TestClassifyValueCurrent:
 
     def test_mitre_atlas_current_pinned_technique(self):
         """
-        Given: correctly-pinned MITRE ATLAS technique `AML.T0043@5.0.1`
+        Given: a MITRE ATLAS technique pinned at the registry's current `version`
         When: classify_value is called with live registry/patterns
         Then: state is "current", detail is None
 
-        D3a: `@` delimiter, version token `5.0.1` equals the current registry version.
+        D3a: `@` delimiter, version token equals the current registry version.
+        The version is read from frameworks.yaml, not hardcoded, so the test
+        holds across an edition flip.
         """
+        atlas_version = next(
+            e
+            for e in yaml.safe_load(FRAMEWORKS_YAML.read_text(encoding="utf-8"))["frameworks"]
+            if e["id"] == "mitre-atlas"
+        )["version"]
         state, detail = classify_value(
             "mitre-atlas",
-            "AML.T0043@5.0.1",
+            f"AML.T0043@{atlas_version}",
             registry=_registry(),
             pinned_patterns=_pinned(),
         )
@@ -852,9 +859,16 @@ class TestMainWithTmpYaml:
         When: main([path]) is called
         Then: returns 0
 
-        Current pinned values (AML.T0043@5.0.1, LLM02:2025, Tampering) are
-        recognized by the live registry and schema → "current" → exit 0.
+        Current pinned values (the ATLAS value at the registry's current
+        version, LLM02:2025, Tampering) are recognized by the live registry and
+        schema → "current" → exit 0. The ATLAS version is read from
+        frameworks.yaml so the test holds across an edition flip.
         """
+        atlas_version = next(
+            e
+            for e in yaml.safe_load(FRAMEWORKS_YAML.read_text(encoding="utf-8"))["frameworks"]
+            if e["id"] == "mitre-atlas"
+        )["version"]
         risks_file = tmp_path / "risks.yaml"
         _write_content_yaml(
             risks_file,
@@ -864,7 +878,7 @@ class TestMainWithTmpYaml:
                     "id": "riskFoo",
                     "title": "Foo Risk",
                     "mappings": {
-                        "mitre-atlas": ["AML.T0043@5.0.1"],
+                        "mitre-atlas": [f"AML.T0043@{atlas_version}"],
                         "owasp-top10-llm": ["LLM02:2025"],
                         "stride": ["Tampering"],
                         "nist-ai-rmf": ["GOVERN-6.2@1.0"],

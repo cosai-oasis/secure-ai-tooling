@@ -20,6 +20,7 @@ on:
       - 'scripts/hooks/precommit/validate_prose_references.py'
       - 'scripts/hooks/precommit/validate_mapping_purity.py'
       - 'scripts/hooks/precommit/validate_mapping_drift.py'
+      - 'scripts/hooks/precommit/validate_mapping_catalogue.py'
       - 'scripts/hooks/precommit/validate_versionid_purity.py'
       - 'scripts/hooks/precommit/validate_all_schemas.py'
       - 'scripts/hooks/precommit/validate_persona_site_build.py'
@@ -40,6 +41,7 @@ on:
       - 'scripts/hooks/precommit/_prose_fields.py'
       - 'scripts/hooks/precommit/_prose_tokens.py'
       - 'scripts/hooks/precommit/framework_mapping.py'
+      - 'scripts/framework_catalogues/**'
   push:
     branches: [main, develop]
     paths:
@@ -59,6 +61,7 @@ on:
       - 'scripts/hooks/precommit/validate_prose_references.py'
       - 'scripts/hooks/precommit/validate_mapping_purity.py'
       - 'scripts/hooks/precommit/validate_mapping_drift.py'
+      - 'scripts/hooks/precommit/validate_mapping_catalogue.py'
       - 'scripts/hooks/precommit/validate_versionid_purity.py'
       - 'scripts/hooks/precommit/validate_all_schemas.py'
       - 'scripts/hooks/precommit/validate_persona_site_build.py'
@@ -79,6 +82,7 @@ on:
       - 'scripts/hooks/precommit/_prose_fields.py'
       - 'scripts/hooks/precommit/_prose_tokens.py'
       - 'scripts/hooks/precommit/framework_mapping.py'
+      - 'scripts/framework_catalogues/**'
 
 permissions:
   contents: read
@@ -565,6 +569,42 @@ jobs:
           exit 1
         fi
 
+  # Tier 2 runs in place with no file list: it default-scans its
+  # __file__-anchored read-set (ADR-037 D7b/D8, ADR-038 D6 item 3).
+  mapping-catalogue-validation:
+    runs-on: ubuntu-latest
+    name: Framework Mapping Catalogue Validation
+    needs: setup
+    outputs:
+      mapping_catalogue_status: ${{ steps.validate-mapping-catalogue.outputs.status }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: '3.14'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: Run Framework Mapping Catalogue Validation
+      id: validate-mapping-catalogue
+      run: |
+        echo "🔍 Running framework mapping catalogue-membership validation..."
+
+        if python3 scripts/hooks/precommit/validate_mapping_catalogue.py --force --block; then
+          echo "✅ Framework mapping catalogue validation completed successfully"
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Framework mapping catalogue validation failed"
+          echo "::error::Framework mapping catalogue validation failed (ADR-027 D5 Tier 2, ADR-038)"
+          echo "status=failed" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
   versionid-purity-validation:
     runs-on: ubuntu-latest
     name: Frameworks VersionId Purity Validation
@@ -823,7 +863,7 @@ jobs:
   validation-summary:
     runs-on: ubuntu-latest
     name: Validation Summary
-    needs: [schema-validation, format-validation, component-edge-validation, control-risk-validation, framework-validation, identification-questions-validation, prose-subset-validation, prose-references-validation, mapping-purity-validation, mapping-drift-validation, versionid-purity-validation, persona-site-build-validation, neutrality-validation, neutrality-policy-validation, eval-pairing-validation, graph-validation]
+    needs: [schema-validation, format-validation, component-edge-validation, control-risk-validation, framework-validation, identification-questions-validation, prose-subset-validation, prose-references-validation, mapping-purity-validation, mapping-drift-validation, mapping-catalogue-validation, versionid-purity-validation, persona-site-build-validation, neutrality-validation, neutrality-policy-validation, eval-pairing-validation, graph-validation]
     if: always()
     steps:
     - name: Generate Summary
@@ -842,6 +882,7 @@ jobs:
         prose_references_result="${{ needs.prose-references-validation.result }}"
         mapping_purity_result="${{ needs.mapping-purity-validation.result }}"
         mapping_drift_result="${{ needs.mapping-drift-validation.result }}"
+        mapping_catalogue_result="${{ needs.mapping-catalogue-validation.result }}"
         versionid_purity_result="${{ needs.versionid-purity-validation.result }}"
         persona_site_build_result="${{ needs.persona-site-build-validation.result }}"
         neutrality_result="${{ needs.neutrality-validation.result }}"
@@ -925,6 +966,13 @@ jobs:
           echo "- ✅ **Framework mapping drift validation**: Passed" >> $GITHUB_STEP_SUMMARY
         else
           echo "- ❌ **Framework mapping drift validation**: $mapping_drift_result" >> $GITHUB_STEP_SUMMARY
+          overall_success=false
+        fi
+
+        if [ "$mapping_catalogue_result" = "success" ]; then
+          echo "- ✅ **Framework mapping catalogue validation**: Passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- ❌ **Framework mapping catalogue validation**: $mapping_catalogue_result" >> $GITHUB_STEP_SUMMARY
           overall_success=false
         fi
 
