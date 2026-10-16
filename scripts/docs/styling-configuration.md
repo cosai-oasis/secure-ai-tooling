@@ -9,9 +9,17 @@ The `mermaid-styles.yaml` file has four required top-level keys: `version`, `fou
 string (e.g. `1.0.0`) and does not need its own section. The other three are described
 below.
 
+The first YAML comment tells you how to apply each example to
+`risk-map/yaml/mermaid-styles.yaml`. For `# schema-example: fragment`, merge
+the shown edits into your existing configuration, retaining unmentioned
+fields. For `# schema-example: complete <dot.path>`, replace the section at
+the named path as a unit, using all fields shown for that section. These
+comments do not change how YAML is loaded.
+
 ### 1. Foundation Design Tokens
 
 ```yaml
+# schema-example: fragment
 foundation:
   colors:
     primary: '#4285f4' # Google Blue - primary actions
@@ -31,6 +39,7 @@ foundation:
 ### 2. Shared Elements
 
 ```yaml
+# schema-example: fragment
 sharedElements:
   componentCategories:
     componentsInfrastructure:
@@ -42,6 +51,7 @@ sharedElements:
 ### 3. Graph-Specific Configuration
 
 ```yaml
+# schema-example: fragment
 graphTypes:
   component:
     direction: 'TD' # Top-down layout
@@ -57,6 +67,7 @@ graph draws cross-category edges. It is validated against
 `risk-map/schemas/mermaid-styles.schema.json#/definitions/emission`.
 
 ```yaml
+# schema-example: complete graphTypes.component.emission
 graphTypes:
   component:
     emission:
@@ -155,6 +166,7 @@ To customize graph styling:
 ### Change Component Category Colors
 
 ```yaml
+# schema-example: fragment
 sharedElements:
   componentCategories:
     componentsInfrastructure:
@@ -170,6 +182,7 @@ sharedElements:
 ### Modify Graph Layout
 
 ```yaml
+# schema-example: fragment
 graphTypes:
   component:
     direction: 'LR' # Change to left-right layout
