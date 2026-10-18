@@ -54,10 +54,10 @@ the Python provider.
 """
 
 import re
+import tomllib
 from pathlib import Path
 
 import pytest
-import tomllib
 
 # Path constants matching existing test patterns (test_verify_deps.py)
 REPO_ROOT = Path(__file__).parent.parent.parent.parent

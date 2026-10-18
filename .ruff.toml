@@ -1,5 +1,8 @@
 line-length = 115
 indent-width = 4
+# Pinned explicitly so lint results do not shift when ruff changes its default
+# target-version. py311 is the minimum the code needs (tomllib is stdlib from 3.11).
+target-version = "py311"
 
 [lint]
 select = ["E", "F", "I", "N", "W"]
