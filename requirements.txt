@@ -1,11 +1,11 @@
 check-jsonschema==0.38.2
 jsonschema==4.26.0
 packaging==26.3
-pre-commit==4.6.2
+pre-commit==4.7.0
 pytest==9.1.1
 pytest-cov==7.1.0
 pytest-timeout==2.4.0
 PyYAML==6.0.3
-ruff==0.16.10
+ruff==0.17.1
 pandas==3.0.6
 tabulate==0.10.0
