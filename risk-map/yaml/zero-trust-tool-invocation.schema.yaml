@@ -1,0 +1,453 @@
+# Zero-Trust Tool Invocation - CoSAI-RM Schema
+# Version: 1.3.0
+
+metadata:
+  name: zero-trust-tool-invocation
+  version: "1.3.0"
+  status: draft
+  framework_mappings:
+    - cosai-rm
+    - mitre-atlas
+    - owasp-llm-top10
+    - nist-ai-rmf
+    - stride
+
+# ============================================================================
+# PERSONA RESPONSIBILITIES
+# ============================================================================
+
+persona_responsibilities:
+  description: >
+    Maps CoSAI-RM personas to their roles in the tool invocation flow.
+    The invocation chain passes through multiple personas — from end user
+    approval through platform binding to agent execution and gateway validation.
+    Trust policy restricts each persona to its designated invariants.
+
+  personas:
+    - id: personaEndUser
+      produces: []
+      approves: [INV-3]
+      verifies: []
+      scope: "Approves parameters before hash binding (ad-hoc mode)"
+
+    - id: personaApplicationDeveloper
+      produces: [INV-3, INV-6]
+      verifies: []
+      scope: "Computes parameter hash; implements client-side signing"
+
+    - id: personaPlatformProvider
+      produces: [INV-1, INV-2, INV-4, INV-5]
+      verifies: []
+      scope: "Issues bound tokens; operates IdP, atomic state store, TSA; DPoP infrastructure"
+
+    - id: personaAgenticProvider
+      produces: []
+      presents: [INV-1]
+      preserves: [INV-3]
+      verifies: []
+      scope: "Presents token and invokes tool; must not modify params post-hash"
+
+    - id: personaModelServing
+      produces: []
+      verifies: [INV-1, INV-2, INV-3, INV-4, INV-5, INV-6]
+      scope: "Validates all invariants at gateway before tool execution"
+
+    - id: personaGovernance
+      produces: []
+      verifies: []
+      governs: ["tier_policy", "classification_rules", "audit_requirements"]
+      scope: "Defines tier policy, classification-to-tier mapping, audit requirements"
+
+    - id: personaModelProvider
+      produces: [INV-3]
+      verifies: []
+      scope: "Defines mandate schemas for pre-defined binding mode (AP2)"
+      condition: "binding_mode == 'pre-defined'"
+
+    - id: personaModelConsumer
+      produces: []
+      verifies: ["audit_logs"]
+      scope: "Reviews audit logs; inspects invocation provenance"
+
+  identification_heuristic: >
+    If your team approves parameters, you are the hash source.
+    If your team issues tokens, you own binding invariants.
+    If your team executes tools, you own validation.
+    If your team defines which tier applies, you own governance.
+
+# ============================================================================
+# INVARIANTS
+# ============================================================================
+
+invariants:
+  - id: INV-1
+    name: Identity-Tool Binding
+    assertion: "token.sub == user.id AND token.tool == request.tool"
+    description: Token binds specific identity to specific tool
+    tier: 1
+    required: true
+    responsible_personas:
+      produces: [personaPlatformProvider]
+      presents: [personaAgenticProvider]
+      verifies: [personaModelServing]
+
+  - id: INV-2
+    name: Temporal Validity
+    assertion: "now() < token.exp AND now() >= token.nbf"
+    description: Authorization valid only within defined temporal window
+    tier: 1
+    required: true
+    default_ttl_seconds: 30
+    responsible_personas:
+      produces: [personaPlatformProvider]
+      verifies: [personaModelServing]
+
+  - id: INV-3
+    name: Parameter Integrity
+    assertion: "sha256(actualParams) == token.parameters_hash"
+    description: Hash of executed parameters must equal hash bound in token
+    tier: 1
+    required: true
+    critical: true
+    responsible_personas:
+      approves: [personaEndUser]
+      produces: [personaApplicationDeveloper]
+      preserves: [personaAgenticProvider]
+      verifies: [personaModelServing]
+
+  - id: INV-4
+    name: Atomic Consumption
+    assertion: "atomicStore.compareAndSet(jti, null, 'consumed')"
+    description: Authorization token consumable exactly once
+    tier: 1
+    required: true
+    responsible_personas:
+      produces: [personaPlatformProvider]
+      verifies: [personaModelServing]
+
+  - id: INV-5
+    name: Transport Binding (DPoP)
+    assertion: "verify(dpopProof) AND sha256(token) == ath"
+    description: Binds token to TLS session via proof-of-possession
+    tier: 2
+    required: false
+    responsible_personas:
+      produces: [personaPlatformProvider]
+      verifies: [personaModelServing]
+
+  - id: INV-6
+    name: Client Signature (Enhanced)
+    assertion: "verify(invocationSignature, clientPublicKey)"
+    description: Client pre-signs complete invocation for non-repudiation
+    tier: 3
+    required: false
+    responsible_personas:
+      produces: [personaApplicationDeveloper]
+      verifies: [personaModelServing]
+
+  - id: INV-7
+    name: Delegation Chain Integrity
+    assertion: "for each hop in delegation_chain: hop.scope is subset of parent.scope AND verify(hop.identity)"
+    description: Each delegation hop must narrow or maintain scope and carry a verified identity
+    tier: 2
+    required: false
+    responsible_personas:
+      produces: [personaAgenticProvider]
+      verifies: [personaModelServing]
+      governs: [personaGovernance]
+
+# ============================================================================
+# HASH PROVENANCE
+# ============================================================================
+
+hash_provenance:
+  description: Hash may originate client-side or server-side
+  modes:
+    - id: ad-hoc
+      description: Client-generated at user approval (MCP model)
+      hash_producer_persona: personaApplicationDeveloper
+      approval_persona: personaEndUser
+    - id: pre-defined
+      description: Server-generated at mandate definition (AP2 model)
+      hash_producer_persona: personaModelProvider
+      approval_persona: personaGovernance
+    - id: hybrid
+      description: Server schema + client values
+      hash_producer_persona: [personaModelProvider, personaApplicationDeveloper]
+
+# ============================================================================
+# COMPONENTS
+# ============================================================================
+
+components:
+  - id: COMP-01
+    name: Identity Provider
+    description: OAuth 2.x / OIDC issuer
+    security_role: Authenticates WHO
+    responsible_persona: personaPlatformProvider
+
+  - id: COMP-02
+    name: Authorization Service
+    description: Token generation with parameter binding and persona scope enforcement
+    security_role: Binds WHAT to WHO within persona scope
+    responsible_persona: personaPlatformProvider
+
+  - id: COMP-03
+    name: Atomic State Store
+    description: Redis, etcd, DynamoDB with atomic operations
+    security_role: Enforces single-use (AXIOM-2)
+    responsible_persona: personaPlatformProvider
+
+  - id: COMP-04
+    name: Validation Gateway
+    description: Hash verification, temporal checks, persona scope validation
+    security_role: Enforces AXIOM-1, AXIOM-3, AXIOM-4 and persona scope
+    responsible_persona: personaModelServing
+
+  - id: COMP-05
+    name: Tool Endpoint
+    description: Target execution environment
+    security_role: Executes only validated requests
+    responsible_persona: personaAgenticProvider
+
+# ============================================================================
+# RISKS
+# ============================================================================
+
+risks:
+  - id: RISK-01
+    name: Parameter Tampering
+    atlas_id: AML.T0048
+    owasp_llm: LLM04
+    stride: Tampering
+    description: Agent or MITM modifies parameters between approval and execution
+    control: INV-3
+
+  - id: RISK-02
+    name: Replay Attack
+    atlas_id: AML.T0040
+    stride: Spoofing
+    description: Captured token reused for unauthorized execution
+    controls: [INV-4, INV-2]
+
+  - id: RISK-03
+    name: Agent Misinterpretation
+    owasp_llm: LLM04
+    description: LLM regenerates different parameters than user intended
+    control: INV-3
+
+  - id: RISK-04
+    name: Privilege Escalation
+    stride: Elevation of Privilege
+    description: Token used for unintended tool or scope
+    control: INV-1
+
+  - id: RISK-05
+    name: Session Hijacking
+    atlas_id: AML.T0024
+    stride: Spoofing
+    description: Long-lived token stolen and misused
+    controls: [INV-2, INV-5]
+
+  - id: RISK-06
+    name: Confused Deputy via Delegation
+    stride: Elevation of Privilege
+    owasp_llm: LLM08
+    description: Intermediate agent invokes tool with valid delegated credentials for unintended purpose
+    control: INV-7
+
+  - id: RISK-07
+    name: Persona Boundary Violation
+    stride: Elevation of Privilege
+    description: >
+      A persona performs actions outside its designated scope (e.g.,
+      personaAgenticProvider modifying parameters after hash binding,
+      or issuing its own tokens).
+    control: CTRL-08
+    mitigations:
+      - "Trust policy restricts each persona to its designated invariants"
+      - "Validation gateway rejects requests where acting persona does not match expected role"
+
+# ============================================================================
+# CONTROLS
+# ============================================================================
+
+controls:
+  - id: CTRL-01
+    name: Identity-Tool Validation
+    implements: INV-1
+    tier: 1
+    description: Verify token.sub and token.tool match request
+    verifier_persona: personaModelServing
+
+  - id: CTRL-02
+    name: Temporal Validation
+    implements: INV-2
+    tier: 1
+    description: Verify token within validity window
+    verifier_persona: personaModelServing
+
+  - id: CTRL-03
+    name: Hash Binding
+    implements: INV-3
+    tier: 1
+    description: Validate sha256(request.params) == token.parameters_hash
+    critical: true
+    verifier_persona: personaModelServing
+
+  - id: CTRL-04
+    name: Atomic JTI Consumption
+    implements: INV-4
+    tier: 1
+    description: Single-use token via atomic store operation
+    operator_persona: personaPlatformProvider
+    verifier_persona: personaModelServing
+
+  - id: CTRL-05
+    name: DPoP Transport Binding
+    implements: INV-5
+    tier: 2
+    description: Bind token to TLS session via proof-of-possession
+    optional: true
+    operator_persona: personaPlatformProvider
+
+  - id: CTRL-06
+    name: Client Pre-Signing
+    implements: INV-6
+    tier: 3
+    description: Client signs complete invocation
+    optional: true
+    producer_persona: personaApplicationDeveloper
+
+  - id: CTRL-07
+    name: Delegation Chain Validation
+    implements: INV-7
+    tier: 2
+    description: Verify delegation chain integrity and scope narrowing at each hop
+    optional: true
+    verifier_persona: personaModelServing
+    governs_persona: personaGovernance
+
+  - id: CTRL-08
+    name: Persona Scope Validation
+    implements: RISK-07
+    tier: 1
+    description: >
+      Verify that the acting entity's persona role permits the operation
+      being performed. Rejects out-of-scope actions before further validation.
+    enforcement_point: "validation_gateway"
+    policy_binding: "entity.subject -> persona_role -> allowed_operations"
+    verifier_persona: personaModelServing
+
+# ============================================================================
+# TIERS
+# ============================================================================
+
+tiers:
+  - level: 1
+    name: Minimum Viable
+    classification: [4, 5]
+    required_invariants: [INV-1, INV-2, INV-3, INV-4]
+    governance_persona: personaGovernance
+
+  - level: 2
+    name: Enhanced
+    classification: [2, 3]
+    required_invariants: [INV-1, INV-2, INV-3, INV-4, INV-5, INV-7]
+    governance_persona: personaGovernance
+
+  - level: 3
+    name: Maximum
+    classification: [1]
+    required_invariants: [INV-1, INV-2, INV-3, INV-4, INV-5, INV-6, INV-7]
+    governance_persona: personaGovernance
+
+# ============================================================================
+# VALIDATION SEQUENCE
+# ============================================================================
+
+validation_sequence:
+  - step: 1
+    action: VERIFY token signature
+  - step: 2
+    action: ASSERT token.sub == authenticated_user.id
+    invariant: INV-1
+  - step: 3
+    action: ASSERT token.tool == requested_tool
+    invariant: INV-1
+  - step: "3a"
+    action: VERIFY presenting_persona == authorized_role
+    control: CTRL-08
+    description: "Persona scope check — rejects out-of-role actions"
+  - step: 4
+    action: ASSERT now() < token.exp AND now() >= token.nbf
+    invariant: INV-2
+  - step: 5
+    action: ASSERT sha256(request.params) == token.parameters_hash
+    invariant: INV-3
+    critical: true
+  - step: 6
+    action: ASSERT atomicStore.compareAndSet(jti, null, "consumed")
+    invariant: INV-4
+  - step: 7
+    action: IF delegation_chain THEN verify scope narrowing at each hop
+    invariant: INV-7
+    optional: true
+  - step: 8
+    action: IF dpop_present THEN verify(dpopProof) AND sha256(token) == ath
+    invariant: INV-5
+    optional: true
+  - step: 9
+    action: IF signature_present THEN verify(invocationSignature, clientPublicKey)
+    invariant: INV-6
+    optional: true
+  - step: 10
+    action: EXECUTE tool(params)
+  - step: 11
+    action: LOG transaction
+
+# ============================================================================
+# FRAMEWORK MAPPINGS
+# ============================================================================
+
+framework_mappings:
+  cosai_rm:
+    - id: personas
+      description: "Persona-scoped accountability for all invariants"
+      mapped_to: persona_responsibilities
+    - id: controls
+      description: "Control mappings including persona scope validation"
+      mapped_to: [CTRL-01, CTRL-02, CTRL-03, CTRL-08]
+
+  mitre_atlas:
+    - id: AML.T0024
+      name: Session Hijacking
+      risks: [RISK-05]
+    - id: AML.T0040
+      name: Replay Attack
+      risks: [RISK-02]
+    - id: AML.T0048
+      name: Data Manipulation
+      risks: [RISK-01]
+
+  owasp_llm_top10:
+    - id: LLM04
+      name: Model Denial of Service / Prompt Injection
+      risks: [RISK-01, RISK-03]
+    - id: LLM06
+      name: Sensitive Information Disclosure
+      controls: [CTRL-01]
+    - id: LLM08
+      name: Excessive Agency
+      controls: [CTRL-04]
+      risks: [RISK-06]
+
+  stride:
+    - category: Spoofing
+      risks: [RISK-02, RISK-05]
+    - category: Tampering
+      risks: [RISK-01]
+    - category: Repudiation
+      controls: [CTRL-06]
+    - category: Elevation of Privilege
+      risks: [RISK-04, RISK-06, RISK-07]
