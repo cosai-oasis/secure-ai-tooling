@@ -9,11 +9,14 @@ The `mermaid-styles.yaml` file has four required top-level keys: `version`, `fou
 string (e.g. `1.0.0`) and does not need its own section. The other three are described
 below.
 
+See [example markers and how to apply them](../../scripts/docs/styling-configuration.md#configuration-file-structure) before copying these snippets.
+
 ### Foundation Design Tokens
 
 Define semantic colors, stroke widths, and patterns used throughout the system:
 
 ```yaml
+# schema-example: complete foundation
 foundation:
   colors:
     primary: '#4285f4' # Google Blue - primary/brand color token
@@ -47,6 +50,7 @@ or `foundation.strokeWidths` has no visible effect on the generated graph.
 Elements used by the component graph:
 
 ```yaml
+# schema-example: complete sharedElements
 sharedElements:
   componentCategories:
     componentsInfrastructure:
@@ -75,6 +79,7 @@ schema validation.
 Specific settings for the component graph:
 
 ```yaml
+# schema-example: fragment
 graphTypes:
   component:
     direction: 'TD' # Top-down layout for component relationships
@@ -90,6 +95,7 @@ graphTypes:
 To modify the color scheme for component categories:
 
 ```yaml
+# schema-example: fragment
 sharedElements:
   componentCategories:
     componentsInfrastructure:
@@ -107,6 +113,7 @@ sharedElements:
 To change graph orientation and spacing:
 
 ```yaml
+# schema-example: fragment
 graphTypes:
   component:
     direction: 'LR' # Change to left-right layout
