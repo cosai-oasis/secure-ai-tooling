@@ -49,10 +49,23 @@ PURITY_VALIDATOR = REPO_ROOT / "scripts" / "hooks" / "precommit" / "validate_ver
 # D2a invariant. Mirrored from the frameworks.schema.json charset constraint.
 VERSION_ID_CHARSET_RE = re.compile(r"^[a-z0-9.@-]+$")
 
+# The current ATLAS edition, read from the registry's `version` field. The
+# expected versionId below is recomputed from it by the D2b rule, so it is
+# compared against the `versionId` the generator wrote (a differential, not an
+# identity): hand-editing either field in the registry makes the tests fail.
+ATLAS_VERSION = str(
+    next(
+        e
+        for e in yaml.safe_load(FRAMEWORKS_YAML.read_text(encoding="utf-8"))["frameworks"]
+        if e["id"] == "mitre-atlas"
+    )["version"]
+)
+ATLAS_VERSION_ID = f"mitre-atlas@{ATLAS_VERSION}"
+
 # Expected materialized versionId values for the 6 current registry entries (D2b).
 # STRIDE has version: null → bare concept id (D2a "unversioned" leg).
 EXPECTED_VERSION_IDS = {
-    "mitre-atlas": "mitre-atlas@5.0.1",
+    "mitre-atlas": ATLAS_VERSION_ID,
     "nist-ai-rmf": "nist-ai-rmf@1.0",
     "stride": "stride",
     "owasp-top10-llm": "owasp-top10-llm@2025",
@@ -199,14 +212,14 @@ class TestGeneratorDerivationRule:
 
         # Corrupt mitre-atlas by hand-editing its versionId in the text.
         text = clone.read_text(encoding="utf-8")
-        corrupted = text.replace("versionId: mitre-atlas@5.0.1", "versionId: mitre-atlas@9.9.9")
+        corrupted = text.replace(f"versionId: {ATLAS_VERSION_ID}", "versionId: mitre-atlas@9.9.9")
         assert corrupted != text, "test fixture set-up failed: original versionId line not present"
         clone.write_text(corrupted, encoding="utf-8")
 
         second = _run(GENERATOR, "--path", str(clone))
         assert second.returncode == 0
         data = _load_frameworks(clone)
-        assert _entry_by_id(data, "mitre-atlas")["versionId"] == "mitre-atlas@5.0.1", (
+        assert _entry_by_id(data, "mitre-atlas")["versionId"] == ATLAS_VERSION_ID, (
             "generator must overwrite a stale versionId — that is the source of "
             "truth restoration the generator-plus-purity pattern relies on (D2b)"
         )
@@ -576,7 +589,7 @@ class TestPurityDetectsHandEdit:
 
         text = clone.read_text(encoding="utf-8")
         # Same corruption pattern as TestGeneratorDerivationRule.
-        corrupted = text.replace("versionId: mitre-atlas@5.0.1", "versionId: mitre-atlas@9.9.9")
+        corrupted = text.replace(f"versionId: {ATLAS_VERSION_ID}", "versionId: mitre-atlas@9.9.9")
         assert corrupted != text
         clone.write_text(corrupted, encoding="utf-8")
 

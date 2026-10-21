@@ -19,10 +19,13 @@ scripts/hooks/tests/precommit_parity.sh.
 """
 
 import re
+import shlex
+import subprocess
 from pathlib import Path
 
 import pytest
 import yaml
+from identify.identify import tags_from_filename, tags_from_path
 from packaging.version import Version
 
 # Repo root is four levels up from this file (scripts/hooks/tests/<here>).
@@ -137,6 +140,10 @@ _REQUIRED_HOOK_IDS = {
     # ADR-027 D4c/D5: framework mapping-value purity + Tier-1 drift checks.
     "validate-mapping-purity",
     "validate-mapping-drift",
+    # ADR-038 D6 item 2: Tier 2 catalogue membership. Its --block entry is what
+    # derives the CI, aggregate, trigger and probe obligations, so deleting it
+    # must be red here rather than silently withdrawing all of them.
+    "validate-mapping-catalogue",
 }
 
 
@@ -971,6 +978,29 @@ _LOCAL_VALIDATOR_TRIGGER_COVERAGE: dict[str, set[str] | None] = {
         "risk-map/yaml/frameworks.yaml",  # registry oracle (DEFAULT_FRAMEWORKS_PATH)
         "risk-map/schemas/frameworks.schema.json",  # schema oracle (DEFAULT_SCHEMA_PATH)
     },
+    # validate-mapping-catalogue (ADR-027 D5 Tier 2, ADR-038 D6 item 6): scans
+    # the four consumer YAMLs; EVERY other member is a comparison oracle it
+    # reads but never scans (ADR-005 § Addendum 2026-06-08, Enforcement):
+    #   - frameworks.yaml and frameworks.schema.json, as for its Tier 1 siblings;
+    #   - the vendored manifest.yaml (resolves a pin token to a release) and
+    #     SHA256SUMS (the digest record every catalogue read is verified
+    #     against), both under DEFAULT_CATALOGUE_DIR.
+    # The per-edition catalogue files (ATLAS-<release>.yaml) are oracles too, but
+    # their names change at every registry bump, so they are NOT registered by
+    # name: the `^scripts/framework_catalogues/` prefix in the hook's files:
+    # covers them, pinned by TestMappingValidatorOracleTrigger's synthetic-path
+    # test. SOURCE and LICENSE match that prefix as trigger-only members; the
+    # validator never opens them.
+    "validate-mapping-catalogue": {
+        "risk-map/yaml/risks.yaml",
+        "risk-map/yaml/controls.yaml",
+        "risk-map/yaml/components.yaml",
+        "risk-map/yaml/personas.yaml",
+        "risk-map/yaml/frameworks.yaml",  # registry oracle (DEFAULT_FRAMEWORKS_PATH)
+        "risk-map/schemas/frameworks.schema.json",  # schema oracle (DEFAULT_SCHEMA_PATH)
+        "scripts/framework_catalogues/mitre-atlas/manifest.yaml",  # token-resolution oracle
+        "scripts/framework_catalogues/mitre-atlas/SHA256SUMS",  # digest-record oracle
+    },
 }
 
 
@@ -1522,6 +1552,21 @@ class TestRegenerateIssueTemplatesD9Trigger:
 # Mapping-validator comparison-oracle trigger (#343 Work 6)
 # ===========================================================================
 
+# Shared by the oracle-trigger tests below and the catalogue exclusivity guard.
+_CATALOGUE_ROOT = "scripts/framework_catalogues/"
+_CATALOGUE_HOOK_ID = "validate-mapping-catalogue"
+# Untracked catalogue paths no registry has ever registered (ADR-038 D2, D6
+# items 1, 6, 8 and 9). Matching the first proves a rule covers a future edition
+# of an existing framework, so a registry bump needs no trigger or test edit.
+# Matching the second, under a framework key that does not exist, proves the
+# rule is stated at the scripts/framework_catalogues/ root that D2 and D6 name,
+# not narrowed to the mitre-atlas/ subdirectory, so vendoring a second framework
+# needs no edit either.
+_SYNTHETIC_CATALOGUE_PATHS = (
+    "scripts/framework_catalogues/mitre-atlas/ATLAS-2099.12.yaml",
+    "scripts/framework_catalogues/zz-synthetic/catalogue-2099.12.yaml",
+)
+
 
 class TestMappingValidatorOracleTrigger:
     """
@@ -1542,9 +1587,30 @@ class TestMappingValidatorOracleTrigger:
     framework sources, and the hooks must run pass_filenames: false (else an
     oracle-only commit hands the validator the oracle path as argv and it scans a
     non-content file — a silent miss).
+
+    validate-mapping-catalogue (ADR-027 D5 Tier 2, ADR-038 D6 item 1) reads the
+    same two oracles plus the vendored catalogue directory, so it joins
+    _MAPPING_HOOKS and carries the extra catalogue tests at the end of the class.
     """
 
-    _MAPPING_HOOKS = ("validate-mapping-purity", "validate-mapping-drift")
+    _MAPPING_HOOKS = ("validate-mapping-purity", "validate-mapping-drift", _CATALOGUE_HOOK_ID)
+    # Fixed-name members of the catalogue subdirectory. manifest.yaml and
+    # SHA256SUMS are read every run; SOURCE and LICENSE are trigger-only
+    # (provenance, never opened) but sit under the same prefix (ADR-038 D2, D6 item 1).
+    _CATALOGUE_FIXED_MEMBERS = (
+        "scripts/framework_catalogues/mitre-atlas/manifest.yaml",
+        "scripts/framework_catalogues/mitre-atlas/SHA256SUMS",
+        "scripts/framework_catalogues/mitre-atlas/SOURCE",
+        "scripts/framework_catalogues/mitre-atlas/LICENSE",
+    )
+
+    @staticmethod
+    def _single_hook(hook_id: str) -> dict:
+        """Return the one declaration of hook_id, failing by assertion (not IndexError) when absent."""
+        hooks = _hooks_by_id(hook_id)
+        assert len(hooks) == 1, f"Exactly one `{hook_id}` hook expected; found {len(hooks)}"
+        return hooks[0]
+
     # The four consumer YAMLs (scanned-content set) plus BOTH oracles. Editing
     # any one alone must trigger the hooks.
     _COVERAGE_PATHS = (
@@ -1585,7 +1651,7 @@ class TestMappingValidatorOracleTrigger:
                consumer YAMLs
         """
         for hook_id in self._MAPPING_HOOKS:
-            hook = _hooks_by_id(hook_id)[0]
+            hook = self._single_hook(hook_id)
             files_regex = hook.get("files", "")
             for path in self._COVERAGE_PATHS:
                 assert re.search(files_regex, path), (
@@ -1621,7 +1687,7 @@ class TestMappingValidatorOracleTrigger:
             "risk-map/yaml/personas.yaml",
         )
         for hook_id in self._MAPPING_HOOKS:
-            hook = _hooks_by_id(hook_id)[0]
+            hook = self._single_hook(hook_id)
             files_regex = hook.get("files", "")
             # The schema oracle alone is in scope (the hook fires on this commit).
             assert re.search(files_regex, schema_path), (
@@ -1643,6 +1709,353 @@ class TestMappingValidatorOracleTrigger:
                     f"`{hook_id}` files: regex {files_regex!r} must match consumer "
                     f"YAML `{yaml_path}` (default scanned-content set)."
                 )
+
+    def test_catalogue_hook_trigger_covers_catalogue_directory_by_prefix(self):
+        """
+        The Tier 2 trigger must match every catalogue-directory member, including
+        a per-edition catalogue name that is not tracked and not registered.
+
+        Given: the validate-mapping-catalogue hook
+        When:  applying its files: regex (re.search) to the fixed-name members
+               (manifest.yaml, SHA256SUMS, SOURCE, LICENSE) and to the synthetic
+               paths (a future mitre-atlas edition, and a catalogue under a
+               framework key that does not exist)
+        Then:  every path matches
+
+        ADR-038 D6 items 1 and 6: per-edition catalogue names change at every
+        registry bump, so _LOCAL_VALIDATOR_TRIGGER_COVERAGE does not list them and
+        the directory prefix is the only thing that makes a catalogue-only commit
+        trigger the hook. A trigger that enumerated today's two catalogues would
+        pass the registry check yet miss the next bump's file, and one narrowed to
+        mitre-atlas/ would miss a second framework's catalogues; the synthetic
+        paths distinguish both from the root prefix.
+        """
+        files_regex = self._single_hook(_CATALOGUE_HOOK_ID).get("files", "")
+        for path in (*self._CATALOGUE_FIXED_MEMBERS, *_SYNTHETIC_CATALOGUE_PATHS):
+            assert re.search(files_regex, path), (
+                f"`{_CATALOGUE_HOOK_ID}` files: regex {files_regex!r} must match `{path}`. "
+                f"ADR-038 D6 item 1 requires the `^scripts/framework_catalogues/` prefix so a "
+                f"catalogue-only commit, including one vendoring a new edition, triggers Tier 2."
+            )
+
+    def test_catalogue_hook_entry_carries_force_and_block(self):
+        """
+        The Tier 2 hook entry must pass both `--force` and `--block`.
+
+        Given: the validate-mapping-catalogue hook
+        When:  splitting its entry: into argv tokens
+        Then:  both `--force` and `--block` are present
+
+        ADR-038 D4a / D6 item 1. Without `--force` the
+        validator reads nothing and exits 0, so the hook, and
+        `pre-commit run --all-files` with nothing staged, would pass a poisoned
+        corpus having examined nothing. The block-parity harness checks `--force`
+        only in the CI argv and `--block` only by derivation, so the hook entry's
+        `--force` has no other test.
+        """
+        entry = self._single_hook(_CATALOGUE_HOOK_ID).get("entry", "")
+        tokens = shlex.split(entry)
+        missing = [flag for flag in ("--force", "--block") if flag not in tokens]
+        assert not missing, (
+            f"`{_CATALOGUE_HOOK_ID}` entry must carry --force --block (ADR-038 D4a); "
+            f"missing {missing} in {entry!r}"
+        )
+
+
+# ===========================================================================
+# Catalogue exclusivity guard (ADR-038 D2, D6 items 8 and 11)
+# ===========================================================================
+
+# identify.tags_from_filename assigns only name- and extension-derived tags. The
+# mode and content tags pre-commit's own tags_from_path adds are supplied here:
+# every catalogue member is a regular, non-executable text file (verbatim
+# upstream YAML and plain-text records). tags_from_path is not used for the
+# selection itself because it raises on the synthetic path, which does not exist
+# (ADR-038 D6 item 8); TestCatalogueExclusivityGuard pins this assumption against
+# tags_from_path on every tracked member.
+_ASSUMED_CATALOGUE_TAGS = frozenset({"file", "text", "non-executable"})
+
+# Verdicts of _catalogue_hook_verdict.
+_SELECTED = "selected"
+_NOT_SELECTED = "not-selected"
+_UNDECIDED = "undecided"
+
+
+def _catalogue_path_tags(path: str) -> set[str]:
+    """Return the identify tags a catalogue path carries, per _ASSUMED_CATALOGUE_TAGS."""
+    return set(tags_from_filename(path)) | _ASSUMED_CATALOGUE_TAGS
+
+
+def _catalogue_hook_verdict(config: dict, repo: dict, hook: dict, path: str) -> str:
+    """
+    Decide from the configuration alone whether pre-commit would run `hook` on `path`.
+
+    Mirrors pre-commit's filename filter: the top-level files/exclude first, then
+    the hook's files (re.search must match) and exclude (re.search must not), then
+    types (all present), types_or (any present) and exclude_types (none present).
+
+    The type filters are applied only where the configuration writes them. For a
+    local hook that is exact: an unwritten `types` is pre-commit's default
+    ['file'], which every regular file satisfies. A remote hook's manifest may
+    declare files or types the configuration does not show, so a remote (or meta)
+    hook is decided only by a configured files: that does not match or a
+    configured exclude: that does; otherwise it is _UNDECIDED (ADR-038 D6 item 8).
+    The manifest is never read and never guessed.
+    """
+    if not re.search(config.get("files", ""), path) or re.search(config.get("exclude", "^$"), path):
+        return _NOT_SELECTED
+    if "exclude" in hook and re.search(hook["exclude"], path):
+        return _NOT_SELECTED
+    if "files" in hook and not re.search(hook["files"], path):
+        return _NOT_SELECTED
+    if repo.get("repo") != "local":
+        return _UNDECIDED
+    tags = _catalogue_path_tags(path)
+    if "types" in hook and not set(hook["types"]) <= tags:
+        return _NOT_SELECTED
+    if hook.get("types_or") and not set(hook["types_or"]) & tags:
+        return _NOT_SELECTED
+    if set(hook.get("exclude_types", [])) & tags:
+        return _NOT_SELECTED
+    return _SELECTED
+
+
+def _catalogue_selection_failures(config: dict, paths: list[str]) -> list[str]:
+    """
+    Return one message per path whose hook selection is not exactly {validate-mapping-catalogue}.
+
+    A message names every extra selected hook, every undecided remote hook, and
+    a missing Tier 2 hook, each by id and repo.
+    """
+    failures: list[str] = []
+    for path in paths:
+        selected: list[str] = []
+        undecided: list[str] = []
+        for repo in config.get("repos", []):
+            for hook in repo.get("hooks", []):
+                label = f"{hook.get('id')} ({repo.get('repo')})"
+                verdict = _catalogue_hook_verdict(config, repo, hook, path)
+                if verdict == _SELECTED:
+                    selected.append(hook.get("id"))
+                    if hook.get("id") != _CATALOGUE_HOOK_ID:
+                        failures.append(
+                            f"`{path}`: hook {label} selects this catalogue path. Only "
+                            f"`{_CATALOGUE_HOOK_ID}` may; give it an `exclude: ^{_CATALOGUE_ROOT}` "
+                            f"or a files: that does not match (ADR-038 D2)."
+                        )
+                elif verdict == _UNDECIDED:
+                    undecided.append(label)
+                    failures.append(
+                        f"`{path}`: remote hook {label} is undecided — the configuration carries "
+                        f"neither a non-matching files: nor a covering exclude:, so its manifest "
+                        f"may select this catalogue path. Add `exclude: ^{_CATALOGUE_ROOT}` to it "
+                        f"(ADR-038 D6 items 8 and 11)."
+                    )
+        if selected.count(_CATALOGUE_HOOK_ID) != 1:
+            failures.append(
+                f"`{path}`: `{_CATALOGUE_HOOK_ID}` is selected {selected.count(_CATALOGUE_HOOK_ID)} "
+                f"time(s); exactly one declaration must select every catalogue path (ADR-038 D6 item 1)."
+            )
+    return failures
+
+
+def _tracked_catalogue_paths() -> list[str]:
+    """Return every git-tracked path under the catalogue root, repo-relative."""
+    result = subprocess.run(
+        ["git", "ls-files", "-z", "--", _CATALOGUE_ROOT],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return sorted(p for p in result.stdout.split("\0") if p)
+
+
+class TestCatalogueExclusivityGuard:
+    """
+    ADR-038 D6 item 8: no hook other than validate-mapping-catalogue selects a
+    path under scripts/framework_catalogues/, decided from .pre-commit-config.yaml
+    alone.
+
+    The vendored catalogues are verbatim upstream bytes verified by SHA256SUMS
+    (ADR-038 D4). A formatter or fixer that selected them (end-of-file-fixer,
+    mixed-line-ending, ruff-format on a type match) would rewrite those bytes and
+    break the digest check, and a type-selected hook carries no files: at all.
+    The guard therefore evaluates full selection and asserts the exact set, and a
+    remote hook it cannot decide from the configuration fails, naming the hook,
+    rather than being skipped (D6 item 8; the ruff and ruff-format `exclude:` of
+    D6 item 11 is what decides those two).
+
+    The evaluator tests below use synthetic configurations and pass on the
+    current tree; they pin both sides of the decision rule so a later edit to the
+    evaluator cannot quietly widen what counts as decided.
+    """
+
+    def test_only_tier2_hook_selects_catalogue_paths(self):
+        """
+        Given: .pre-commit-config.yaml, every tracked path under
+               scripts/framework_catalogues/, and the synthetic catalogue paths
+        When:  computing, for each path, the hooks the configuration selects
+        Then:  the selected set is exactly {validate-mapping-catalogue} and no
+               remote hook is undecided
+        """
+        tracked = _tracked_catalogue_paths()
+        assert tracked, (
+            f"No tracked path under {_CATALOGUE_ROOT}; the guard would hold vacuously. "
+            f"ADR-038 D2 vendors the catalogues there."
+        )
+        failures = _catalogue_selection_failures(_load_config(), [*tracked, *_SYNTHETIC_CATALOGUE_PATHS])
+        assert not failures, "Catalogue exclusivity guard (ADR-038 D6 item 8):\n" + "\n".join(
+            f"  - {f}" for f in failures
+        )
+
+    def test_assumed_tags_hold_for_every_tracked_catalogue_member(self):
+        """
+        Given: every tracked path under scripts/framework_catalogues/
+        When:  classifying the real file with identify.tags_from_path
+        Then:  it carries every tag in _ASSUMED_CATALOGUE_TAGS and every tag
+               tags_from_filename assigns
+
+        Green control for the guard's tag model: if a binary or executable member
+        were ever vendored, the guard's assumed tags would no longer describe it
+        and this fails, rather than the guard deciding type filters on false tags.
+        """
+        for path in _tracked_catalogue_paths():
+            real = tags_from_path(str(REPO_ROOT / path))
+            assumed = _catalogue_path_tags(path)
+            assert assumed <= real, f"`{path}`: assumed tags {sorted(assumed - real)} not borne out by the file"
+
+    # --- evaluator: both sides of each decision ---------------------------
+
+    _TIER2_LOCAL = {
+        "repo": "local",
+        "hooks": [{"id": _CATALOGUE_HOOK_ID, "files": r"^(scripts/framework_catalogues/|risk-map/)"}],
+    }
+    # The evaluator tests decide one catalogue YAML against synthetic configurations;
+    # which synthetic path does not matter to the rule under test.
+    _PROBE_PATH = _SYNTHETIC_CATALOGUE_PATHS[0]
+
+    def _verdict(self, repo: dict, hook: dict, path: str = _PROBE_PATH, config: dict | None = None):
+        return _catalogue_hook_verdict(config or {"repos": [repo]}, repo, hook, path)
+
+    def test_remote_hook_without_files_or_exclude_is_undecided(self):
+        """A remote hook with neither selector in the config is undecided, not skipped."""
+        repo = {"repo": "https://example.invalid/remote", "rev": "v1"}
+        assert self._verdict(repo, {"id": "end-of-file-fixer"}) == _UNDECIDED
+
+    def test_remote_hook_with_matching_files_only_is_still_undecided(self):
+        """A configured files: that matches does not decide a remote hook; its manifest types may still apply."""
+        repo = {"repo": "https://example.invalid/remote", "rev": "v1"}
+        assert self._verdict(repo, {"id": "fixer", "files": r"^scripts/"}) == _UNDECIDED
+
+    def test_remote_hook_with_covering_exclude_is_not_selected(self):
+        """The D6 item 11 fix: a configured exclude: for the catalogue root decides a remote hook."""
+        repo = {"repo": "https://example.invalid/remote", "rev": "v1"}
+        hook = {"id": "ruff-format", "exclude": r"^scripts/framework_catalogues/"}
+        assert self._verdict(repo, hook) == _NOT_SELECTED
+
+    def test_remote_hook_with_non_matching_files_is_not_selected(self):
+        """A configured files: anchored elsewhere decides a remote hook."""
+        repo = {"repo": "https://example.invalid/remote", "rev": "v1"}
+        assert self._verdict(repo, {"id": "check-jsonschema", "files": r"^risk-map/"}) == _NOT_SELECTED
+
+    def test_top_level_exclude_decides_every_hook(self):
+        """A top-level exclude: covering the root removes the path before any hook is consulted."""
+        repo = {"repo": "https://example.invalid/remote", "rev": "v1"}
+        config = {"exclude": r"^scripts/framework_catalogues/", "repos": [repo]}
+        assert self._verdict(repo, {"id": "fixer"}, config=config) == _NOT_SELECTED
+
+    def test_local_hook_without_selectors_is_selected(self):
+        """A local hook with no files: and no types selects every file — the type-selected-arrival case."""
+        assert self._verdict({"repo": "local"}, {"id": "local-fixer"}) == _SELECTED
+
+    def test_local_hook_types_decide_by_filename_tags(self):
+        """Local type filters apply: a python-only hook skips a catalogue YAML and the extensionless record."""
+        hook = {"id": "py-lint", "types": ["python"]}
+        assert self._verdict({"repo": "local"}, hook) == _NOT_SELECTED
+        assert self._verdict({"repo": "local"}, hook, "scripts/framework_catalogues/mitre-atlas/SHA256SUMS") == (
+            _NOT_SELECTED
+        )
+
+    def test_local_exclude_types_is_per_path(self):
+        """exclude_types: [yaml] skips the catalogue YAML but still selects the extensionless SHA256SUMS."""
+        hook = {"id": "fixer", "exclude_types": ["yaml"]}
+        assert self._verdict({"repo": "local"}, hook) == _NOT_SELECTED
+        assert self._verdict({"repo": "local"}, hook, "scripts/framework_catalogues/mitre-atlas/SHA256SUMS") == (
+            _SELECTED
+        )
+
+    def test_failures_name_the_undecided_remote_hook(self):
+        """An undecided remote hook fails the guard and the message names it."""
+        remote = {"repo": "https://example.invalid/remote", "rev": "v1", "hooks": [{"id": "mixed-line-ending"}]}
+        failures = _catalogue_selection_failures({"repos": [self._TIER2_LOCAL, remote]}, [self._PROBE_PATH])
+        assert len(failures) == 1 and "mixed-line-ending" in failures[0], failures
+
+    def test_failures_name_an_extra_selected_local_hook(self):
+        """A second local hook selecting the path fails the guard and the message names it."""
+        extra = {"repo": "local", "hooks": [{"id": "local-fixer"}]}
+        failures = _catalogue_selection_failures({"repos": [self._TIER2_LOCAL, extra]}, [self._PROBE_PATH])
+        assert len(failures) == 1 and "local-fixer" in failures[0], failures
+
+    def test_failures_report_a_missing_tier2_hook(self):
+        """With no hook selecting the path at all, the guard still fails: the exact set is not met."""
+        failures = _catalogue_selection_failures({"repos": []}, [self._PROBE_PATH])
+        assert len(failures) == 1 and _CATALOGUE_HOOK_ID in failures[0], failures
+
+    def test_conforming_configuration_passes(self):
+        """Tier 2 local plus a remote hook carrying the root exclude: no failures."""
+        remote = {
+            "repo": "https://example.invalid/remote",
+            "rev": "v1",
+            "hooks": [{"id": "ruff", "exclude": r"^scripts/framework_catalogues/"}],
+        }
+        config = {"repos": [self._TIER2_LOCAL, remote]}
+        assert _catalogue_selection_failures(config, [self._PROBE_PATH]) == []
+
+
+class TestCatalogueByteStability:
+    """
+    ADR-038 D4 "Byte stability" and D6 item 9: every catalogue path has the git
+    `text` attribute unset, so no checkout converts its line endings.
+
+    With `core.autocrlf=true` and no `-text`, git rewrites LF to CRLF on checkout,
+    every SHA256SUMS digest stops matching, and the validator exits 2 on every
+    run. The assertion is on the resolved attribute (`git check-attr`), not on the
+    `.gitattributes` line, so a later line that re-enables `text` for the
+    directory (`* text=auto` after it, or a nested `.gitattributes`) is caught
+    as well. The synthetic paths pin that the rule covers editions vendored at
+    a future bump and catalogues of a framework not yet vendored, not only
+    today's files.
+    """
+
+    def test_text_attribute_is_unset_for_every_catalogue_path(self):
+        """
+        Given: every tracked path under scripts/framework_catalogues/ and the
+               synthetic catalogue paths
+        When:  `git check-attr text` resolves the attribute for each
+        Then:  every path reports `unset`
+        """
+        paths = [*_tracked_catalogue_paths(), *_SYNTHETIC_CATALOGUE_PATHS]
+        assert len(paths) > len(_SYNTHETIC_CATALOGUE_PATHS), (
+            f"No tracked path under {_CATALOGUE_ROOT}; the check would hold vacuously."
+        )
+        result = subprocess.run(
+            ["git", "check-attr", "-z", "text", "--", *paths],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        # -z output is NUL-separated triples: <path> NUL <attribute> NUL <value> NUL.
+        fields = result.stdout.split("\0")
+        values = {fields[i]: fields[i + 2] for i in range(0, len(fields) - 2, 3)}
+        assert set(values) == set(paths), f"git check-attr did not report every path: {sorted(values)}"
+        wrong = {path: value for path, value in values.items() if value != "unset"}
+        assert not wrong, (
+            "Catalogue paths whose git `text` attribute is not `unset` (ADR-038 D4, D6 item 9); "
+            "a CRLF checkout would change their bytes and fail the SHA256SUMS check:\n"
+            + "\n".join(f"  - {path}: text={value}" for path, value in sorted(wrong.items()))
+        )
 
 
 # ===========================================================================

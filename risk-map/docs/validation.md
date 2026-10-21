@@ -187,7 +187,7 @@ See the [Framework Guide](guide-frameworks.md) for detailed information on addin
 
 ## Manual Framework Mapping Validators (ADR-027)
 
-Three validators enforce the ADR-027 D2b/D4c/D5/D5a framework-mapping constraints. These run both as pre-commit hooks and in `scripts/tools/validate-all.sh`. `validate-all.sh` additionally runs content `check-jsonschema` against the four consumer schemas (`risks`, `controls`, `components`, `personas`), so the manual sweep rejects an unpinned mapping value the same way the per-file `schema:` pre-commit hooks do.
+Four validators enforce the ADR-027 D2b/D4c/D5/D5a framework-mapping constraints. These run both as pre-commit hooks and in `scripts/tools/validate-all.sh`. `validate-all.sh` additionally runs content `check-jsonschema` against the four consumer schemas (`risks`, `controls`, `components`, `personas`), so the manual sweep rejects an unpinned mapping value the same way the per-file `schema:` pre-commit hooks do.
 
 **versionId purity** (ADR-027 D2b/D2c) — asserts that the on-disk `versionId` in `frameworks.yaml` equals the derived value and that `supersedes`/`priorVersions` lineage fields are well-formed. Run it after manually editing `frameworks.yaml` to confirm the generator's output is intact:
 
@@ -224,6 +224,13 @@ python3 scripts/hooks/precommit/validate_mapping_drift.py \
     risk-map/yaml/controls.yaml \
     risk-map/yaml/components.yaml \
     risk-map/yaml/personas.yaml
+```
+
+**Mapping catalogue membership** (ADR-027 D5 Tier 2, ADR-038) — Tier-2 drift detection: for each value Tier 1 accepts, checks that its id exists in the edition its version token names, using the vendored per-edition catalogues under `scripts/framework_catalogues/`. Only frameworks in the validator's adjudicated table (`ADJUDICATED_FRAMEWORKS` in `validate_mapping_catalogue.py`, ADR-038 D5) are checked; a value of any framework outside that table is `skip`ped. A value whose id is absent from its pinned edition is `invalid`, and the detail line names any other registered edition that contains it. Before reading any value, the validator verifies the catalogues against `SHA256SUMS`; a digest mismatch or any other unreadable input exits 2 (see [hook-validations.md §19](../../scripts/docs/hook-validations.md)). `--force` is required: without it nothing is read and the exit is 0. `--block` makes an `invalid` value exit 1:
+
+```bash
+# Scans the four content files, frameworks.yaml and the vendored catalogues
+python3 scripts/hooks/precommit/validate_mapping_catalogue.py --force --block
 ```
 
 ## Manual Prettier Formatting

@@ -188,14 +188,20 @@ repos:
 
   # ---------------------------------------------------------------------------
   # Ruff lint + format for Python.
+  #
+  # Both hooks select by their remote manifest's types, so each carries an
+  # exclude for the vendored catalogues: those bytes are verified against
+  # SHA256SUMS and must never be rewritten (ADR-038 D2, D6 item 11).
   # ---------------------------------------------------------------------------
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.17.0
     hooks:
       - id: ruff
         name: 'ruff: lint'
+        exclude: ^scripts/framework_catalogues/
       - id: ruff-format
         name: 'ruff: format'
+        exclude: ^scripts/framework_catalogues/
 
   # ---------------------------------------------------------------------------
   # Local validators. Each runs only when its dependency files are staged
@@ -410,6 +416,19 @@ repos:
         language: system
         entry: python3 scripts/hooks/precommit/validate_mapping_drift.py
         files: ^risk-map/(yaml/(risks|controls|components|personas|frameworks)\.yaml|schemas/frameworks\.schema\.json)$
+        pass_filenames: false
+
+      # validate-mapping-catalogue (ADR-027 D5 Tier 2, ADR-038 D6 item 1) reads
+      # the Tier 1 read-set above plus the vendored catalogue directory, and
+      # imports framework_mapping.py and validate_mapping_drift.py. The
+      # `^scripts/framework_catalogues/` prefix covers per-edition catalogue
+      # files whose names change at every registry bump. `--force` is required:
+      # without it the validator reads nothing and exits 0 (ADR-038 D4a).
+      - id: validate-mapping-catalogue
+        name: 'validate: framework mapping catalogue membership (ADR-027 D5 Tier 2, ADR-038)'
+        language: system
+        entry: python3 scripts/hooks/precommit/validate_mapping_catalogue.py --force --block
+        files: ^(risk-map/(yaml/(risks|controls|components|personas|frameworks)\.yaml|schemas/frameworks\.schema\.json)|scripts/hooks/precommit/(validate_mapping_catalogue|framework_mapping|validate_mapping_drift)\.py|scripts/framework_catalogues/)
         pass_filenames: false
 
   # ---------------------------------------------------------------------------

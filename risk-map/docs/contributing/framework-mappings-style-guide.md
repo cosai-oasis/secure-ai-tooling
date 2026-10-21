@@ -2,7 +2,7 @@
 
 This guide covers how to write framework mappings across all entity types (risks, controls, personas) in the CoSAI Risk Map. It documents identifier formats, per-framework conventions, and the principles that should guide mapping decisions.
 
-Identifier formats are the **canonical, version-pinned** forms committed in [ADR-027](../../../docs/adr/027-framework-versioning-and-mapping-convention.md) (which version-pins the per-framework base shapes that [ADR-022](../../../docs/adr/022-supporting-schemas.md) D5b first defined). Every mapping value carries a version token (`@5.0.1`, `@1.0`, `:2025`, `@2022`, `@2024`) except STRIDE, which is unversioned. The schema enforces these pinned forms strictly for all six frameworks — there is no longer a loose fall-through. Generate values with the maintainer tooling rather than hand-spelling them (see [Identifier Enforcement](#identifier-enforcement)).
+Identifier formats are the **canonical, version-pinned** forms committed in [ADR-027](../../../docs/adr/027-framework-versioning-and-mapping-convention.md) (which version-pins the per-framework base shapes that [ADR-022](../../../docs/adr/022-supporting-schemas.md) D5b first defined). Every mapping value carries a version token (`@2026.09`, `@1.0`, `:2025`, `@2022`, `@2024`) except STRIDE, which is unversioned. The schema enforces these pinned forms strictly for all six frameworks — there is no longer a loose fall-through. Generate values with the maintainer tooling rather than hand-spelling them (see [Identifier Enforcement](#identifier-enforcement)).
 
 ---
 
@@ -81,7 +81,7 @@ The canonical, version-pinned identifier patterns ([ADR-027](../../../docs/adr/0
 
 | Framework | Canonical pinned pattern | Version token |
 |-----------|--------------------------|---------------|
-| MITRE ATLAS | `^AML\.(T\|M)\d{4}(\.\d{3})?@(5\.0\.1)$` | `@5.0.1` |
+| MITRE ATLAS | `^AML\.(T\|M)\d{4}(\.\d{3})?@(5\.0\.1\|2026\.09)$` | `@2026.09` (current); `@5.0.1` (prior, still valid) |
 | NIST AI RMF | `^(GOVERN\|MAP\|MEASURE\|MANAGE)-\d+(\.\d+)*@(1\.0)$` | `@1.0` |
 | STRIDE | `^(Spoofing\|Tampering\|Repudiation\|InformationDisclosure\|DenialOfService\|ElevationOfPrivilege)$` | none (unversioned) |
 | OWASP Top 10 LLM | `^LLM\d{2}:2025$` | `:2025` |
@@ -100,14 +100,16 @@ ISO 22989 is a controlled vocabulary rather than a regex: per [ADR-027](../../..
 
 **Applies to:** risks, controls
 
-**Source:** [https://atlas.mitre.org](https://atlas.mitre.org) — version 5.0.1 as of October 2025
+**Source:** [https://atlas.mitre.org](https://atlas.mitre.org) — current edition `2026.09`, as registered in `frameworks.yaml`; the prior edition `5.0.1` remains registered in `priorVersions`
 
-**Identifier formats** — canonical pinned pattern `^AML\.(T|M)\d{4}(\.\d{3})?@(5\.0\.1)$` (schema-enforced). The base ref is followed by the `@5.0.1` version token:
-- Techniques: `AML.T####@5.0.1` (e.g., `AML.T0020@5.0.1`)
-- Sub-techniques: `AML.T####.###@5.0.1` (e.g., `AML.T0010.002@5.0.1`)
-- Mitigations: `AML.M####@5.0.1` (e.g., `AML.M0007@5.0.1`)
+**Identifier formats** — canonical pinned pattern `^AML\.(T|M)\d{4}(\.\d{3})?@(5\.0\.1|2026\.09)$` (schema-enforced). The base ref is followed by the `@2026.09` version token:
+- Techniques: `AML.T####@2026.09` (e.g., `AML.T0020@2026.09`)
+- Sub-techniques: `AML.T####.###@2026.09` (e.g., `AML.T0010.002@2026.09`)
+- Mitigations: `AML.M####@2026.09` (e.g., `AML.M0007@2026.09`)
 
-The single pattern covers techniques (`T`), mitigations (`M`), and optional sub-technique suffixes, all pinned to the registered ATLAS version. A malformed or unpinned ATLAS ID fails schema validation at commit.
+The single pattern covers techniques (`T`), mitigations (`M`), and optional sub-technique suffixes, pinned to a registered ATLAS edition. A malformed or unpinned ATLAS ID fails schema validation at commit.
+
+**Compose new values at the current edition.** A value pinned at the prior edition (`@5.0.1`) is still valid and is not an error, but a new value should be composed at `@2026.09`; the audit reports the prior-edition pin as an advisory for a new value and as information only for a value already in the corpus. Verify an identifier against the edition its own token names, using the vendored catalogue manifest (`scripts/framework_catalogues/mitre-atlas/manifest.yaml`, [ADR-038](../../../docs/adr/038-tier-2-catalogue-data-input.md)): `@2026.09` resolves to release `2026.09`, and `@5.0.1` resolves to release `2025.10`. An identifier can exist at one edition and not another, so check the edition, not just the live site.
 
 **Risks map to techniques.** ATLAS techniques (`AML.T####`) describe adversary actions; a risk in CoSAI describes what can go wrong. The connection is: "An attacker using [technique] realizes [this risk]." Use the most specific technique available. If only a sub-technique applies, use the sub-technique, not the parent.
 
@@ -119,13 +121,13 @@ The single pattern covers techniques (`T`), mitigations (`M`), and optional sub-
 # Risk — technique identifiers
 mappings:
   mitre-atlas:
-    - AML.T0020@5.0.1
-    - AML.T0010.002@5.0.1   # sub-technique is more specific than AML.T0010
+    - AML.T0020@2026.09
+    - AML.T0010.002@2026.09   # sub-technique is more specific than AML.T0010
 
 # Control — mitigation identifiers
 mappings:
   mitre-atlas:
-    - AML.M0007@5.0.1
+    - AML.M0007@2026.09
 ```
 
 ---
@@ -298,13 +300,13 @@ The `Article {N}` / `Article {N}({paragraph})` form is the settled, schema-enfor
 # Wrong — redundant
 mappings:
   mitre-atlas:
-    - AML.T0010@5.0.1
-    - AML.T0010.002@5.0.1
+    - AML.T0010@2026.09
+    - AML.T0010.002@2026.09
 
 # Correct — use only the most specific level that is accurate
 mappings:
   mitre-atlas:
-    - AML.T0010.002@5.0.1
+    - AML.T0010.002@2026.09
 ```
 
 **More than four mappings in one framework warrants review.** It often means:
@@ -370,7 +372,7 @@ When reviewing a PR that adds or modifies `mappings:` fields:
 
 - [ ] Identifiers match the **canonical, version-pinned** format for each framework (see [Identifier Enforcement](#identifier-enforcement)) — tool-generated, not hand-spelled
 - [ ] No parent technique is mapped alongside its sub-technique
-- [ ] Risks reference only techniques (`AML.T####@5.0.1`) and controls reference only mitigations (`AML.M####@5.0.1`) for MITRE ATLAS
+- [ ] Risks reference only techniques (`AML.T####@2026.09`) and controls reference only mitigations (`AML.M####@2026.09`) for MITRE ATLAS
 - [ ] STRIDE values are bare PascalCase and match the six valid categories exactly (`Tampering`, not `tampering` or `t`; no version token)
 - [ ] NIST AI RMF uses full-word function prefixes and the `@1.0` token (`GOVERN-1.1@1.0`, not `GV-1.1`)
 - [ ] OWASP identifiers are versioned (`LLM04:2025`, not `LLM04` or `LLM4`)

@@ -1,0 +1,10 @@
+Upstream:  https://github.com/mitre-atlas/atlas-data
+Commit:    3259f388d19cbcca11bacf12a0ef97f4198f711b ("Release v2026.09", 2026-09-10)
+
+Files (verbatim copies at the commit above):
+  manifest.yaml         <- dist/manifest.yaml
+  ATLAS-2025.10.yaml    <- dist/v6/ATLAS-2025.10.yaml
+  ATLAS-2026.09.yaml    <- dist/v6/ATLAS-2026.09.yaml
+  LICENSE               <- LICENSE
+
+Licence: Apache-2.0, "Copyright 2021-2026 MITRE". See the vendored LICENSE.

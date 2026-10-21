@@ -163,7 +163,7 @@ The proposal maps to an invalid MITRE ATLAS technique, a non-existent OWASP LLM 
 
 ### 9. Parent technique and sub-technique both listed (MITRE ATLAS)
 
-The mappings list both `AML.T0020@5.0.1` and `AML.T0020.001@5.0.1`.
+The mappings list both `AML.T0010@2026.09` and `AML.T0010.002@2026.09`.
 
 - Fix: keep only the most specific applicable ID. Do not list both.
 

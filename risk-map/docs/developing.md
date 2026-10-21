@@ -111,14 +111,14 @@ mapping values rather than hand-editing `mappings.<framework>` lists in the
 content YAML files. The `validate_mapping_purity.py` and
 `validate_mapping_drift.py` validators guard the result.
 
-Add a mapping (composes `AML.T0043@5.0.1` and appends it to the entity's
-`mappings.mitre-atlas` list):
+Add a mapping (composes `AML.T0043@2026.09` and appends it to the entity's
+`mappings.mitre-atlas` list; `2026.09` is the current registered ATLAS edition):
 
 ```bash
 python3 scripts/framework_mapping_maintainer.py add \
     --cosai-id controlInputValidation \
     --framework mitre-atlas \
-    --version 5.0.1 \
+    --version 2026.09 \
     --framework-specific-ref AML.T0043
 ```
 

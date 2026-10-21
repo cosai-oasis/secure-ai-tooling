@@ -21,6 +21,7 @@ ALL-CAPS placeholders, so `{{ref:identifier}}` and sentinel references like
 helper text and safe to use as documentation examples.
 """
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -36,6 +37,16 @@ _ENTITY_TYPES = {"risk", "control", "component", "persona"}
 _OPERATIONS = {"new", "update"}
 _ALL_SOURCES = {f"{op}_{entity}" for op in _OPERATIONS for entity in _ENTITY_TYPES}
 
+# The ATLAS pattern is read from the schema block it mirrors, so an edition flip
+# in the schema does not need a second edit here. Assertion that templates carry
+# the *current* edition is a separate check; this pattern admits every edition
+# the schema admits.
+_ATLAS_PINNED_PATTERN = json.loads(
+    (Path(__file__).parent.parent.parent.parent / "risk-map" / "schemas" / "frameworks.schema.json").read_text(
+        encoding="utf-8"
+    )
+)["definitions"]["framework-mapping-patterns-pinned"]["properties"]["mitre-atlas"]["pattern"]
+
 # Canonical regex patterns for framework mapping values (ADR-022 D5b)
 # ADR-027 version-pinned canonical forms (#343): every example carries a version
 # token except STRIDE (unversioned). These mirror the strict
@@ -46,7 +57,7 @@ _CANONICAL_PATTERNS: dict[str, re.Pattern] = {
     ),
     "nist-ai-rmf": re.compile(r"^(GOVERN|MAP|MEASURE|MANAGE)-\d+(\.\d+)*@1\.0$"),
     "owasp-top10-llm": re.compile(r"^LLM\d{2}:2025$"),
-    "mitre-atlas": re.compile(r"^AML\.(T|M)\d{4}(\.\d{3})?@5\.0\.1$"),
+    "mitre-atlas": re.compile(_ATLAS_PINNED_PATTERN),
 }
 
 # Generator placeholder pattern — only expands ALL-CAPS tokens.
@@ -331,7 +342,7 @@ class TestFrameworkMappingCanonicalForms:
     - STRIDE:          bare PascalCase enum, unversioned (e.g. InformationDisclosure)
     - NIST AI RMF:     GOVERN-N.N@1.0 form (e.g. GOVERN-6.2@1.0, NOT GV-6.2 or unpinned GOVERN-6.2)
     - OWASP LLM Top10: LLMxx:2025 form (e.g. LLM01:2025, NOT LLM01)
-    - MITRE ATLAS:     AML.(T|M)dddd[.ddd]@5.0.1 (version-pinned; regression guard)
+    - MITRE ATLAS:     AML.(T|M)dddd[.ddd]@<version> (version-pinned; the schema's pinned pattern)
 
     The check is applied generically to all 8 templates so that if the SWE adds
     mapping examples to component or persona templates, they must also conform.
@@ -499,6 +510,163 @@ class TestFrameworkMappingCanonicalForms:
             assert not bad, (
                 f"{name}.template.yml mitre-atlas example(s) do not match AML.(T|M)dddd[.ddd] (ADR-022 D5b): {bad}"
             )
+
+
+# ============================================================================
+# Section C current edition — ATLAS examples teach the registry's current edition
+# Applies to the four ATLAS-carrying sources (risk + control, new_* and update_*).
+# ============================================================================
+
+# Every version-pinned ATLAS token anywhere in a source's text. The edition group
+# is `\S+` on purpose: trailing punctuation fused to a token (`@5.0.1",`) is
+# captured, cannot equal the registry version, and so fails rather than passes.
+_ATLAS_TOKEN_PATTERN = re.compile(r"AML\.(?:T|M)\d{4}(?:\.\d{3})?@(\S+)")
+
+_ATLAS_CARRYING_SOURCES = ("new_risk", "update_risk", "new_control", "update_control")
+
+
+def _scan_atlas_tokens(raw_text: str) -> list[tuple[int, str, str]]:
+    """
+    Return (line_number, token, edition) for every pinned ATLAS token in raw_text.
+
+    Scans every line of the text, not only `framework-key: value` lines, so
+    tokens in changelog-prose bullets are found. Line numbers are 1-based.
+    """
+    found: list[tuple[int, str, str]] = []
+    for line_number, line in enumerate(raw_text.splitlines(), start=1):
+        for match in _ATLAS_TOKEN_PATTERN.finditer(line):
+            found.append((line_number, match.group(0), match.group(1)))
+    return found
+
+
+def _registry_atlas_entry(frameworks_yaml_path: Path) -> dict:
+    """Return the mitre-atlas entry of frameworks.yaml; fail if it is absent."""
+    registry = yaml.safe_load(frameworks_yaml_path.read_text(encoding="utf-8"))
+    for entry in registry.get("frameworks") or []:
+        if entry.get("id") == "mitre-atlas":
+            return entry
+    pytest.fail("frameworks.yaml has no mitre-atlas entry (prerequisite)")
+
+
+class TestAtlasExamplesCarryCurrentEdition:
+    """
+    Authoring surfaces teach the current ATLAS
+    edition, while the schema keeps admitting prior editions.
+
+    The schema's ATLAS alternation admits every registered edition, so
+    TestFrameworkMappingCanonicalForms cannot tell a template still on a prior
+    edition from one on the current edition. This class adds that check:
+
+    - every pinned ATLAS token anywhere in the text of the four ATLAS-carrying
+      source templates carries the edition named by frameworks.yaml's mitre-atlas
+      `version` (read from the registry, never hardcoded);
+    - the scan is whole-text, not `_extract_framework_examples`, which sees only
+      `framework-key: value` lines and misses changelog-prose bullets.
+
+    Boundaries pinned from the other side (green controls):
+    - prior editions listed in `priorVersions` stay admitted by the schema
+      pattern, so the fix for a stale template is the template, never a
+      narrowed schema;
+    - the component and persona sources carry no pinned ATLAS token, so the
+      four-source scope is an observed fact; a new token there fails the control
+      and forces a scope decision.
+
+    Out of scope: the generated .github/ISSUE_TEMPLATE/* files (covered by the
+    regenerate/validate issue-template hooks) and unpinned ATLAS ids.
+    """
+
+    def test_every_atlas_token_in_sources_names_registry_current_edition(
+        self, repo_root: Path, frameworks_yaml_path: Path
+    ) -> None:
+        """
+        Given: frameworks.yaml's mitre-atlas `version`, and the four ATLAS-carrying sources
+        When: every `AML.(T|M)dddd[.ddd]@<edition>` token in each source's full text is collected
+        Then: each token's edition equals the registry version; the failure lists
+              every offending token with its file, line and the expected edition
+        """
+        expected = str(_registry_atlas_entry(frameworks_yaml_path)["version"])
+        offending: list[str] = []
+        for name in _ATLAS_CARRYING_SOURCES:
+            _, raw = _load_source(repo_root, name)
+            for line_number, token, edition in _scan_atlas_tokens(raw):
+                if edition != expected:
+                    offending.append(f"{name}.template.yml:{line_number}: {token} (expected edition @{expected})")
+        assert not offending, (
+            f"{len(offending)} ATLAS token(s) in source templates do not carry the registry's current "
+            f"edition @{expected} (frameworks.yaml mitre-atlas version):\n"
+            + "\n".join(f"  - {line}" for line in offending)
+        )
+
+    @pytest.mark.parametrize("name", _ATLAS_CARRYING_SOURCES)
+    def test_scan_finds_tokens_in_each_atlas_carrying_source(self, repo_root: Path, name: str) -> None:
+        """
+        Non-vacuity control (green on arrival).
+
+        Given: one of the four ATLAS-carrying sources
+        When: its full text is scanned
+        Then: at least one pinned ATLAS token is found, so the edition check above
+              is not passing over an empty set for that source
+        """
+        _, raw = _load_source(repo_root, name)
+        assert _scan_atlas_tokens(raw), f"{name}.template.yml: whole-text scan found no pinned ATLAS token"
+
+    @pytest.mark.parametrize("name", _ATLAS_CARRYING_SOURCES)
+    def test_scan_reaches_every_value_the_line_helper_sees(self, repo_root: Path, name: str) -> None:
+        """
+        Reach control (green on arrival).
+
+        Given: one of the four ATLAS-carrying sources
+        When: its mitre-atlas values from `_extract_framework_examples` are compared
+              with the whole-text scan's tokens
+        Then: every value the line helper sees is also a token the scan finds
+        """
+        _, raw = _load_source(repo_root, name)
+        scanned = [token for _, token, _ in _scan_atlas_tokens(raw)]
+        helper_values = _extract_framework_examples(raw).get("mitre-atlas", [])
+        missed = [value for value in helper_values if value not in scanned]
+        assert not missed, f"{name}.template.yml: whole-text scan missed helper-visible value(s): {missed}"
+
+    def test_scan_reaches_changelog_prose_the_line_helper_cannot_see(self) -> None:
+        """
+        Mechanism control (green on arrival), on synthetic text.
+
+        Given: a changelog-prose bullet carrying a pinned ATLAS token
+        When: it is passed to the whole-text scan and to `_extract_framework_examples`
+        Then: the scan finds the token with its edition; the line helper finds no
+              mitre-atlas value — the reason the line helper cannot serve this check
+        """
+        prose = '        - "Add MITRE ATLAS mapping AML.T0051@0.0.0 - new technique"\n'
+        assert _scan_atlas_tokens(prose) == [(1, "AML.T0051@0.0.0", "0.0.0")]
+        assert _extract_framework_examples(prose).get("mitre-atlas", []) == []
+
+    def test_prior_editions_remain_admitted_by_schema_pattern(self, frameworks_yaml_path: Path) -> None:
+        """
+        Boundary control (green on arrival): the schema keeps admitting prior editions.
+
+        Given: frameworks.yaml's mitre-atlas `version` and each `priorVersions` entry
+        When: a token pinned to each edition is matched against the schema's ATLAS pattern
+        Then: every one matches, so the current-edition check cannot be satisfied
+              by narrowing the schema
+        """
+        entry = _registry_atlas_entry(frameworks_yaml_path)
+        editions = [str(entry["version"])]
+        editions += [str(prior).split("@", 1)[1] for prior in entry.get("priorVersions") or []]
+        rejected = [e for e in editions if not _CANONICAL_PATTERNS["mitre-atlas"].match(f"AML.T0051@{e}")]
+        assert not rejected, f"schema mitre-atlas pattern rejects registered edition(s): {rejected}"
+
+    @pytest.mark.parametrize("name", sorted(_ALL_SOURCES - set(_ATLAS_CARRYING_SOURCES)))
+    def test_non_atlas_sources_carry_no_pinned_atlas_token(self, repo_root: Path, name: str) -> None:
+        """
+        Scope control (green on arrival).
+
+        Given: a component or persona source template
+        When: its full text is scanned
+        Then: no pinned ATLAS token is found; if one appears, add the source to
+              _ATLAS_CARRYING_SOURCES so the edition check covers it
+        """
+        _, raw = _load_source(repo_root, name)
+        found = [f"line {n}: {token}" for n, token, _ in _scan_atlas_tokens(raw)]
+        assert not found, f"{name}.template.yml carries pinned ATLAS token(s) outside the checked scope: {found}"
 
 
 # ============================================================================
@@ -976,6 +1144,13 @@ Classes and their contracts:
     - ADR-022 D5b: new_control nist-ai-rmf uses GOVERN form (not 'GV-6.2')
     - ADR-022 D5b: update_control nist-ai-rmf uses GOVERN form (not 'GV-4.1')
     - MITRE ATLAS regression guard: examples remain conformant
+
+  TestAtlasExamplesCarryCurrentEdition (15 tests, Section C current edition)
+    - Every pinned ATLAS token in the 4 ATLAS-carrying sources names frameworks.yaml's version
+    - Controls: scan finds tokens in each source (x4); scan reaches every helper-visible value (x4)
+    - Controls: scan reaches changelog prose the line helper cannot see (synthetic)
+    - Controls: schema pattern admits the current and every prior edition
+    - Controls: component and persona sources carry no pinned ATLAS token (x4)
 
   TestMappingsAndResponsibilitiesSolicitation (6 tests, Section D)
     - ADR-018 D6: new_component solicits framework mappings

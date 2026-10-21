@@ -19,9 +19,12 @@ frameworks:
     fullName: Adversarial Threat Landscape for Artificial-Intelligence Systems
     description: Knowledge base of adversary tactics and techniques based on real-world attack observations on machine learning systems
     baseUri: https://atlas.mitre.org
-    version: '5.0.1'
-    versionId: mitre-atlas@5.0.1
-    lastUpdated: '2025-10-15'
+    version: '2026.09'
+    versionId: mitre-atlas@2026.09
+    supersedes: mitre-atlas@5.0.1
+    priorVersions:
+      - mitre-atlas@5.0.1
+    lastUpdated: '2026-09-15'
     techniqueUriPattern: https://atlas.mitre.org/techniques/{id}
     applicableTo:
       - controls

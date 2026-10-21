@@ -133,7 +133,7 @@
       "properties": {
         "mitre-atlas": {
           "type": "string",
-          "pattern": "^AML\\.(T|M)\\d{4}(\\.\\d{3})?@(5\\.0\\.1)$"
+          "pattern": "^AML\\.(T|M)\\d{4}(\\.\\d{3})?@(5\\.0\\.1|2026\\.09)$"
         },
         "nist-ai-rmf": {
           "type": "string",

@@ -102,7 +102,7 @@ def _find_unpinned(path: Path) -> list[str]:
 
 
 def _hook_validations_mapping_sections(text: str) -> str:
-    """Slice hook-validations.md to the mapping purity (§17) + drift (§18) sections."""
+    """Slice hook-validations.md to the mapping purity (§17), drift (§18) and catalogue (§19) sections."""
     start = text.index("## 17.")
     end = text.index("**Related:**", start)
     return text[start:end]
@@ -192,10 +192,11 @@ def test_hook_validations_contains_validate_mapping_purity() -> None:
 
 
 def test_hook_validations_contains_validate_mapping_drift() -> None:
-    """validate_mapping_drift.py and its hook id appear in hook-validations.md."""
+    """validate_mapping_drift.py, its hook id, and Tier 2 validate_mapping_catalogue.py are documented."""
     text = _read(_HOOK_VALIDATIONS)
     assert "validate_mapping_drift.py" in text
     assert "validate-mapping-drift" in text
+    assert "validate_mapping_catalogue.py" in text
 
 
 # ---------------------------------------------------------------------------
@@ -219,8 +220,9 @@ def test_scripts_readme_contains_validate_mapping_purity() -> None:
 
 
 def test_scripts_readme_contains_validate_mapping_drift() -> None:
-    """validate_mapping_drift.py appears in scripts/README.md Key Files list."""
+    """validate_mapping_drift.py and the Tier 2 validate_mapping_catalogue.py appear in scripts/README.md."""
     assert "validate_mapping_drift.py" in _read(_SCRIPTS_README)
+    assert "validate_mapping_catalogue.py" in _read(_SCRIPTS_README)
 
 
 def test_scripts_readme_contains_framework_mapping_maintainer() -> None:
@@ -259,5 +261,6 @@ def test_validation_md_contains_validate_mapping_purity() -> None:
 
 
 def test_validation_md_contains_validate_mapping_drift() -> None:
-    """validate_mapping_drift.py appears in risk-map/docs/validation.md."""
+    """validate_mapping_drift.py and Tier 2 validate_mapping_catalogue.py appear in risk-map/docs/validation.md."""
     assert "validate_mapping_drift.py" in _read(_VALIDATION_MD)
+    assert "validate_mapping_catalogue.py" in _read(_VALIDATION_MD)

@@ -10,7 +10,8 @@ This document describes the methodology, conventions, and rationale used for pop
 > **Forward note (#343):** the mapping values in the tables below are the
 > as-authored Phase-2 legacy forms, retained as a provenance record. The live
 > corpus has since been migrated to the ADR-027 version-pinned form (e.g.
-> `AML.T0020@5.0.1`). See the [framework mappings style guide](../contributing/framework-mappings-style-guide.md).
+> `AML.T0020@5.0.1`, a still-valid prior edition; new values are composed at the
+> current edition, `@2026.09`). See the [framework mappings style guide](../contributing/framework-mappings-style-guide.md).
 
 ---
 
@@ -113,6 +114,8 @@ This is a **best-effort** initial population based on:
 | riskSensitiveDataDisclosure (Sensitive Data Disclosure) | AML.T0024.*, AML.T0024.000, AML.T0024.001 | Exfiltration via ML inference API techniques |
 | riskModelExfiltration (Model Exfiltration) | AML.T0024.002, AML.T0025, AML.T0048.004 | Extract ML model, exfiltration, IP theft |
 | riskDenialOfMLService (Denial of ML Service) | AML.T0029, AML.T0034 | Denial of ML service and cost harvesting |
+
+This table records the initial population of the mappings and is unpinned. `AML.T0019@5.0.1` is retained in the corpus at the 5.0.1 edition; `AML.T0019` is absent from the 2026.09 catalogue.
 
 **Gaps:**
 - Some CoSAI risks (e.g., riskUnauthorizedTrainingData, riskExcessiveDataHandling, riskInferredSensitiveData, riskInsecureModelOutput) don't have direct ATLAS technique mappings as they focus on policy/compliance rather than attacks
@@ -398,7 +401,7 @@ This is a **best-effort** initial population based on:
    - Official Website: https://atlas.mitre.org/
    - GitHub Repository: https://github.com/mitre/advmlthreatmatrix
    - MISP Galaxy Cluster: https://github.com/MISP/misp-galaxy/blob/main/clusters/mitre-atlas-attack-pattern.json
-   - Version: 5.0.1 (as of October 2025)
+   - Version: 2026.09 (current registered edition; 5.0.1 remains a valid prior edition)
 
 2. **NIST AI Risk Management Framework**
    - Official Site: https://www.nist.gov/itl/ai-risk-management-framework
