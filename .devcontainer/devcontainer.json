@@ -17,6 +17,10 @@
 			"installZsh": false,
 			"installOhMyZsh": false
 		},
+		"ghcr.io/devcontainers/features/git:1": {
+			"version": "latest",
+			"ppa": true
+		},
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
 	},
 

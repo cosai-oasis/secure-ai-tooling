@@ -4,8 +4,9 @@ ARG WORKSPACE=/workspaces
 ARG WORKSPACE_REPO=secure-ai-tooling
 
 # Install system packages: core utilities + Playwright Chromium system dependencies
-# Core: build-essential, bash-completion, vim, curl, wget, git, ca-certificates
+# Core: build-essential, bash-completion, vim, curl, wget, ca-certificates
 # Note: sudo is provided by the common-utils devcontainer feature, not installed here
+# Note: git is provided by the git devcontainer feature, not installed here
 # Playwright deps: 31 packages needed by Chromium on Ubuntu Noble (with t64 suffixes)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -13,7 +14,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     vim \
     curl \
     wget \
-    git \
     ca-certificates \
     libasound2t64 \
     libatk-bridge2.0-0t64 \
