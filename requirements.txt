@@ -7,5 +7,5 @@ pytest-cov==7.1.0
 pytest-timeout==2.4.0
 PyYAML==6.0.3
 ruff==0.17.1
-pandas==3.0.6
+pandas==3.1.0
 tabulate==0.10.0
