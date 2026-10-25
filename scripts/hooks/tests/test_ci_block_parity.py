@@ -7084,6 +7084,12 @@ class TestWorkflowTriggerCoverage:
             "scripts/skills/explain-entity/SKILL.md"
             in read_set["scripts/hooks/tests/test_skill_description_length.py"]
         )
+        generator_module = "scripts/hooks/issue_template_generator/tests/test_schema_parser.py"
+        generator_fixture = "scripts/hooks/issue_template_generator/tests/fixtures/personas_mixed_deprecated.yaml"
+        assert generator_fixture in read_set.get(generator_module, set()), (
+            f"The scan must include {generator_module} and its fixture {generator_fixture}; "
+            "narrowing discovery to scripts/hooks/tests/ silently omits the generator suite."
+        )
 
     @pytest.mark.parametrize("event", ["pull_request", "push"])
     @pytest.mark.parametrize("kind", ["paths", "paths-ignore"])
