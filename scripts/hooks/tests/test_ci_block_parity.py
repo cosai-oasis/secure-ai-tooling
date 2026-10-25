@@ -6983,6 +6983,11 @@ class TestWorkflowTriggerCoverage:
         Given: the tracked hooks test modules and their literal repository paths
         When: those inputs are compared with every event's workflow path filter
         Then: every derived input triggers the full-suite workflow (ADR-037 D10c)
+
+        Content-only changes used to skip their own regression tests. Derive
+        inputs from the tracked modules so a new test or fixture cannot be
+        silently omitted by a fixed module list, and check both events so
+        broader push coverage cannot hide a missing PR check.
         """
         missing_events, uncovered = _content_input_gaps(workflow_name)
         assert not missing_events, f"{workflow_name} is missing events: {', '.join(sorted(missing_events))}"
@@ -7048,6 +7053,12 @@ class TestWorkflowTriggerCoverage:
         Given: test source using the repository's path conventions and a tracked tree
         When: literal inputs are derived statically
         Then: files and directory descendants are found, excluding prose and untracked files
+
+        The annotated-root case requires a later expression to use its
+        binding; a directory binding alone would mask missing AnnAssign
+        support. Separate directory expressions intentionally expand their
+        descendants, whereas a single literal file expression stays narrow.
+        Prose and unknown roots must not invent inputs.
         """
         tracked = [
             "risk-map/yaml/components.yaml",
@@ -7056,13 +7067,20 @@ class TestWorkflowTriggerCoverage:
             "risk-map/schemas/components.schema.json",
             "risk-map/docs/setup.md",
         ]
-        assert _literal_test_input_paths(source, "scripts/hooks/tests/test_example.py", tracked) == expected
+        actual = _literal_test_input_paths(source, "scripts/hooks/tests/test_example.py", tracked)
+        assert actual == expected, (
+            f"Wrong inputs for test source {source!r}: expected {sorted(expected)}, got {sorted(actual)}"
+        )
 
     def test_literal_test_inputs_discover_a_new_tracked_test_module(self, tmp_path, monkeypatch):
         """
         Given: a newly tracked test reading a newly tracked content file
         When: the suite's input set is derived without a maintained module list
         Then: the new file is required by the new module
+
+        Existing live-corpus samples cannot distinguish automatic discovery
+        from a fixed list that happens to include today's modules. A fresh
+        tracked module and input require discovery to grow with the tree.
         """
         module = "scripts/hooks/tests/test_new.py"
         content = "risk-map/yaml/new.yaml"
@@ -7074,22 +7092,35 @@ class TestWorkflowTriggerCoverage:
         )
         monkeypatch.setattr(sys.modules[__name__], "_REPO_ROOT", tmp_path)
         monkeypatch.setattr(sys.modules[__name__], "TRACKED_FILES", [module, content])
-        assert content in _pytest_literal_read_set()[module]
+        read_set = _pytest_literal_read_set()
+        assert module in read_set, f"New tracked test module {module} was not discovered: {sorted(read_set)}"
+        assert content in read_set[module], (
+            f"New test {module} must require {content}; got {sorted(read_set[module])}"
+        )
 
     def test_literal_test_inputs_find_existing_content_and_docs(self):
         """
         Given: existing live-corpus, schema, documentation, and skill tests
         When: their literal inputs are derived
         Then: representative inputs from each class are present
+
+        Synthetic snippets alone could pass while discovery misses the real
+        suites. Pin a generator-suite read explicitly: top-level hooks tests
+        cross-read its files, masking a scan narrowed to scripts/hooks/tests/.
         """
         read_set = PYTEST_LITERAL_READ_SET
-        assert {"risk-map/yaml/frameworks.yaml", "risk-map/schemas/frameworks.schema.json"} <= read_set[
-            "scripts/hooks/tests/test_framework_mapping_maintainer.py"
-        ]
-        assert "risk-map/docs/setup.md" in read_set["scripts/hooks/tests/test_setup_docs.py"]
-        assert (
-            "scripts/skills/explain-entity/SKILL.md"
-            in read_set["scripts/hooks/tests/test_skill_description_length.py"]
+        framework_module = "scripts/hooks/tests/test_framework_mapping_maintainer.py"
+        framework_inputs = {"risk-map/yaml/frameworks.yaml", "risk-map/schemas/frameworks.schema.json"}
+        assert framework_inputs <= read_set.get(framework_module, set()), (
+            f"{framework_module} must require both its corpus and schema; got {read_set.get(framework_module)}"
+        )
+        setup_module = "scripts/hooks/tests/test_setup_docs.py"
+        assert "risk-map/docs/setup.md" in read_set.get(setup_module, set()), (
+            f"{setup_module} must require the Risk Map setup guide; got {read_set.get(setup_module)}"
+        )
+        skill_module = "scripts/hooks/tests/test_skill_description_length.py"
+        assert "scripts/skills/explain-entity/SKILL.md" in read_set.get(skill_module, set()), (
+            f"{skill_module} must expand the tracked skill directory; got {read_set.get(skill_module)}"
         )
         generator_module = "scripts/hooks/issue_template_generator/tests/test_schema_parser.py"
         generator_fixture = "scripts/hooks/issue_template_generator/tests/fixtures/personas_mixed_deprecated.yaml"
@@ -7103,8 +7134,12 @@ class TestWorkflowTriggerCoverage:
     def test_content_test_input_guard_catches_each_event_filter(self, event, kind, monkeypatch):
         """
         Given: a workflow excluding one live-corpus input on one event
-        When: the content-input guard checks that workflow
-        Then: it fails and names the excluded input and event for either filter spelling
+        When: the content-input helper checks that workflow
+        Then: its result names only the excluded input and event for either filter spelling
+
+        No live workflow uses paths-ignore, so the synthetic complement is
+        its non-vacuity check. Excluding just one event also catches a helper
+        that accidentally treats coverage by either event as sufficient.
         """
         target = "risk-map/yaml/components.yaml"
         patterns = ["**", f"!{target}"] if kind == "paths" else [target]
@@ -7123,8 +7158,12 @@ class TestWorkflowTriggerCoverage:
     def test_content_test_input_guard_catches_a_deleted_event(self, event, monkeypatch):
         """
         Given: a workflow missing one of the two required events
-        When: the content-input guard checks that workflow
-        Then: it fails rather than treating the missing event as an unfiltered event
+        When: the content-input helper checks that workflow
+        Then: its result distinguishes the missing event from the remaining unfiltered event
+
+        The path-filter matcher intentionally omits unfiltered events. An
+        independent event-presence check must keep a deleted event from
+        looking like an unconditional trigger and passing vacuously.
         """
         data = {"on": {name: {} for name in ("pull_request", "push") if name != event}}
         monkeypatch.setattr(sys.modules[__name__], "_workflow_data", lambda _: data)
