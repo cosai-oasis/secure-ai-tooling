@@ -6927,6 +6927,20 @@ class TestWorkflowTriggerCoverage:
         )
 
     @pytest.mark.parametrize("workflow_name", PYTEST_WORKFLOWS)
+    def test_pytest_workflow_triggers_on_git_attributes(self, workflow_name):
+        """
+        Given: the catalogue byte-stability tests resolve Git's text attribute
+        When: the root attribute configuration changes
+        Then: the full-suite workflow triggers for both events
+
+        `git check-attr` reads .gitattributes indirectly. The literal Python
+        path detector cannot see that dependency, so deleting its trigger
+        needs a separate regression check.
+        """
+        missing = _covered_by_every_event(workflow_name, ".gitattributes")
+        assert not missing, f"{workflow_name} does not trigger on .gitattributes for: {missing}"
+
+    @pytest.mark.parametrize("workflow_name", PYTEST_WORKFLOWS)
     def test_pytest_workflow_triggers_on_content_test_inputs(self, workflow_name):
         """
         Given: the tracked hooks test modules and their literal repository paths
