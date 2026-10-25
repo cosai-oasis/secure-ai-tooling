@@ -6297,9 +6297,11 @@ def _literal_test_input_paths(source: str, test_path: str, tracked_files: list[s
     Follow Path(__file__), resolve(), parent/parents[n], simple assignments,
     and division by string literals without importing or executing a test.
     A directory denotes all its tracked descendants: tests also use these
-    prefixes in globs, copies, and dynamically constructed filenames. Keep
-    only the longest resolvable prefix of each expression, so a literal file
-    does not accidentally require its whole parent directory.
+    prefixes in globs, copies, and dynamically constructed filenames. Within
+    one expression, keep only its longest resolvable prefix: ROOT / "data" /
+    "file.yaml" requires that file, not the intermediate directory. Separate
+    expressions are independent; DATA = ROOT / "data" requires the whole
+    tracked directory even when a later expression reads DATA / "file.yaml".
 
     This is a bounded static approximation, not a Python data-flow engine.
     Directory expansion may overmatch. Helper returns, imported paths, and
