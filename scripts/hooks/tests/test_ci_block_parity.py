@@ -6941,6 +6941,30 @@ class TestWorkflowTriggerCoverage:
         assert not missing, f"{workflow_name} does not trigger on .gitattributes for: {missing}"
 
     @pytest.mark.parametrize("workflow_name", PYTEST_WORKFLOWS)
+    @pytest.mark.parametrize(
+        "input_path",
+        [
+            "risk-map/README.md",
+            "risk-map/diagrams/risk-map-graph.md",
+            "risk-map/diagrams/risk-map-graph.mermaid",
+            "docs/adr/003-devcontainer-mise-architecture.md",
+        ],
+    )
+    def test_pytest_workflow_triggers_on_indirect_content_inputs(self, workflow_name, input_path):
+        """
+        Given: test inputs reached through fixtures, path lists, or document links
+        When: an input changes without any Python source edit
+        Then: both events trigger the workflow that checks it
+
+        These observed reads escape the literal-path detector: the archive
+        sweep iterates CONSUMER_SURFACES, graph checks use the repo_root
+        fixture, and the setup-doc test follows an ADR link. A passing
+        derived-input guard alone must not hide a missing trigger for them.
+        """
+        missing = _covered_by_every_event(workflow_name, input_path)
+        assert not missing, f"{workflow_name} does not trigger on {input_path} for: {missing}"
+
+    @pytest.mark.parametrize("workflow_name", PYTEST_WORKFLOWS)
     def test_pytest_workflow_triggers_on_content_test_inputs(self, workflow_name):
         """
         Given: the tracked hooks test modules and their literal repository paths
