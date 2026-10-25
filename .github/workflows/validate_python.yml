@@ -6,32 +6,58 @@ on:
       - '.mise.toml'
       - 'scripts/tools/**'
       - '.devcontainer/**'
+      # ADR-037 D10c: content, docs, and fixtures read by the test suites.
+      - 'risk-map/yaml/**'
+      - 'risk-map/schemas/**'
+      - 'risk-map/docs/**'
+      - 'risk-map/README.md'
+      - 'risk-map/diagrams/**'
+      - 'scripts/agents/**'
+      - 'scripts/agents-evals/**'
+      - 'scripts/skills/**'
+      - 'scripts/framework_catalogues/**'
+      - '.gitattributes'
+      - 'scripts/docs/**'
+      - 'scripts/TEMPLATES/**'
+      - 'scripts/hooks/**'
+      - 'scripts/README.md'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/dependabot.yml'
+      - 'docs/adr/**'
       - '**.py'
       - '.pre-commit-config.yaml'
       - 'requirements*.txt'
       - 'pyproject.toml'
       - '.github/workflows/**'
-      # ADR-037 D1: test_ci_block_parity.py derives its governed-hook set from
-      # this ADR's instance table, so a PR editing only the table changes what
-      # the suite asserts without touching any workflow, script, or
-      # .pre-commit-config.yaml entry otherwise listed here.
-      - 'docs/adr/037-ci-validation-authority-and-block-parity.md'
   pull_request:
     paths:
       # ADR-037 D10b: the devcontainer test suites read these files.
       - '.mise.toml'
       - 'scripts/tools/**'
       - '.devcontainer/**'
+      # ADR-037 D10c: content, docs, and fixtures read by the test suites.
+      - 'risk-map/yaml/**'
+      - 'risk-map/schemas/**'
+      - 'risk-map/docs/**'
+      - 'risk-map/README.md'
+      - 'risk-map/diagrams/**'
+      - 'scripts/agents/**'
+      - 'scripts/agents-evals/**'
+      - 'scripts/skills/**'
+      - 'scripts/framework_catalogues/**'
+      - '.gitattributes'
+      - 'scripts/docs/**'
+      - 'scripts/TEMPLATES/**'
+      - 'scripts/hooks/**'
+      - 'scripts/README.md'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/dependabot.yml'
+      - 'docs/adr/**'
       - '**.py'
       - '.pre-commit-config.yaml'
       - 'requirements*.txt'
       - 'pyproject.toml'
       - '.github/workflows/**'
-      # ADR-037 D1: test_ci_block_parity.py derives its governed-hook set from
-      # this ADR's instance table, so a PR editing only the table changes what
-      # the suite asserts without touching any workflow, script, or
-      # .pre-commit-config.yaml entry otherwise listed here.
-      - 'docs/adr/037-ci-validation-authority-and-block-parity.md'
 
 permissions:
   contents: read

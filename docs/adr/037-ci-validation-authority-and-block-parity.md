@@ -338,3 +338,36 @@ Known residuals of the D10a detector, accepted because no workflow uses these fo
 Assumption, not a residual: D10a requires the root `package.json` and `package-lock.json`. The detector also recognises forms that read another directory's lock (`cd site && npm ci`, `npm --prefix site ci`, `npm -C site ci`) and requires the root lock for them. The repository has a single lock, at the root. A workflow installing from a nested lock would need its own `paths:` entries.
 
 Known residual of D10b: `test_setup_docs.py` reads `risk-map/docs/setup.md`, `scripts/docs/setup.md` and `scripts/docs/troubleshooting.md`, which D10b's triggers do not cover. Accepted: the setup docs change rarely, and the devcontainer suites already run when the files above change.
+
+## Addendum 2026-10-19: Content and documentation inputs trigger the test suite
+
+**Status:** Draft (maintainer to flip to Accepted)
+
+Authored for [#585](https://github.com/cosai-oasis/secure-ai-tooling/issues/585). D10c extends the trigger rule to the test suite's content, documentation, and fixture inputs. It supersedes D10b's toolchain-only scope and the setup-documentation residual recorded above; D10a and D10b's existing requirements continue to apply.
+
+### D10c. The full pytest suite triggers on its derived test inputs
+
+`validate_python.yml` runs the existing full pytest suite for both `pull_request` and `push` changes to the test inputs its filters cover. The filters include the Risk Map YAML, schemas, documentation, README and committed diagrams; hook sources and fixtures; agent and skill artifacts; script documentation and templates; vendored framework catalogues and their root Git attribute configuration; GitHub issue forms and Dependabot configuration; and the ADR directory, including targets read through documentation links. The workflow is the authoritative list of patterns, rather than a second register in this ADR.
+
+The required paths are derived from every tracked `test_*.py` module under `scripts/hooks/`, including the issue-template generator's tests. A newly tracked module participates without being added to a maintained module list. Literal file paths require that file; literal directory prefixes require their tracked descendants, covering tests that glob or construct filenames beneath them. The full suite remains the execution unit.
+
+#### Measurement
+
+The [measurement and replay record on #585](https://github.com/cosai-oasis/secure-ai-tooling/issues/585#issuecomment-6402301153) pins the baseline to `b0d7b065881978613cc908a3d71854d3963349aa` and covers 66 PRs merged from 2026-08-07 through the measurement on 2026-10-19. Of these, 23 touched `risk-map/`. The 2026-10-25 review update applies the final directory filters to the same cohort: they select 16 PRs that had no Python Validation PR run and 18 merge pushes that had no Python Validation push run. The broader ADR directory pattern adds five PRs and merge pushes to the initial proposal's 11 and 13. The push comparison uses each merge's first-parent diff, rather than its PR's file list.
+
+At the median of the October 19 sample of 12 successful first attempts per event, one additional run per selected PR and merge adds about 129.1 workflow minutes, or 138.5 aggregate job minutes, across the window. This is a minimum event-count estimate, excludes additional PR revisions, the new guard's overhead and subsequent suite growth, and is not a billed-minute estimate.
+
+The complete suite was replayed at all 18 merge commits with their direct Python requirement pins. No content, schema, or documentation assertion failed. The local macOS replays encountered a Bash 3.2 `globstar` limitation that also reproduces on unchanged rebased `main`. The initial 13 also encountered an `npx` network-retry timeout; the five additional replays disabled network retries and reported only the Bash failure. These are platform-limited replays, not proof that the skipped Ubuntu jobs would have passed. The measurement record preserves the individual counts and this uncertainty.
+
+#### Alternatives considered
+
+- **A narrower content-triggered job.** It could reduce execution time, but needs a separately maintained module list or marker and a rule for shared helpers and fixtures. The measured minimum increase does not justify that additional dependency-selection surface.
+- **Accept the trigger gap as a residual.** The replays found no content assertion failure, but do not establish that the silent gap is safe. This leaves standing guards absent from the changes they are intended to inspect.
+
+#### Enforcement and residual
+
+`TestWorkflowTriggerCoverage.test_pytest_workflow_triggers_on_content_test_inputs` in `test_ci_block_parity.py` derives the inputs, requires both events to exist, and applies the existing ordered path-filter matcher to every candidate. It handles `paths`, negative patterns, and `paths-ignore`. Regression tests demonstrate failure when either event is deleted or excludes a live-corpus input, and demonstrate discovery of a newly tracked test and content file. The integration guard was observed failing against the original filters before the additions.
+
+Separate trigger regressions pin the observed indirect reads that the detector misses: the Risk Map README, both committed graph formats, ADR-003, and `.gitattributes` as read by `git check-attr`. Broad directory patterns cover the diagram and ADR inputs without maintaining per-file workflow lists.
+
+The detector follows `Path(__file__)`, `resolve()`, `parent`, `parents[n]`, simple path assignments, and division by string literals without importing or executing the scanned modules. This is a bounded static approximation. Directory expansion can overmatch. Observed miss classes are fixture-injected roots, iteration over lists of path strings, and paths taken from document content. A root-anchored expression with a non-literal right side, such as `REPO_ROOT / surface`, is dropped: only its repository-root prefix resolves, and the detector deliberately does not expand that root to every tracked file. Helper returns, imported path constants, and other runtime-built roots are also unresolved. The filters and separate regressions cover the observed inputs, but complete Python data flow is not claimed. A contributor introducing an input through an unresolved form must still make its changes trigger the workflow.
