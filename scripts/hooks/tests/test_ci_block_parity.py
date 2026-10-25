@@ -6385,6 +6385,17 @@ def _pytest_literal_read_set() -> dict[str, set[str]]:
 PYTEST_LITERAL_READ_SET = _pytest_literal_read_set()
 
 
+def _content_input_gaps(workflow_name: str) -> tuple[set[str], dict[str, list[str]]]:
+    """Return missing events and literal inputs excluded by a workflow's filters."""
+    missing_events = {"pull_request", "push"} - _declared_events(_workflow_data(workflow_name))
+    required = set().union(*PYTEST_LITERAL_READ_SET.values())
+    assert required, "No test inputs were derived; the trigger guard would check nothing."
+    uncovered = {
+        path: events for path in sorted(required) if (events := _covered_by_every_event(workflow_name, path))
+    }
+    return missing_events, uncovered
+
+
 class TestWorkflowTriggerCoverage:
     """A gate that does not run on the pull request that breaks it is not a gate.
 
@@ -6973,14 +6984,8 @@ class TestWorkflowTriggerCoverage:
         When: those inputs are compared with every event's workflow path filter
         Then: every derived input triggers the full-suite workflow (ADR-037 D10c)
         """
-        missing_events = {"pull_request", "push"} - _declared_events(_workflow_data(workflow_name))
+        missing_events, uncovered = _content_input_gaps(workflow_name)
         assert not missing_events, f"{workflow_name} is missing events: {', '.join(sorted(missing_events))}"
-        read_set = PYTEST_LITERAL_READ_SET
-        required = set().union(*read_set.values())
-        assert required, "No test inputs were derived; the trigger guard would check nothing."
-        uncovered = {
-            path: events for path in sorted(required) if (events := _covered_by_every_event(workflow_name, path))
-        }
         assert not uncovered, (
             f"{workflow_name} does not trigger on inputs its test modules read:\n"
             + "\n".join(f"  - {path} (not matched for: {', '.join(events)})" for path, events in uncovered.items())
@@ -7106,8 +7111,13 @@ class TestWorkflowTriggerCoverage:
         data = {"on": {"pull_request": {}, "push": {}}}
         data["on"][event] = {kind: patterns}
         monkeypatch.setattr(sys.modules[__name__], "_workflow_data", lambda _: data)
-        with pytest.raises(AssertionError, match=f"components.yaml \\(not matched for: {event}"):
-            self.test_pytest_workflow_triggers_on_content_test_inputs("validate_python.yml")
+        missing_events, uncovered = _content_input_gaps("validate_python.yml")
+        assert not missing_events, (
+            f"Both synthetic events exist, but these were reported missing: {missing_events}"
+        )
+        assert uncovered == {target: [event]}, (
+            f"Excluding {target} through {event}.{kind} must report exactly that gap; got {uncovered}"
+        )
 
     @pytest.mark.parametrize("event", ["pull_request", "push"])
     def test_content_test_input_guard_catches_a_deleted_event(self, event, monkeypatch):
@@ -7118,8 +7128,9 @@ class TestWorkflowTriggerCoverage:
         """
         data = {"on": {name: {} for name in ("pull_request", "push") if name != event}}
         monkeypatch.setattr(sys.modules[__name__], "_workflow_data", lambda _: data)
-        with pytest.raises(AssertionError, match=f"missing events: {event}"):
-            self.test_pytest_workflow_triggers_on_content_test_inputs("validate_python.yml")
+        missing_events, uncovered = _content_input_gaps("validate_python.yml")
+        assert missing_events == {event}, f"Deleting {event} must report that missing event; got {missing_events}"
+        assert not uncovered, f"The remaining unfiltered event must cover every input; got {uncovered}"
 
     def test_npm_install_workflows_are_found(self):
         """
