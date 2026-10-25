@@ -6993,6 +6993,10 @@ class TestWorkflowTriggerCoverage:
                 {"risk-map/yaml/components.yaml"},
             ),
             (
+                'ROOT: Path = Path(__file__).parents[3]\nROOT / "risk-map/yaml/components.yaml"',
+                {"risk-map/yaml/components.yaml"},
+            ),
+            (
                 "git_root = Path(__file__).parent.parent.parent.parent\n"
                 'data: Path = git_root / "risk-map" / "yaml"\n'
                 'path = data / "controls.yaml"',
@@ -7023,6 +7027,7 @@ class TestWorkflowTriggerCoverage:
         ],
         ids=[
             "parents",
+            "annotated-root",
             "parent-chain-and-alias",
             "dynamic-filename",
             "glob",
