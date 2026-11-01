@@ -194,7 +194,7 @@ repos:
   # SHA256SUMS and must never be rewritten (ADR-038 D2, D6 item 11).
   # ---------------------------------------------------------------------------
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.1
+    rev: v0.17.3
     hooks:
       - id: ruff
         name: 'ruff: lint'
